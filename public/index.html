@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カード索引システム</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js"></script>
+<style>
+/* ── リセット＆変数 ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #0f1117;
+  --surface:   #1a1d27;
+  --surface2:  #252836;
+  --border:    #2e3347;
+  --accent:    #6c8aff;
+  --accent2:   #a78bfa;
+  --text:      #e2e8f0;
+  --text-dim:  #8892a4;
+  --danger:    #ff5b6b;
+  --success:   #4ade80;
+  --warning:   #fbbf24;
+  --radius:    10px;
+  --shadow:    0 4px 24px rgba(0,0,0,0.4);
+}
+body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+/* ── トップバー ─────────────────────────────── */
+#topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#topbar h1 { font-size: 18px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.tab-group { display: flex; gap: 4px; background: var(--bg); border-radius: 8px; padding: 4px; }
+.tab { padding: 6px 14px; border-radius: 6px; border: none; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 13px; transition: all .2s; white-space: nowrap; }
+.tab.active { background: var(--accent); color: #fff; }
+.tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
+#topbar .spacer { flex: 1; }
+.btn { padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; white-space: nowrap; }
+.btn-primary  { background: var(--accent); color: #fff; }
+.btn-primary:hover  { filter: brightness(1.15); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-danger   { background: var(--danger); color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+.btn-icon { background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── メインレイアウト ─────────────────────────────── */
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── サイドバー ─────────────────────────────── */
+#sidebar {
+  width: 220px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#sidebar-search { padding: 12px; border-bottom: 1px solid var(--border); }
+#sidebar-search input {
+  width: 100%; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 13px; outline: none;
+}
+#sidebar-search input:focus { border-color: var(--accent); }
+#sidebar-body { flex: 1; overflow-y: auto; padding: 12px; }
+.sidebar-section { margin-bottom: 18px; }
+.sidebar-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); margin-bottom: 8px; }
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-pill {
+  padding: 3px 10px; border-radius: 20px; font-size: 12px; cursor: pointer;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); transition: all .2s;
+}
+.tag-pill:hover, .tag-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.type-filter { display: flex; flex-direction: column; gap: 4px; }
+.type-btn { padding: 6px 10px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 13px; text-align: left; transition: all .2s; }
+.type-btn:hover, .type-btn.active { background: var(--surface2); color: var(--text); border-color: var(--border); }
+
+/* ── コンテンツ ─────────────────────────────── */
+#content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+#content-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+#content-header h2 { font-size: 15px; font-weight: 600; }
+#content-header .spacer { flex: 1; }
+#count-badge { font-size: 12px; color: var(--text-dim); background: var(--surface2); padding: 3px 10px; border-radius: 20px; }
+#content-body { flex: 1; overflow: hidden; position: relative; }
+
+/* ── カードグリッド ─────────────────────────────── */
+#card-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px; padding: 16px; overflow-y: auto; height: 100%;
+}
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px; cursor: pointer; transition: all .2s; position: relative; display: flex; flex-direction: column; gap: 8px;
+}
+.card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+.card.selected { border-color: var(--accent2); box-shadow: 0 0 0 2px var(--accent2); }
+.card-color-strip { height: 3px; border-radius: 3px; margin: -14px -14px 6px; border-radius: var(--radius) var(--radius) 0 0; }
+.card-type-badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; display: inline-block; font-weight: 600; }
+.card-type-article { background: #1e3a5f; color: #60a5fa; }
+.card-type-memo    { background: #1a3a2a; color: #4ade80; }
+.card-type-csv     { background: #3a2a1a; color: #fb923c; }
+.card-title { font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--text); }
+.card-summary { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+.card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; }
+.card-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--surface2); color: var(--text-dim); }
+.card-footer { display: flex; align-items: center; gap: 8px; }
+.card-link-count { font-size: 11px; color: var(--text-dim); }
+.card-date { font-size: 11px; color: var(--text-dim); margin-left: auto; }
+.card-actions { position: absolute; top: 8px; right: 8px; display: none; gap: 4px; }
+.card:hover .card-actions { display: flex; }
+
+/* ── 詳細パネル ─────────────────────────────── */
+#detail-panel {
+  width: 360px; flex-shrink: 0; background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#detail-panel.hidden { display: none; }
+#detail-header { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+#detail-header h3 { flex: 1; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#detail-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.detail-section h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); margin-bottom: 8px; }
+.detail-summary { font-size: 13px; line-height: 1.6; color: var(--text); background: var(--surface2); border-radius: 8px; padding: 10px; border-left: 3px solid var(--accent); }
+.detail-body-text { font-size: 12px; line-height: 1.6; color: var(--text-dim); }
+.detail-url a { font-size: 12px; color: var(--accent); text-decoration: none; word-break: break-all; }
+.detail-url a:hover { text-decoration: underline; }
+.linked-card { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface2); border-radius: 8px; cursor: pointer; margin-bottom: 6px; border: 1px solid var(--border); }
+.linked-card:hover { border-color: var(--accent); }
+.linked-card span { font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-search { display: flex; gap: 6px; }
+.link-search input { flex: 1; padding: 6px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; outline: none; }
+.link-search input:focus { border-color: var(--accent); }
+.link-candidates { max-height: 120px; overflow-y: auto; margin-top: 6px; }
+.link-candidate { padding: 6px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; }
+.link-candidate:hover { background: var(--surface2); color: var(--accent); }
+.tag-edit { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-edit-pill { display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; background: var(--surface2); font-size: 12px; }
+.tag-edit-pill button { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 14px; line-height: 1; }
+.tag-input-row { display: flex; gap: 6px; margin-top: 4px; }
+.tag-input-row input { flex: 1; padding: 5px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; outline: none; }
+
+/* ── KJボード ─────────────────────────────── */
+#kj-board { display: none; height: 100%; overflow: hidden; flex-direction: column; }
+#kj-board.active { display: flex; }
+#kj-board-header { display: flex; gap: 10px; padding: 12px; border-bottom: 1px solid var(--border); align-items: center; flex-shrink: 0; }
+#kj-canvas { flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; gap: 14px; padding: 14px; }
+.kj-group-col {
+  min-width: 240px; width: 240px; background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0;
+}
+.kj-group-header { padding: 10px 12px; border-radius: var(--radius) var(--radius) 0 0; display: flex; align-items: center; gap: 8px; }
+.kj-group-name { font-size: 13px; font-weight: 700; flex: 1; }
+.kj-group-body { flex: 1; padding: 8px; overflow-y: auto; min-height: 100px; }
+.kj-ungrouped-col { min-width: 240px; width: 240px; background: var(--surface2); border-radius: var(--radius); border: 1px dashed var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+.kj-card {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; margin-bottom: 6px; font-size: 12px; cursor: grab; transition: all .15s;
+  border-left: 3px solid transparent;
+}
+.kj-card:hover { border-color: var(--accent); }
+.kj-card.dragging { opacity: .4; }
+.kj-drop-zone { min-height: 40px; border: 2px dashed transparent; border-radius: 8px; transition: all .2s; }
+.kj-drop-zone.drag-over { border-color: var(--accent); background: rgba(108,138,255,.08); }
+.kj-card-title { font-weight: 600; margin-bottom: 4px; }
+.kj-card-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.kj-card-tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--surface); color: var(--text-dim); }
+
+/* ── Zettelkastenビュー ─────────────────────────────── */
+#zettel-view { display: none; height: 100%; }
+#zettel-view.active { display: block; }
+#zettel-network { width: 100%; height: 100%; }
+
+/* ── モーダル ─────────────────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px; min-width: 420px; max-width: 640px; width: 90%; box-shadow: var(--shadow);
+  max-height: 90vh; overflow-y: auto;
+}
+.modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.form-group input, .form-group textarea, .form-group select {
+  width: 100%; padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 13px; outline: none; font-family: inherit;
+}
+.form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
+.form-group textarea { resize: vertical; min-height: 90px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.csv-dropzone {
+  border: 2px dashed var(--border); border-radius: 10px; padding: 32px; text-align: center;
+  color: var(--text-dim); cursor: pointer; transition: all .2s; font-size: 13px;
+}
+.csv-dropzone:hover, .csv-dropzone.drag-over { border-color: var(--accent); color: var(--accent); background: rgba(108,138,255,.06); }
+.csv-preview { margin-top: 12px; font-size: 12px; color: var(--success); }
+
+/* ── スクロールバー ─────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ── その他 ─────────────────────────────── */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; color: var(--text-dim); }
+.empty-state .icon { font-size: 48px; }
+.empty-state p { font-size: 14px; }
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast {
+  position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 16px; font-size: 13px; box-shadow: var(--shadow);
+  z-index: 999; animation: fadeIn .3s; opacity: 0; transition: opacity .3s;
+}
+.toast.show { opacity: 1; }
+@keyframes fadeIn { from { transform: translateY(10px); opacity: 0; } to { opacity: 1; } }
+.color-strip { display: flex; gap: 6px; flex-wrap: wrap; }
+.color-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all .15s; }
+.color-dot:hover, .color-dot.selected { border-color: var(--text); transform: scale(1.2); }
+.highlight { background: rgba(108,138,255,.2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ── トップバー ───────────────────────── -->
+<div id="topbar">
+  <h1>📇 カード索引</h1>
+  <div class="tab-group">
+    <button class="tab active" onclick="switchView('cards')">カード一覧</button>
+    <button class="tab" onclick="switchView('kj')">KJ法ボード</button>
+    <button class="tab" onclick="switchView('zettel')">Zettelkasten</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn btn-secondary btn-sm" onclick="openCSVModal()">📂 CSV取り込み</button>
+  <button class="btn btn-primary btn-sm" onclick="openNewCardModal()">＋ メモ作成</button>
+</div>
+
+<!-- ── メイン ───────────────────────── -->
+<div id="main">
+
+  <!-- サイドバー -->
+  <div id="sidebar">
+    <div id="sidebar-search">
+      <input type="text" id="search-input" placeholder="🔍 キーワード検索..." oninput="onSearch(this.value)">
+    </div>
+    <div id="sidebar-body">
+      <div class="sidebar-section">
+        <h3>フィルター</h3>
+        <div class="type-filter">
+          <button class="type-btn active" onclick="filterType(null, this)">すべて</button>
+          <button class="type-btn" onclick="filterType('memo', this)">📝 メモ</button>
+          <button class="type-btn" onclick="filterType('csv', this)">📊 CSV</button>
+          <button class="type-btn" onclick="filterType('article', this)">📰 記事</button>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <h3>タグ <span id="tag-count" style="font-size:10px;font-weight:400;"></span></h3>
+        <div class="tag-cloud" id="tag-cloud"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- コンテンツ -->
+  <div id="content">
+    <div id="content-header">
+      <h2 id="view-title">カード一覧</h2>
+      <span id="count-badge">0件</span>
+      <div class="spacer"></div>
+      <div id="header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="summarizeBulk()" title="未要約カードをAI一括要約">⚡ 一括要約</button>
+      </div>
+    </div>
+    <div id="content-body">
+
+      <!-- カードグリッド -->
+      <div id="card-grid"></div>
+
+      <!-- KJボード -->
+      <div id="kj-board">
+        <div id="kj-board-header">
+          <button class="btn btn-secondary btn-sm" onclick="openNewGroupModal()">＋ グループ追加</button>
+          <span style="font-size:12px;color:var(--text-dim)">カードをドラッグ＆ドロップでグループへ移動</span>
+        </div>
+        <div id="kj-canvas"></div>
+      </div>
+
+      <!-- Zettelkasten -->
+      <div id="zettel-view">
+        <div id="zettel-network"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 詳細パネル -->
+  <div id="detail-panel" class="hidden">
+    <div id="detail-header">
+      <h3 id="detail-title">カード詳細</h3>
+      <button class="btn-icon" onclick="openEditModal(currentCardId)" title="編集">✏️</button>
+      <button class="btn-icon" onclick="closeDetail()" title="閉じる">✕</button>
+    </div>
+    <div id="detail-body"></div>
+  </div>
+
+</div>
+
+<!-- ── モーダル: 新規カード ───────────────────────── -->
+<div class="modal-overlay" id="modal-new">
+  <div class="modal">
+    <h2>📝 メモ作成</h2>
+    <div class="form-group">
+      <label>タイトル *</label>
+      <input type="text" id="new-title" placeholder="カードのタイトル">
+    </div>
+    <div class="form-group">
+      <label>本文</label>
+      <textarea id="new-body" placeholder="メモ内容を入力..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>URL（任意）</label>
+      <input type="url" id="new-url" placeholder="https://...">
+    </div>
+    <div class="form-group">
+      <label>タグ（スペース区切り）</label>
+      <input type="text" id="new-tags" placeholder="例: AI 機械学習 論文">
+    </div>
+    <div class="form-group">
+      <label>カードの色</label>
+      <div class="color-strip" id="new-color-strip"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-new')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitNewCard()">作成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── モーダル: 編集 ───────────────────────── -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <h2>✏️ カード編集</h2>
+    <input type="hidden" id="edit-id">
+    <div class="form-group">
+      <label>タイトル</label>
+      <input type="text" id="edit-title">
+    </div>
+    <div class="form-group">
+      <label>本文</label>
+      <textarea id="edit-body"></textarea>
+    </div>
+    <div class="form-group">
+      <label>URL</label>
+      <input type="url" id="edit-url">
+    </div>
+    <div class="form-group">
+      <label>タグ（スペース区切り）</label>
+      <input type="text" id="edit-tags">
+    </div>
+    <div class="form-group">
+      <label>カードの色</label>
+      <div class="color-strip" id="edit-color-strip"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" onclick="confirmDelete()" style="margin-right:auto">削除</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── モーダル: データ取り込み（CSV / JSON） ───────────────────────── -->
+<div class="modal-overlay" id="modal-csv">
+  <div class="modal">
+    <h2>📂 データ取り込み</h2>
+
+    <!-- タブ切り替え -->
+    <div class="tab-group" style="margin-bottom:16px">
+      <button class="tab active" id="import-tab-csv" onclick="switchImportTab('csv')">CSV</button>
+      <button class="tab" id="import-tab-json" onclick="switchImportTab('json')">JSON</button>
+    </div>
+
+    <!-- CSV パネル -->
+    <div id="import-panel-csv">
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">
+        対応列: <code>title</code>, <code>body</code>/<code>content</code>, <code>url</code>, <code>tags</code>（1行目はヘッダー必須）
+      </p>
+      <div class="csv-dropzone" id="csv-dropzone"
+           onclick="document.getElementById('csv-file').click()"
+           ondragover="importDragOver(event,'csv-dropzone')"
+           ondragleave="importDragLeave('csv-dropzone')"
+           ondrop="importDrop(event,'csv')">
+        <div style="font-size:32px;margin-bottom:8px">📂</div>
+        <div>クリックまたはドラッグ＆ドロップ</div>
+        <div style="font-size:12px;margin-top:4px">CSVファイル（UTF-8推奨）</div>
+        <input type="file" id="csv-file" accept=".csv,.tsv,.txt" style="display:none" onchange="importFileSelect(this,'csv')">
+      </div>
+      <div class="csv-preview" id="csv-preview"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label>またはテキスト貼り付け</label>
+        <textarea id="csv-text" style="height:110px;font-family:monospace;font-size:12px"
+          placeholder="title,body,url,tags&#10;記事タイトル,本文テキスト,https://...,AI機械学習"></textarea>
+      </div>
+    </div>
+
+    <!-- JSON パネル -->
+    <div id="import-panel-json" style="display:none">
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:10px">
+        対応フォーマット（自動判定）:
+      </p>
+      <div style="font-size:12px;color:var(--text-dim);background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:14px;line-height:1.8">
+        ① <b>配列形式</b> <code>[{title, body, url, tags}, ...]</code><br>
+        ② <b>ラッパー形式</b> <code>{"cards":[...]} / {"articles":[...]} / {"items":[...]}</code><br>
+        ③ <b>このシステムのエクスポート</b> <code>data/cards.json</code> をそのまま再取り込み<br>
+        ④ <b>articles.json形式</b> <code>collector.ts</code> の収集データ<br>
+        ⑤ <b>単一オブジェクト</b> <code>{"title":"...", "body":"..."}</code>
+      </div>
+      <div class="csv-dropzone" id="json-dropzone"
+           onclick="document.getElementById('json-file').click()"
+           ondragover="importDragOver(event,'json-dropzone')"
+           ondragleave="importDragLeave('json-dropzone')"
+           ondrop="importDrop(event,'json')">
+        <div style="font-size:32px;margin-bottom:8px">{ }</div>
+        <div>クリックまたはドラッグ＆ドロップ</div>
+        <div style="font-size:12px;margin-top:4px">JSONファイル（UTF-8）</div>
+        <input type="file" id="json-file" accept=".json" style="display:none" onchange="importFileSelect(this,'json')">
+      </div>
+      <div class="csv-preview" id="json-preview"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label>またはJSON貼り付け</label>
+        <textarea id="json-text" style="height:110px;font-family:monospace;font-size:12px"
+          placeholder='[&#10;  {"title": "記事タイトル", "body": "本文", "url": "https://...", "tags": ["AI", "ML"]},&#10;  ...&#10;]'></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-csv')">キャンセル</button>
+      <button class="btn btn-primary" id="import-submit-btn" onclick="submitImport()">取り込む</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── モーダル: KJグループ作成 ───────────────────────── -->
+<div class="modal-overlay" id="modal-group">
+  <div class="modal" style="min-width:320px;max-width:400px">
+    <h2>グループ作成</h2>
+    <div class="form-group">
+      <label>グループ名 *</label>
+      <input type="text" id="group-name" placeholder="グループ名">
+    </div>
+    <div class="form-group">
+      <label>説明</label>
+      <input type="text" id="group-desc" placeholder="任意">
+    </div>
+    <div class="form-group">
+      <label>色</label>
+      <div class="color-strip" id="group-color-strip"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-group')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitGroup()">作成</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════
+//  状態
+// ════════════════════════════════════════════════════
+let currentView = 'cards';
+let currentCardId = null;
+let currentFilter = { tag: null, type: null, q: '' };
+let allCards = [];
+let allTags = [];
+let kjData = { groups: [], ungrouped: [] };
+let selectedNewColor = null;
+let selectedEditColor = null;
+let selectedGroupColor = null;
+let dragCardId = null;
+let zettelNetwork = null;
+
+const COLORS = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#C77DFF','#FF9A3C','#00C9A7','#F72585','#94a3b8'];
+
+// ════════════════════════════════════════════════════
+//  API
+// ════════════════════════════════════════════════════
+const api = {
+  async get(path) {
+    const r = await fetch(path); return r.json();
+  },
+  async post(path, body) {
+    const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    return r.json();
+  },
+  async put(path, body) {
+    const r = await fetch(path, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    return r.json();
+  },
+  async del(path) {
+    const r = await fetch(path, { method:'DELETE' }); return r.json();
+  },
+};
+
+// ════════════════════════════════════════════════════
+//  初期化
+// ════════════════════════════════════════════════════
+async function init() {
+  buildColorStrips();
+  await Promise.all([loadCards(), loadTags()]);
+}
+
+async function loadCards() {
+  const params = new URLSearchParams();
+  if (currentFilter.tag)  params.set('tag', currentFilter.tag);
+  if (currentFilter.type) params.set('type', currentFilter.type);
+  if (currentFilter.q)    params.set('q', currentFilter.q);
+  allCards = await api.get('/api/cards?' + params);
+  renderCardGrid();
+}
+
+async function loadTags() {
+  allTags = await api.get('/api/tags');
+  renderTagCloud();
+}
+
+// ════════════════════════════════════════════════════
+//  ビュー切替
+// ════════════════════════════════════════════════════
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['cards','kj','zettel'][i] === view));
+  document.getElementById('card-grid').style.display = view === 'cards' ? 'grid' : 'none';
+  document.getElementById('kj-board').classList.toggle('active', view === 'kj');
+  document.getElementById('zettel-view').classList.toggle('active', view === 'zettel');
+  const titles = { cards:'カード一覧', kj:'KJ法ボード', zettel:'Zettelkasten ネットワーク' };
+  document.getElementById('view-title').textContent = titles[view];
+  document.getElementById('header-actions').style.display = view === 'cards' ? 'flex' : 'none';
+  if (view === 'kj') loadKJBoard();
+  if (view === 'zettel') loadZettelkasten();
+}
+
+// ════════════════════════════════════════════════════
+//  カードグリッドレンダリング
+// ════════════════════════════════════════════════════
+function renderCardGrid() {
+  const grid = document.getElementById('card-grid');
+  document.getElementById('count-badge').textContent = `${allCards.length}件`;
+
+  if (!allCards.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📭</div><p>カードがありません</p><button class="btn btn-primary btn-sm" onclick="openNewCardModal()">メモを作成</button></div>`;
+    return;
+  }
+
+  grid.innerHTML = allCards.map(card => {
+    const strip = card.color ? `<div class="card-color-strip" style="background:${card.color}"></div>` : '';
+    const typeMap = { article:'📰 記事', memo:'📝 メモ', csv:'📊 CSV' };
+    const typeCls = `card-type-${card.type}`;
+    const tagHtml = card.tags.slice(0,4).map(t => `<span class="card-tag">${esc(t)}</span>`).join('');
+    const moreTags = card.tags.length > 4 ? `<span class="card-tag">+${card.tags.length-4}</span>` : '';
+    const displayText = esc(card.summary || card.body).slice(0, 120) + (card.body.length > 120 ? '...' : '');
+    const date = new Date(card.createdAt).toLocaleDateString('ja-JP', {month:'short',day:'numeric'});
+    return `
+    <div class="card" id="card-${card.id}" onclick="selectCard('${card.id}')">
+      ${strip}
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="card-type-badge ${typeCls}">${typeMap[card.type]??card.type}</span>
+        <div class="card-actions">
+          <button class="btn-icon btn-sm" onclick="event.stopPropagation();openEditModal('${card.id}')" title="編集">✏️</button>
+          <button class="btn-icon btn-sm" onclick="event.stopPropagation();summarizeOne('${card.id}')" title="AI要約">⚡</button>
+        </div>
+      </div>
+      <div class="card-title">${esc(card.title)}</div>
+      ${displayText ? `<div class="card-summary">${displayText}</div>` : ''}
+      ${card.tags.length ? `<div class="card-tags">${tagHtml}${moreTags}</div>` : ''}
+      <div class="card-footer">
+        ${card.links.length ? `<span class="card-link-count">🔗 ${card.links.length}</span>` : ''}
+        <span class="card-date">${date}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ════════════════════════════════════════════════════
+//  タグクラウド
+// ════════════════════════════════════════════════════
+function renderTagCloud() {
+  const cloud = document.getElementById('tag-cloud');
+  document.getElementById('tag-count').textContent = `(${allTags.length})`;
+  cloud.innerHTML = allTags.map(({ tag, count }) =>
+    `<span class="tag-pill ${currentFilter.tag===tag?'active':''}" onclick="filterTag('${esc(tag)}')">${esc(tag)} <small>${count}</small></span>`
+  ).join('');
+}
+
+function filterTag(tag) {
+  currentFilter.tag = currentFilter.tag === tag ? null : tag;
+  renderTagCloud();
+  loadCards();
+}
+
+function filterType(type, el) {
+  currentFilter.type = type;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  loadCards();
+}
+
+function onSearch(q) {
+  currentFilter.q = q;
+  loadCards();
+}
+
+// ════════════════════════════════════════════════════
+//  カード詳細パネル
+// ════════════════════════════════════════════════════
+async function selectCard(id) {
+  currentCardId = id;
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+  const el = document.getElementById(`card-${id}`);
+  if (el) el.classList.add('selected');
+
+  const data = await api.get(`/api/cards/${id}`);
+  renderDetailPanel(data);
+  document.getElementById('detail-panel').classList.remove('hidden');
+}
+
+function closeDetail() {
+  currentCardId = null;
+  document.getElementById('detail-panel').classList.add('hidden');
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+}
+
+function renderDetailPanel(card) {
+  document.getElementById('detail-title').textContent = card.title;
+
+  let linksHtml = (card.links || []).map(lid => {
+    const linked = allCards.find(c => c.id === lid);
+    if (!linked) return '';
+    return `<div class="linked-card" onclick="selectCard('${lid}')">
+      <span>📇 ${esc(linked.title)}</span>
+      <button class="btn-icon btn-sm" onclick="event.stopPropagation();unlinkCard('${card.id}','${lid}')" title="リンク解除">✕</button>
+    </div>`;
+  }).join('');
+
+  let backlinksHtml = (card.backlinks || []).map(bl =>
+    `<div class="linked-card" onclick="selectCard('${bl.id}')"><span>← ${esc(bl.title)}</span></div>`
+  ).join('');
+
+  const tagsHtml = (card.tags || []).map(t =>
+    `<span class="tag-edit-pill">${esc(t)}<button onclick="removeTagFromCard('${card.id}','${esc(t)}')" title="削除">×</button></span>`
+  ).join('');
+
+  document.getElementById('detail-body').innerHTML = `
+    ${card.url ? `<div class="detail-section detail-url"><h4>リンク</h4><a href="${esc(card.url)}" target="_blank">🔗 ${esc(card.url)}</a></div>` : ''}
+    
+    <div class="detail-section">
+      <h4>AI要約 ${card.summary ? '' : '<span style="color:var(--text-dim);font-weight:400">(未生成)</span>'}</h4>
+      ${card.summary
+        ? `<div class="detail-summary">${esc(card.summary)}</div>`
+        : `<button class="btn btn-secondary btn-sm" onclick="summarizeOne('${card.id}')">⚡ AI要約を生成</button>`}
+    </div>
+
+    <div class="detail-section">
+      <h4>本文</h4>
+      <div class="detail-body-text">${esc(card.body).slice(0,400)}${card.body.length>400?'...':''}</div>
+    </div>
+
+    <div class="detail-section">
+      <h4>タグ</h4>
+      <div class="tag-edit">${tagsHtml}</div>
+      <div class="tag-input-row" style="margin-top:8px">
+        <input type="text" id="tag-add-input" placeholder="タグ追加..." onkeydown="if(event.key==='Enter')addTagToCard('${card.id}')">
+        <button class="btn btn-secondary btn-sm" onclick="addTagToCard('${card.id}')">追加</button>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Zettelkastenリンク (${(card.links||[]).length})</h4>
+      ${linksHtml || '<div style="font-size:12px;color:var(--text-dim)">リンクなし</div>'}
+      <div class="link-search" style="margin-top:8px">
+        <input type="text" id="link-search" placeholder="リンク先を検索..." oninput="searchLinkCandidates(this.value,'${card.id}')">
+      </div>
+      <div class="link-candidates" id="link-candidates"></div>
+    </div>
+
+    ${backlinksHtml ? `<div class="detail-section"><h4>バックリンク (${(card.backlinks||[]).length})</h4>${backlinksHtml}</div>` : ''}
+  `;
+}
+
+// タグ追加
+async function addTagToCard(cardId) {
+  const inp = document.getElementById('tag-add-input');
+  const tag = inp.value.trim();
+  if (!tag) return;
+  const card = allCards.find(c => c.id === cardId);
+  if (!card) return;
+  const tags = [...new Set([...card.tags, tag])];
+  await api.put(`/api/cards/${cardId}`, { tags });
+  inp.value = '';
+  await Promise.all([loadCards(), loadTags()]);
+  selectCard(cardId);
+}
+
+async function removeTagFromCard(cardId, tag) {
+  const card = allCards.find(c => c.id === cardId);
+  if (!card) return;
+  const tags = card.tags.filter(t => t !== tag);
+  await api.put(`/api/cards/${cardId}`, { tags });
+  await Promise.all([loadCards(), loadTags()]);
+  selectCard(cardId);
+}
+
+// Zettelkasten リンク
+function searchLinkCandidates(q, currentId) {
+  const box = document.getElementById('link-candidates');
+  const current = allCards.find(c => c.id === currentId);
+  if (!q.trim()) { box.innerHTML = ''; return; }
+  const results = allCards.filter(c =>
+    c.id !== currentId &&
+    !(current?.links||[]).includes(c.id) &&
+    (c.title.toLowerCase().includes(q.toLowerCase()) || c.tags.some(t => t.includes(q)))
+  ).slice(0, 8);
+  box.innerHTML = results.map(c =>
+    `<div class="link-candidate" onclick="addLink('${currentId}','${c.id}')">📇 ${esc(c.title)}</div>`
+  ).join('') || '<div class="link-candidate" style="color:var(--text-dim)">該当なし</div>';
+}
+
+async function addLink(id1, id2) {
+  await api.post(`/api/cards/${id1}/links`, { targetId: id2 });
+  toast('リンクを追加しました');
+  document.getElementById('link-search').value = '';
+  document.getElementById('link-candidates').innerHTML = '';
+  await loadCards();
+  selectCard(id1);
+}
+
+async function unlinkCard(id1, id2) {
+  await api.del(`/api/cards/${id1}/links/${id2}`);
+  toast('リンクを解除しました');
+  await loadCards();
+  selectCard(id1);
+}
+
+// ════════════════════════════════════════════════════
+//  新規カードモーダル
+// ════════════════════════════════════════════════════
+function openNewCardModal() {
+  selectedNewColor = null;
+  document.getElementById('new-title').value = '';
+  document.getElementById('new-body').value = '';
+  document.getElementById('new-url').value = '';
+  document.getElementById('new-tags').value = '';
+  updateColorStrip('new-color-strip', null, c => selectedNewColor = c);
+  openModal('modal-new');
+  setTimeout(() => document.getElementById('new-title').focus(), 100);
+}
+
+async function submitNewCard() {
+  const title = document.getElementById('new-title').value.trim();
+  if (!title) { toast('タイトルを入力してください', 'warn'); return; }
+  const tags = document.getElementById('new-tags').value.trim().split(/\s+/).filter(Boolean);
+  await api.post('/api/cards', {
+    title,
+    body:  document.getElementById('new-body').value,
+    url:   document.getElementById('new-url').value || undefined,
+    tags,
+    color: selectedNewColor || undefined,
+    type:  'memo',
+  });
+  closeModal('modal-new');
+  toast('カードを作成しました');
+  await Promise.all([loadCards(), loadTags()]);
+}
+
+// ════════════════════════════════════════════════════
+//  編集モーダル
+// ════════════════════════════════════════════════════
+async function openEditModal(id) {
+  const card = allCards.find(c => c.id === id) || await api.get(`/api/cards/${id}`);
+  document.getElementById('edit-id').value = card.id;
+  document.getElementById('edit-title').value = card.title;
+  document.getElementById('edit-body').value = card.body;
+  document.getElementById('edit-url').value = card.url ?? '';
+  document.getElementById('edit-tags').value = card.tags.join(' ');
+  selectedEditColor = card.color || null;
+  updateColorStrip('edit-color-strip', selectedEditColor, c => selectedEditColor = c);
+  openModal('modal-edit');
+}
+
+async function submitEdit() {
+  const id = document.getElementById('edit-id').value;
+  const tags = document.getElementById('edit-tags').value.trim().split(/\s+/).filter(Boolean);
+  await api.put(`/api/cards/${id}`, {
+    title: document.getElementById('edit-title').value,
+    body:  document.getElementById('edit-body').value,
+    url:   document.getElementById('edit-url').value || undefined,
+    tags,
+    color: selectedEditColor || undefined,
+  });
+  closeModal('modal-edit');
+  toast('保存しました');
+  await Promise.all([loadCards(), loadTags()]);
+  if (currentCardId === id) selectCard(id);
+}
+
+async function confirmDelete() {
+  const id = document.getElementById('edit-id').value;
+  if (!confirm('このカードを削除しますか？')) return;
+  await api.del(`/api/cards/${id}`);
+  closeModal('modal-edit');
+  if (currentCardId === id) closeDetail();
+  toast('削除しました');
+  await Promise.all([loadCards(), loadTags()]);
+}
+
+// ════════════════════════════════════════════════════
+//  CSV / JSON インポートモーダル
+// ════════════════════════════════════════════════════
+let currentImportTab = 'csv'; // 'csv' | 'json'
+
+function openCSVModal() {
+  document.getElementById('csv-text').value = '';
+  document.getElementById('json-text').value = '';
+  document.getElementById('csv-preview').textContent = '';
+  document.getElementById('json-preview').textContent = '';
+  switchImportTab('csv');
+  openModal('modal-csv');
+}
+
+function switchImportTab(tab) {
+  currentImportTab = tab;
+  document.getElementById('import-tab-csv').classList.toggle('active', tab === 'csv');
+  document.getElementById('import-tab-json').classList.toggle('active', tab === 'json');
+  document.getElementById('import-panel-csv').style.display  = tab === 'csv'  ? '' : 'none';
+  document.getElementById('import-panel-json').style.display = tab === 'json' ? '' : 'none';
+}
+
+function importDragOver(e, zoneId) {
+  e.preventDefault();
+  document.getElementById(zoneId).classList.add('drag-over');
+}
+function importDragLeave(zoneId) {
+  document.getElementById(zoneId).classList.remove('drag-over');
+}
+function importDrop(e, type) {
+  e.preventDefault();
+  importDragLeave(type === 'csv' ? 'csv-dropzone' : 'json-dropzone');
+  const file = e.dataTransfer.files[0];
+  if (file) readImportFile(file, type);
+}
+function importFileSelect(input, type) {
+  const file = input.files[0];
+  if (file) readImportFile(file, type);
+}
+function readImportFile(file, type) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    if (type === 'csv') {
+      document.getElementById('csv-text').value = text;
+      const lines = text.split('\n').filter(l => l.trim()).length;
+      document.getElementById('csv-preview').textContent = `✓ ${file.name}（${lines}行）を読み込みました`;
+    } else {
+      document.getElementById('json-text').value = text;
+      try {
+        const parsed = JSON.parse(text);
+        const count = Array.isArray(parsed) ? parsed.length
+          : Array.isArray(parsed.cards)    ? parsed.cards.length
+          : Array.isArray(parsed.articles) ? parsed.articles.length
+          : Array.isArray(parsed.items)    ? parsed.items.length
+          : 1;
+        document.getElementById('json-preview').textContent = `✓ ${file.name}（${count}件を検出）を読み込みました`;
+      } catch {
+        document.getElementById('json-preview').textContent = `✓ ${file.name} を読み込みました（形式はサーバーで検証）`;
+      }
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+async function submitImport() {
+  if (currentImportTab === 'csv') {
+    const csv = document.getElementById('csv-text').value.trim();
+    if (!csv) { toast('CSVを入力してください', 'warn'); return; }
+    const result = await api.post('/api/cards/import-csv', { csv });
+    if (result.error) { toast(`エラー: ${result.error}`, 'warn'); return; }
+    closeModal('modal-csv');
+    toast(`${result.count}件を取り込みました`);
+  } else {
+    const json = document.getElementById('json-text').value.trim();
+    if (!json) { toast('JSONを入力してください', 'warn'); return; }
+    const result = await api.post('/api/cards/import-json', { json });
+    if (result.error) { toast(`エラー: ${result.error}`, 'warn'); return; }
+    closeModal('modal-csv');
+    const warnMsg = result.warnings?.length ? `（警告: ${result.warnings[0]}）` : '';
+    toast(`${result.count}件を取り込みました${warnMsg}`);
+  }
+  await Promise.all([loadCards(), loadTags()]);
+}
+
+
+// ════════════════════════════════════════════════════
+//  AI要約
+// ════════════════════════════════════════════════════
+async function summarizeOne(id) {
+  toast('要約中...');
+  const result = await api.post(`/api/cards/${id}/summarize`, {});
+  if (result.summary) {
+    toast('要約しました');
+    await loadCards();
+    if (currentCardId === id) selectCard(id);
+  } else {
+    toast('要約に失敗しました', 'warn');
+  }
+}
+
+async function summarizeBulk() {
+  const unsummarized = allCards.filter(c => !c.summary).map(c => c.id);
+  if (!unsummarized.length) { toast('未要約のカードはありません'); return; }
+  await api.post('/api/cards/summarize-bulk', { ids: unsummarized });
+  toast(`${unsummarized.length}件の要約を開始しました（バックグラウンド）`);
+  setTimeout(() => loadCards(), 3000);
+  setTimeout(() => loadCards(), 8000);
+}
+
+// ════════════════════════════════════════════════════
+//  KJ法ボード
+// ════════════════════════════════════════════════════
+async function loadKJBoard() {
+  kjData = await api.get('/api/kj/groups');
+  renderKJBoard();
+}
+
+function renderKJBoard() {
+  const canvas = document.getElementById('kj-canvas');
+  let html = '';
+
+  // 各グループ列
+  html += kjData.groups.map(g => {
+    const cardHtml = g.cards.map(c => renderKJCard(c, g.color)).join('');
+    return `
+    <div class="kj-group-col" data-group-id="${g.id}">
+      <div class="kj-group-header" style="background:${g.color}22;border-bottom:2px solid ${g.color}">
+        <span class="kj-group-name" style="color:${g.color}">${esc(g.name)}</span>
+        <span style="font-size:11px;color:var(--text-dim)">${g.cards.length}</span>
+        <button class="btn-icon btn-sm" onclick="editGroup('${g.id}','${esc(g.name)}')" title="編集">✏️</button>
+        <button class="btn-icon btn-sm" onclick="deleteGroup('${g.id}')" title="削除">🗑</button>
+      </div>
+      <div class="kj-group-body kj-drop-zone" data-group-id="${g.id}"
+           ondragover="kjDragOver(event)" ondrop="kjDrop(event,'${g.id}')">
+        ${cardHtml}
+        ${!g.cards.length ? '<div style="font-size:12px;color:var(--text-dim);text-align:center;padding:12px">カードをここへ</div>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // 未グループ列
+  const ungroupedHtml = kjData.ungrouped.map(c => renderKJCard(c, null)).join('');
+  html += `
+  <div class="kj-ungrouped-col">
+    <div class="kj-group-header" style="border-bottom:1px dashed var(--border)">
+      <span class="kj-group-name" style="color:var(--text-dim)">未グループ</span>
+      <span style="font-size:11px;color:var(--text-dim)">${kjData.ungrouped.length}</span>
+    </div>
+    <div class="kj-group-body kj-drop-zone" data-group-id="__none__"
+         ondragover="kjDragOver(event)" ondrop="kjDrop(event,'__none__')">
+      ${ungroupedHtml}
+    </div>
+  </div>`;
+
+  canvas.innerHTML = html;
+}
+
+function renderKJCard(card, groupColor) {
+  const borderColor = groupColor || 'var(--border)';
+  const tagsHtml = card.tags.slice(0,3).map(t => `<span class="kj-card-tag">${esc(t)}</span>`).join('');
+  return `
+  <div class="kj-card" draggable="true" data-card-id="${card.id}"
+       style="border-left-color:${borderColor}"
+       ondragstart="kjDragStart(event,'${card.id}')" ondragend="kjDragEnd(event)"
+       onclick="selectCard('${card.id}');switchView('cards')">
+    <div class="kj-card-title">${esc(card.title)}</div>
+    ${tagsHtml ? `<div class="kj-card-tags">${tagsHtml}</div>` : ''}
+  </div>`;
+}
+
+function kjDragStart(e, cardId) {
+  dragCardId = cardId;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function kjDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.kj-drop-zone').forEach(z => z.classList.remove('drag-over'));
+}
+
+function kjDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+
+async function kjDrop(e, groupId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!dragCardId) return;
+
+  if (groupId === '__none__') {
+    await api.put(`/api/cards/${dragCardId}`, { kjGroupId: null });
+  } else {
+    await api.post(`/api/kj/groups/${groupId}/cards`, { cardId: dragCardId });
+  }
+  dragCardId = null;
+  await loadKJBoard();
+}
+
+function openNewGroupModal() {
+  document.getElementById('group-name').value = '';
+  document.getElementById('group-desc').value = '';
+  selectedGroupColor = COLORS[0];
+  updateColorStrip('group-color-strip', selectedGroupColor, c => selectedGroupColor = c);
+  openModal('modal-group');
+  setTimeout(() => document.getElementById('group-name').focus(), 100);
+}
+
+async function submitGroup() {
+  const name = document.getElementById('group-name').value.trim();
+  if (!name) { toast('グループ名を入力してください', 'warn'); return; }
+  await api.post('/api/kj/groups', {
+    name, description: document.getElementById('group-desc').value, color: selectedGroupColor
+  });
+  closeModal('modal-group');
+  toast('グループを作成しました');
+  await loadKJBoard();
+}
+
+async function editGroup(id, currentName) {
+  const name = prompt('グループ名を変更:', currentName);
+  if (!name || name === currentName) return;
+  await api.put(`/api/kj/groups/${id}`, { name });
+  await loadKJBoard();
+}
+
+async function deleteGroup(id) {
+  if (!confirm('グループを削除しますか？（カードは未グループになります）')) return;
+  await api.del(`/api/kj/groups/${id}`);
+  toast('グループを削除しました');
+  await loadKJBoard();
+}
+
+// ════════════════════════════════════════════════════
+//  Zettelkasten ネットワーク
+// ════════════════════════════════════════════════════
+async function loadZettelkasten() {
+  const graphData = await api.get('/api/zettelkasten/graph');
+  const container = document.getElementById('zettel-network');
+
+  const nodes = new vis.DataSet(graphData.nodes.map(n => ({
+    ...n,
+    shape: 'box',
+    font: { color: '#e2e8f0', size: 12 },
+    color: { background: n.color || '#252836', border: '#6c8aff', highlight: { background: '#6c8aff33', border: '#a78bfa' } },
+    borderWidth: 1,
+    borderWidthSelected: 2,
+  })));
+
+  const edges = new vis.DataSet(graphData.edges.map(e => ({
+    ...e,
+    color: { color: '#2e3347', highlight: '#6c8aff' },
+    width: 1.5,
+    smooth: { type: 'continuous' },
+  })));
+
+  const options = {
+    physics: { solver: 'forceAtlas2Based', stabilization: { iterations: 80 } },
+    interaction: { hover: true, tooltipDelay: 100 },
+  };
+
+  if (zettelNetwork) zettelNetwork.destroy();
+  zettelNetwork = new vis.Network(container, { nodes, edges }, options);
+  zettelNetwork.on('selectNode', ({ nodes: sel }) => {
+    if (sel.length === 1) { switchView('cards'); selectCard(sel[0]); }
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  カラーストリップ
+// ════════════════════════════════════════════════════
+function buildColorStrips() {
+  ['new-color-strip','edit-color-strip','group-color-strip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = [null, ...COLORS].map(c => {
+      if (!c) return `<span class="color-dot" data-color="" style="background:var(--surface2);border-color:var(--border)" title="色なし">✕</span>`;
+      return `<span class="color-dot" data-color="${c}" style="background:${c}" title="${c}"></span>`;
+    }).join('');
+  });
+}
+
+function updateColorStrip(stripId, selected, onSelect) {
+  const strip = document.getElementById(stripId);
+  if (!strip) return;
+  strip.querySelectorAll('.color-dot').forEach(dot => {
+    const c = dot.dataset.color || null;
+    dot.classList.toggle('selected', c === selected);
+    dot.onclick = () => { onSelect(c); updateColorStrip(stripId, c, onSelect); };
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  モーダル開閉
+// ════════════════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); }));
+
+// ════════════════════════════════════════════════════
+//  トースト通知
+// ════════════════════════════════════════════════════
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = type === 'warn' ? 'var(--warning)' : 'var(--border)';
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// キーボードショートカット
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+    closeDetail();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); openNewCardModal(); }
+});
+
+// ── 起動
+init();
+</script>
+</body>
+</html>
