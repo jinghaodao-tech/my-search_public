@@ -1,9 +1,26 @@
 <img width="957" height="446" alt="スクリーンショット 2026-06-18 214659" src="https://github.com/user-attachments/assets/57d13dcf-0e32-41cb-9e04-bef4807195a5" />
 <img width="955" height="487" alt="スクリーンショット 2026-06-18 214532" src="https://github.com/user-attachments/assets/ed6f28a4-b823-43f1-81ac-fd9cdc5016e0" />
-<img width="957" height="446" alt="スクリーンショット 2026-06-18 214659" src="https://github.com/user-attachments/assets/bc7c26ae-9467-4bae-8d25-7ceeeef4c5a5" />
-<img width="955" height="487" alt="スクリーンショット 2026-06-18 214532" src="https://github.com/user-attachments/assets/55fcfe41-d0d2-4b36-93ef-8e70889bc95f" />
 # カード索引システム — README
 
+# カード索引システム
+
+情報収集した記事・メモ・CSVデータをカード化し、検索・AI要約・タグ管理・カード間リンク・KJ法ボードで整理できる個人用ナレッジ管理ツールです。
+
+## 作った理由
+
+調べた情報やメモが増えると、後から探せなくなったり、関連する情報を結び付けにくくなる問題がありました。  
+そこで、検索・要約・分類・関連付けを一つの画面で扱えるツールとして開発しました。
+
+## 主な機能
+
+- カード作成・編集・削除
+- CSV / JSON 取り込み
+- BM25によるキーワード検索
+- Anthropic APIによるAI要約
+- タグ管理
+- Zettelkasten形式の双方向リンク
+- KJ法ボードによる情報整理
+  
 ## 構成（ファイル一覧）
 
 ```
