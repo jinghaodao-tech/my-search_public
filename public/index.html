@@ -6,240 +6,353 @@
 <title>カード索引システム</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js"></script>
 <style>
-/* ── リセット＆変数 ─────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg:        #0f1117;
-  --surface:   #1a1d27;
-  --surface2:  #252836;
-  --border:    #2e3347;
-  --accent:    #6c8aff;
-  --accent2:   #a78bfa;
-  --text:      #e2e8f0;
-  --text-dim:  #8892a4;
-  --danger:    #ff5b6b;
-  --success:   #4ade80;
-  --warning:   #fbbf24;
-  --radius:    10px;
-  --shadow:    0 4px 24px rgba(0,0,0,0.4);
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#252836;--border:#2e3347;
+  --accent:#6c8aff;--accent2:#a78bfa;--text:#e2e8f0;--text-dim:#8892a4;
+  --danger:#ff5b6b;--success:#4ade80;--warning:#fbbf24;
+  --radius:10px;--shadow:0 4px 24px rgba(0,0,0,.4);
 }
-body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+body{font-family:'Segoe UI','Yu Gothic UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
-/* ── トップバー ─────────────────────────────── */
-#topbar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-#topbar h1 { font-size: 18px; font-weight: 700; color: var(--accent); white-space: nowrap; }
-.tab-group { display: flex; gap: 4px; background: var(--bg); border-radius: 8px; padding: 4px; }
-.tab { padding: 6px 14px; border-radius: 6px; border: none; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 13px; transition: all .2s; white-space: nowrap; }
-.tab.active { background: var(--accent); color: #fff; }
-.tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
-#topbar .spacer { flex: 1; }
-.btn { padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; white-space: nowrap; }
-.btn-primary  { background: var(--accent); color: #fff; }
-.btn-primary:hover  { filter: brightness(1.15); }
-.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-.btn-danger   { background: var(--danger); color: #fff; }
-.btn-sm { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
-.btn-icon { background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-.btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+/* ── トップバー ── */
+#topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+#topbar h1{font-size:18px;font-weight:700;color:var(--accent);white-space:nowrap}
+.tab-group{display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:4px}
+.tab{padding:6px 14px;border-radius:6px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;transition:all .2s;white-space:nowrap}
+.tab.active{background:var(--accent);color:#fff}
+.tab:hover:not(.active){background:var(--surface2);color:var(--text)}
+.spacer{flex:1}
+.btn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{filter:brightness(1.15)}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-success{background:#16a34a;color:#fff}.btn-success:hover{filter:brightness(1.15)}
+.btn-sm{padding:4px 10px;font-size:12px;border-radius:6px}
+.btn-icon{background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:6px 8px;border-radius:6px;cursor:pointer;font-size:14px}
+.btn-icon:hover{border-color:var(--accent);color:var(--accent)}
 
-/* ── メインレイアウト ─────────────────────────────── */
-#main { display: flex; flex: 1; overflow: hidden; }
+/* ── レイアウト ── */
+#main{display:flex;flex:1;overflow:hidden}
 
-/* ── サイドバー ─────────────────────────────── */
-#sidebar {
-  width: 220px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-#sidebar-search { padding: 12px; border-bottom: 1px solid var(--border); }
-#sidebar-search input {
-  width: 100%; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 8px; color: var(--text); font-size: 13px; outline: none;
-}
-#sidebar-search input:focus { border-color: var(--accent); }
-#sidebar-body { flex: 1; overflow-y: auto; padding: 12px; }
-.sidebar-section { margin-bottom: 18px; }
-.sidebar-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); margin-bottom: 8px; }
-.tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
-.tag-pill {
-  padding: 3px 10px; border-radius: 20px; font-size: 12px; cursor: pointer;
-  background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); transition: all .2s;
-}
-.tag-pill:hover, .tag-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.type-filter { display: flex; flex-direction: column; gap: 4px; }
-.type-btn { padding: 6px 10px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 13px; text-align: left; transition: all .2s; }
-.type-btn:hover, .type-btn.active { background: var(--surface2); color: var(--text); border-color: var(--border); }
+/* ── サイドバー ── */
+#sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#sidebar-search{padding:12px;border-bottom:1px solid var(--border)}
+#sidebar-search input{width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none}
+#sidebar-search input:focus{border-color:var(--accent)}
+#sidebar-body{flex:1;overflow-y:auto;padding:12px}
+.sidebar-section{margin-bottom:18px}
+.sidebar-section h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:8px}
+.tag-cloud{display:flex;flex-wrap:wrap;gap:6px}
+.tag-pill{padding:3px 10px;border-radius:20px;font-size:12px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);transition:all .2s}
+.tag-pill:hover,.tag-pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.type-filter{display:flex;flex-direction:column;gap:4px}
+.type-btn{padding:6px 10px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;text-align:left;transition:all .2s}
+.type-btn:hover,.type-btn.active{background:var(--surface2);color:var(--text);border-color:var(--border)}
 
-/* ── コンテンツ ─────────────────────────────── */
-#content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-#content-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
-#content-header h2 { font-size: 15px; font-weight: 600; }
-#content-header .spacer { flex: 1; }
-#count-badge { font-size: 12px; color: var(--text-dim); background: var(--surface2); padding: 3px 10px; border-radius: 20px; }
-#content-body { flex: 1; overflow: hidden; position: relative; }
+/* ── コンテンツ ── */
+#content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+#content-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+#content-header h2{font-size:15px;font-weight:600}
+#count-badge{font-size:12px;color:var(--text-dim);background:var(--surface2);padding:3px 10px;border-radius:20px}
+#content-body{flex:1;overflow:hidden;position:relative}
 
-/* ── カードグリッド ─────────────────────────────── */
-#card-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px; padding: 16px; overflow-y: auto; height: 100%;
-}
-.card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 14px; cursor: pointer; transition: all .2s; position: relative; display: flex; flex-direction: column; gap: 8px;
-}
-.card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
-.card.selected { border-color: var(--accent2); box-shadow: 0 0 0 2px var(--accent2); }
-.card-color-strip { height: 3px; border-radius: 3px; margin: -14px -14px 6px; border-radius: var(--radius) var(--radius) 0 0; }
-.card-type-badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; display: inline-block; font-weight: 600; }
-.card-type-article { background: #1e3a5f; color: #60a5fa; }
-.card-type-memo    { background: #1a3a2a; color: #4ade80; }
-.card-type-csv     { background: #3a2a1a; color: #fb923c; }
-.card-title { font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--text); }
-.card-summary { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
-.card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; }
-.card-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--surface2); color: var(--text-dim); }
-.card-footer { display: flex; align-items: center; gap: 8px; }
-.card-link-count { font-size: 11px; color: var(--text-dim); }
-.card-date { font-size: 11px; color: var(--text-dim); margin-left: auto; }
-.card-actions { position: absolute; top: 8px; right: 8px; display: none; gap: 4px; }
-.card:hover .card-actions { display: flex; }
+/* ── カードグリッド ── */
+#card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;padding:16px;overflow-y:auto;height:100%}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;cursor:pointer;transition:all .2s;position:relative;display:flex;flex-direction:column;gap:8px}
+.card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow)}
+.card.selected{border-color:var(--accent2);box-shadow:0 0 0 2px var(--accent2)}
+.card-color-strip{height:3px;margin:-14px -14px 6px;border-radius:var(--radius) var(--radius) 0 0}
+.card-type-badge{font-size:10px;padding:2px 7px;border-radius:10px;display:inline-block;font-weight:600}
+.card-type-article{background:#1e3a5f;color:#60a5fa}
+.card-type-memo{background:#1a3a2a;color:#4ade80}
+.card-type-csv{background:#3a2a1a;color:#fb923c}
+.card-title{font-size:14px;font-weight:600;line-height:1.4;color:var(--text)}
+.card-summary{font-size:12px;color:var(--text-dim);line-height:1.5}
+.card-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto}
+.card-tag{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--surface2);color:var(--text-dim)}
+.card-footer{display:flex;align-items:center;gap:8px}
+.card-date{font-size:11px;color:var(--text-dim);margin-left:auto}
+.card-actions{position:absolute;top:8px;right:8px;display:none;gap:4px}
+.card:hover .card-actions{display:flex}
 
-/* ── 詳細パネル ─────────────────────────────── */
-#detail-panel {
-  width: 360px; flex-shrink: 0; background: var(--surface); border-left: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-#detail-panel.hidden { display: none; }
-#detail-header { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
-#detail-header h3 { flex: 1; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#detail-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-.detail-section h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); margin-bottom: 8px; }
-.detail-summary { font-size: 13px; line-height: 1.6; color: var(--text); background: var(--surface2); border-radius: 8px; padding: 10px; border-left: 3px solid var(--accent); }
-.detail-body-text { font-size: 12px; line-height: 1.6; color: var(--text-dim); }
-.detail-url a { font-size: 12px; color: var(--accent); text-decoration: none; word-break: break-all; }
-.detail-url a:hover { text-decoration: underline; }
-.linked-card { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface2); border-radius: 8px; cursor: pointer; margin-bottom: 6px; border: 1px solid var(--border); }
-.linked-card:hover { border-color: var(--accent); }
-.linked-card span { font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.link-search { display: flex; gap: 6px; }
-.link-search input { flex: 1; padding: 6px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; outline: none; }
-.link-search input:focus { border-color: var(--accent); }
-.link-candidates { max-height: 120px; overflow-y: auto; margin-top: 6px; }
-.link-candidate { padding: 6px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; }
-.link-candidate:hover { background: var(--surface2); color: var(--accent); }
-.tag-edit { display: flex; flex-wrap: wrap; gap: 6px; }
-.tag-edit-pill { display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; background: var(--surface2); font-size: 12px; }
-.tag-edit-pill button { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 14px; line-height: 1; }
-.tag-input-row { display: flex; gap: 6px; margin-top: 4px; }
-.tag-input-row input { flex: 1; padding: 5px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; outline: none; }
+/* ── 詳細パネル ── */
+#detail-panel{width:360px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#detail-panel.hidden{display:none}
+#detail-header{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--border)}
+#detail-header h3{flex:1;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#detail-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.detail-section h4{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:8px}
+.detail-summary{font-size:13px;line-height:1.6;color:var(--text);background:var(--surface2);border-radius:8px;padding:10px;border-left:3px solid var(--accent)}
+.detail-body-text{font-size:12px;line-height:1.6;color:var(--text-dim)}
+.detail-url a{font-size:12px;color:var(--accent);text-decoration:none;word-break:break-all}
+.linked-card{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;cursor:pointer;margin-bottom:6px;border:1px solid var(--border)}
+.linked-card:hover{border-color:var(--accent)}
+.linked-card span{font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-search{display:flex;gap:6px}
+.link-search input{flex:1;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none}
+.link-candidates{max-height:120px;overflow-y:auto;margin-top:6px}
+.link-candidate{padding:6px 10px;font-size:12px;cursor:pointer;border-radius:6px}
+.link-candidate:hover{background:var(--surface2);color:var(--accent)}
+.tag-edit{display:flex;flex-wrap:wrap;gap:6px}
+.tag-edit-pill{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:var(--surface2);font-size:12px}
+.tag-edit-pill button{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1}
+.tag-input-row{display:flex;gap:6px;margin-top:4px}
+.tag-input-row input{flex:1;padding:5px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none}
 
-/* ── KJボード ─────────────────────────────── */
-#kj-board { display: none; height: 100%; overflow: hidden; flex-direction: column; }
-#kj-board.active { display: flex; }
-#kj-board-header { display: flex; gap: 10px; padding: 12px; border-bottom: 1px solid var(--border); align-items: center; flex-shrink: 0; }
-#kj-canvas { flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; gap: 14px; padding: 14px; }
-.kj-group-col {
-  min-width: 240px; width: 240px; background: var(--surface); border-radius: var(--radius);
-  border: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0;
-}
-.kj-group-header { padding: 10px 12px; border-radius: var(--radius) var(--radius) 0 0; display: flex; align-items: center; gap: 8px; }
-.kj-group-name { font-size: 13px; font-weight: 700; flex: 1; }
-.kj-group-body { flex: 1; padding: 8px; overflow-y: auto; min-height: 100px; }
-.kj-ungrouped-col { min-width: 240px; width: 240px; background: var(--surface2); border-radius: var(--radius); border: 1px dashed var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
-.kj-card {
-  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
-  padding: 8px 10px; margin-bottom: 6px; font-size: 12px; cursor: grab; transition: all .15s;
-  border-left: 3px solid transparent;
-}
-.kj-card:hover { border-color: var(--accent); }
-.kj-card.dragging { opacity: .4; }
-.kj-drop-zone { min-height: 40px; border: 2px dashed transparent; border-radius: 8px; transition: all .2s; }
-.kj-drop-zone.drag-over { border-color: var(--accent); background: rgba(108,138,255,.08); }
-.kj-card-title { font-weight: 600; margin-bottom: 4px; }
-.kj-card-tags { display: flex; flex-wrap: wrap; gap: 3px; }
-.kj-card-tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--surface); color: var(--text-dim); }
+/* ── KJボード ── */
+#kj-board{display:none;height:100%;overflow:hidden;flex-direction:column}
+#kj-board.active{display:flex}
+#kj-board-header{display:flex;gap:10px;padding:12px;border-bottom:1px solid var(--border);align-items:center;flex-shrink:0}
+#kj-canvas{flex:1;overflow-x:auto;overflow-y:hidden;display:flex;gap:14px;padding:14px}
+.kj-group-col{min-width:240px;width:240px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.kj-group-header{padding:10px 12px;border-radius:var(--radius) var(--radius) 0 0;display:flex;align-items:center;gap:8px}
+.kj-group-name{font-size:13px;font-weight:700;flex:1}
+.kj-group-body{flex:1;padding:8px;overflow-y:auto;min-height:100px}
+.kj-ungrouped-col{min-width:240px;width:240px;background:var(--surface2);border-radius:var(--radius);border:1px dashed var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.kj-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12px;cursor:grab;transition:all .15s;border-left:3px solid transparent}
+.kj-card:hover{border-color:var(--accent)}
+.kj-card.dragging{opacity:.4}
+.kj-drop-zone{min-height:40px;border:2px dashed transparent;border-radius:8px;transition:all .2s}
+.kj-drop-zone.drag-over{border-color:var(--accent);background:rgba(108,138,255,.08)}
+.kj-card-title{font-weight:600;margin-bottom:4px}
+.kj-card-tags{display:flex;flex-wrap:wrap;gap:3px}
+.kj-card-tag{font-size:10px;padding:1px 6px;border-radius:8px;background:var(--surface);color:var(--text-dim)}
 
-/* ── Zettelkastenビュー ─────────────────────────────── */
-#zettel-view { display: none; height: 100%; }
-#zettel-view.active { display: block; }
-#zettel-network { width: 100%; height: 100%; }
+/* ── Zettelkasten ── */
+#zettel-view{display:none;height:100%}
+#zettel-view.active{display:block}
+#zettel-network{width:100%;height:100%}
 
-/* ── モーダル ─────────────────────────────── */
-.modal-overlay {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100;
-  align-items: center; justify-content: center;
-}
-.modal-overlay.active { display: flex; }
-.modal {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-  padding: 24px; min-width: 420px; max-width: 640px; width: 90%; box-shadow: var(--shadow);
-  max-height: 90vh; overflow-y: auto;
-}
-.modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
-.form-group { margin-bottom: 14px; }
-.form-group label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
-.form-group input, .form-group textarea, .form-group select {
-  width: 100%; padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 8px; color: var(--text); font-size: 13px; outline: none; font-family: inherit;
-}
-.form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
-.form-group textarea { resize: vertical; min-height: 90px; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-.csv-dropzone {
-  border: 2px dashed var(--border); border-radius: 10px; padding: 32px; text-align: center;
-  color: var(--text-dim); cursor: pointer; transition: all .2s; font-size: 13px;
-}
-.csv-dropzone:hover, .csv-dropzone.drag-over { border-color: var(--accent); color: var(--accent); background: rgba(108,138,255,.06); }
-.csv-preview { margin-top: 12px; font-size: 12px; color: var(--success); }
+/* ══════════════════════════════════════
+   BM25 ビュー
+══════════════════════════════════════ */
+#bm25-view{display:none;height:100%;flex-direction:column;overflow:hidden}
+#bm25-view.active{display:flex}
 
-/* ── スクロールバー ─────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+/* BM25 左ペイン（設定） */
+#bm25-pane{display:flex;height:100%;overflow:hidden}
+#bm25-config{width:320px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#bm25-config-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+#bm25-config-header h3{font-size:14px;font-weight:600;flex:1}
+#bm25-config-body{flex:1;overflow-y:auto;padding:14px}
 
-/* ── その他 ─────────────────────────────── */
-.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; color: var(--text-dim); }
-.empty-state .icon { font-size: 48px; }
-.empty-state p { font-size: 14px; }
-.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.toast {
-  position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 10px 16px; font-size: 13px; box-shadow: var(--shadow);
-  z-index: 999; animation: fadeIn .3s; opacity: 0; transition: opacity .3s;
+/* BM25 右ペイン（結果） */
+#bm25-result{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#bm25-result-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface);flex-shrink:0}
+#bm25-result-body{flex:1;overflow-y:auto;padding:14px}
+
+/* モード選択タブ */
+.mode-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px}
+.mode-tab{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);cursor:pointer;font-size:12px;transition:all .2s;font-weight:600}
+.mode-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mode-tab:hover:not(.active){border-color:var(--accent);color:var(--accent)}
+
+/* パラメーター行 */
+.param-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.param-row label{font-size:12px;color:var(--text-dim);width:110px;flex-shrink:0}
+.param-row input[type=number],.param-row input[type=text]{flex:1;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none}
+.param-row input:focus{border-color:var(--accent)}
+.param-row .param-val{font-size:12px;color:var(--accent);width:36px;text-align:right}
+input[type=range]{flex:1;accent-color:var(--accent)}
+
+/* キーワードリスト */
+.kw-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.kw-row{display:flex;align-items:center;gap:6px;background:var(--surface2);border-radius:8px;padding:6px 10px;border:1px solid var(--border)}
+.kw-row input{background:transparent;border:none;color:var(--text);font-size:12px;outline:none}
+.kw-row .kw-term{flex:2}
+.kw-row .kw-weight{width:50px;text-align:right}
+.kw-row .kw-syn{flex:3;color:var(--text-dim);font-size:11px}
+.kw-row button{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0 2px}
+.kw-row button:hover{color:var(--danger)}
+.kw-header{display:grid;grid-template-columns:2fr 55px 3fr 24px;gap:6px;font-size:10px;color:var(--text-dim);padding:0 10px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+
+/* スコアカード（結果） */
+.score-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;transition:all .2s}
+.score-card:hover{border-color:var(--accent)}
+.score-card-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.score-badge{background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.score-badge.archived{background:var(--surface2);color:var(--text-dim)}
+.score-title{font-size:13px;font-weight:600;line-height:1.4;flex:1}
+.score-meta{display:flex;gap:10px;font-size:11px;color:var(--text-dim);flex-wrap:wrap;margin-bottom:8px}
+.score-breakdown{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.breakdown-pill{font-size:11px;padding:2px 8px;border-radius:8px;background:var(--surface2);color:var(--text-dim)}
+.breakdown-pill.highlight{background:rgba(108,138,255,.15);color:var(--accent)}
+.matched-terms{display:flex;flex-wrap:wrap;gap:4px}
+.matched-term{font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(108,138,255,.1);color:var(--accent2);border:1px solid rgba(108,138,255,.2)}
+.score-actions{display:flex;gap:6px;margin-top:8px}
+.score-bar{height:3px;border-radius:3px;background:var(--border);margin-bottom:8px;overflow:hidden}
+.score-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .4s}
+
+/* BM25 統計バー */
+#bm25-stats{display:flex;gap:16px;flex-wrap:wrap}
+.bm25-stat{background:var(--surface2);border-radius:8px;padding:8px 14px;display:flex;flex-direction:column;align-items:center}
+.bm25-stat-val{font-size:18px;font-weight:700;color:var(--accent)}
+.bm25-stat-lbl{font-size:11px;color:var(--text-dim)}
+.section-sep{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin:16px 0 8px;border-bottom:1px solid var(--border);padding-bottom:4px}
+
+/* データソース */
+.source-radio{display:flex;gap:10px;margin-bottom:12px}
+.source-radio label{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text-dim)}
+.source-radio input[type=radio]{accent-color:var(--accent)}
+.source-radio label:has(input:checked){color:var(--text)}
+
+/* ── モーダル ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;min-width:420px;max-width:680px;width:90%;box-shadow:var(--shadow);max-height:90vh;overflow-y:auto}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:18px}
+.modal-tabs{display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border)}
+.modal-tab{padding:8px 16px;font-size:13px;cursor:pointer;color:var(--text-dim);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s}
+.modal-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:inherit}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:90px}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.csv-dropzone{border:2px dashed var(--border);border-radius:10px;padding:32px;text-align:center;color:var(--text-dim);cursor:pointer;transition:all .2s;font-size:13px}
+.csv-dropzone:hover,.csv-dropzone.drag-over{border-color:var(--accent);color:var(--accent);background:rgba(108,138,255,.06)}
+.csv-preview{margin-top:12px;font-size:12px;color:var(--success)}
+
+/* ── スクロールバー ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-dim)}
+
+/* ── その他 ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text-dim)}
+.empty-state .icon{font-size:48px}
+.empty-state p{font-size:14px}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:13px;box-shadow:var(--shadow);z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.color-strip{display:flex;gap:6px;flex-wrap:wrap}
+.color-dot{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.color-dot:hover,.color-dot.selected{border-color:var(--text);transform:scale(1.2)}
+code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px;font-family:monospace}
+
+/* ── スマホ対応 ── */
+@media(max-width:700px){
+  #topbar{padding:8px 10px;gap:6px}
+  #topbar h1{font-size:14px}
+  .tab{padding:5px 9px;font-size:11px}
+  .btn-sm{padding:5px 10px;font-size:11px}
+  #main-layout{flex-direction:column}
+  #sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);
+    max-height:140px;overflow-y:auto;padding:8px 10px;flex-shrink:0}
+  #content-area{padding:10px}
+  .card-grid{grid-template-columns:1fr}
+  .card{padding:12px}
+  #bm25-pane{flex-direction:column}
+  #bm25-config{width:100%;border-right:none;border-bottom:1px solid var(--border);max-height:40vh;overflow-y:auto}
+  #bm25-result{flex:1;overflow-y:auto}
+  .modal{min-width:unset;width:95%;max-height:95vh;padding:16px}
+  /* スマホ用フローティングボタン */
+  #fab{display:flex}
 }
-.toast.show { opacity: 1; }
-@keyframes fadeIn { from { transform: translateY(10px); opacity: 0; } to { opacity: 1; } }
-.color-strip { display: flex; gap: 6px; flex-wrap: wrap; }
-.color-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all .15s; }
-.color-dot:hover, .color-dot.selected { border-color: var(--text); transform: scale(1.2); }
-.highlight { background: rgba(108,138,255,.2); border-radius: 3px; }
+@media(min-width:701px){#fab{display:none}}
+#fab{
+  position:fixed;bottom:20px;right:20px;z-index:200;
+  flex-direction:column;gap:8px;align-items:flex-end;
+}
+.fab-btn{
+  width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
+  font-size:22px;box-shadow:0 4px 16px rgba(0,0,0,.4);
+  background:var(--accent);color:#fff;transition:all .2s;display:flex;align-items:center;justify-content:center;
+}
+.fab-btn:hover{filter:brightness(1.15);transform:scale(1.05)}
+.fab-btn.secondary{background:var(--surface2);border:1px solid var(--border);font-size:18px;width:44px;height:44px}
+#fab-menu{display:none;flex-direction:column;gap:6px;align-items:flex-end}
+#fab-menu.open{display:flex}
+.fab-label{
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  padding:4px 10px;font-size:11px;font-weight:600;color:var(--text);
+  white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);
+}
+.fab-row{display:flex;align-items:center;gap:8px}
+
+/* ── モード管理モーダル ── */
+.mode-edit-row{
+  display:grid;grid-template-columns:1fr auto;gap:6px;
+  align-items:center;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:8px 10px;margin-bottom:6px;
+}
+.mode-edit-name{
+  background:transparent;border:none;color:var(--text);font-size:13px;font-weight:600;
+  outline:none;width:100%;
+}
+.mode-edit-name:focus{border-bottom:1px solid var(--accent)}
+.mode-badge-pill{
+  font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;
+}
+.pill-active{background:rgba(74,222,128,.15);color:var(--success)}
+.pill-paused{background:rgba(251,191,36,.12);color:var(--warning)}
+.pill-stopped{background:rgba(142,146,164,.12);color:var(--text-dim)}
+
+/* ── ソースURL管理モーダル ── */
+.src-row{
+  display:grid;grid-template-columns:1fr 80px auto auto;gap:6px;align-items:center;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:7px 10px;margin-bottom:5px;
+}
+.src-in{background:transparent;border:none;color:var(--text);font-family:monospace;
+  font-size:11px;outline:none;width:100%;min-width:0}
+.src-in:focus{border-bottom:1px solid var(--accent)}
+.src-label-in{background:var(--surface);border:1px solid var(--border);border-radius:5px;
+  color:var(--text-dim);font-size:10px;padding:2px 5px;outline:none;width:100%}
+.src-auth{background:var(--surface);border:1px solid var(--border);border-radius:5px;
+  color:var(--accent);font-size:11px;text-align:center;padding:2px 4px;outline:none;width:46px}
+.src-del{background:transparent;border:none;cursor:pointer;color:var(--text-dim);font-size:14px;
+  padding:2px 5px;border-radius:4px;transition:all .12s}
+.src-del:hover{color:var(--danger)}
+
+/* ── スマホ向けカード編集パネル ── */
+#mobile-edit-panel{
+  display:none;position:fixed;inset:0;z-index:150;
+  background:var(--bg);flex-direction:column;overflow:hidden;
+}
+#mobile-edit-panel.open{display:flex}
+#mep-header{display:flex;align-items:center;gap:8px;padding:10px 14px;
+  background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+#mep-body{flex:1;overflow-y:auto;padding:14px}
+#mep-footer{padding:10px 14px;background:var(--surface);border-top:1px solid var(--border);
+  display:flex;gap:8px;flex-shrink:0}
+.mep-field{margin-bottom:14px}
+.mep-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text-dim);margin-bottom:5px}
+.mep-input{width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:14px;outline:none;transition:border-color .15s;font-family:inherit}
+.mep-input:focus{border-color:var(--accent)}
+.mep-ta{width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:13px;outline:none;resize:vertical;
+  min-height:100px;line-height:1.6;font-family:inherit;transition:border-color .15s}
+.mep-ta:focus{border-color:var(--accent)}
 </style>
 </head>
 <body>
 
-<!-- ── トップバー ───────────────────────── -->
+<!-- ── トップバー ── -->
 <div id="topbar">
   <h1>📇 カード索引</h1>
   <div class="tab-group">
     <button class="tab active" onclick="switchView('cards')">カード一覧</button>
     <button class="tab" onclick="switchView('kj')">KJ法ボード</button>
     <button class="tab" onclick="switchView('zettel')">Zettelkasten</button>
+    <button class="tab" onclick="switchView('bm25')">⚙ BM25スコアリング</button>
   </div>
   <div class="spacer"></div>
-  <button class="btn btn-secondary btn-sm" onclick="openCSVModal()">📂 CSV取り込み</button>
+  <button class="btn btn-secondary btn-sm" onclick="openSourceModal()">🌐 ソース管理</button>
+  <button class="btn btn-secondary btn-sm" onclick="openCSVModal()">📂 データ取り込み</button>
   <button class="btn btn-primary btn-sm" onclick="openNewCardModal()">＋ メモ作成</button>
 </div>
 
-<!-- ── メイン ───────────────────────── -->
+<!-- ── メイン ── -->
 <div id="main">
 
-  <!-- サイドバー -->
+  <!-- サイドバー（カード一覧時のみ表示） -->
   <div id="sidebar">
     <div id="sidebar-search">
       <input type="text" id="search-input" placeholder="🔍 キーワード検索..." oninput="onSearch(this.value)">
@@ -248,14 +361,14 @@ body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: var(--bg
       <div class="sidebar-section">
         <h3>フィルター</h3>
         <div class="type-filter">
-          <button class="type-btn active" onclick="filterType(null, this)">すべて</button>
-          <button class="type-btn" onclick="filterType('memo', this)">📝 メモ</button>
-          <button class="type-btn" onclick="filterType('csv', this)">📊 CSV</button>
-          <button class="type-btn" onclick="filterType('article', this)">📰 記事</button>
+          <button class="type-btn active" onclick="filterType(null,this)">すべて</button>
+          <button class="type-btn" onclick="filterType('memo',this)">📝 メモ</button>
+          <button class="type-btn" onclick="filterType('csv',this)">📊 CSV</button>
+          <button class="type-btn" onclick="filterType('article',this)">📰 記事</button>
         </div>
       </div>
       <div class="sidebar-section">
-        <h3>タグ <span id="tag-count" style="font-size:10px;font-weight:400;"></span></h3>
+        <h3>タグ <span id="tag-count" style="font-size:10px;font-weight:400"></span></h3>
         <div class="tag-cloud" id="tag-cloud"></div>
       </div>
     </div>
@@ -268,7 +381,7 @@ body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: var(--bg
       <span id="count-badge">0件</span>
       <div class="spacer"></div>
       <div id="header-actions">
-        <button class="btn btn-secondary btn-sm" onclick="summarizeBulk()" title="未要約カードをAI一括要約">⚡ 一括要約</button>
+        <button class="btn btn-secondary btn-sm" onclick="summarizeBulk()">⚡ 一括要約</button>
       </div>
     </div>
     <div id="content-body">
@@ -280,7 +393,7 @@ body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: var(--bg
       <div id="kj-board">
         <div id="kj-board-header">
           <button class="btn btn-secondary btn-sm" onclick="openNewGroupModal()">＋ グループ追加</button>
-          <span style="font-size:12px;color:var(--text-dim)">カードをドラッグ＆ドロップでグループへ移動</span>
+          <span style="font-size:12px;color:var(--text-dim)">カードをドラッグ＆ドロップでグループ移動</span>
         </div>
         <div id="kj-canvas"></div>
       </div>
@@ -288,6 +401,105 @@ body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: var(--bg
       <!-- Zettelkasten -->
       <div id="zettel-view">
         <div id="zettel-network"></div>
+      </div>
+
+      <!-- BM25 -->
+      <div id="bm25-view">
+        <div id="bm25-pane">
+
+          <!-- 左：設定パネル -->
+          <div id="bm25-config">
+            <div id="bm25-config-header">
+              <h3>🔧 BM25 設定</h3>
+              <button class="btn btn-primary btn-sm" onclick="runBM25()" id="bm25-run-btn">▶ 実行</button>
+            </div>
+            <div id="bm25-config-body">
+
+              <!-- データソース -->
+              <div class="section-sep">データソース</div>
+              <div class="source-radio" id="bm25-source-radio">
+                <label><input type="radio" name="bm25src" value="articles" checked> 収集記事</label>
+                <label><input type="radio" name="bm25src" value="cards"> カード</label>
+              </div>
+              <div id="bm25-source-info" style="font-size:11px;color:var(--text-dim);margin-bottom:10px"></div>
+
+              <!-- モード選択 -->
+              <div class="section-sep" style="display:flex;align-items:center">
+                モード
+                <div style="margin-left:auto;display:flex;gap:4px">
+                  <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="openModeManagerModal()" title="モード管理">✎ 管理</button>
+                  <button class="btn btn-primary btn-sm" style="padding:3px 8px;font-size:11px" onclick="addBM25Mode()" title="モード追加">＋</button>
+                </div>
+              </div>
+              <div class="mode-tabs" id="mode-tabs"></div>
+              <div id="mode-desc" style="font-size:12px;color:var(--text-dim);margin-bottom:10px;line-height:1.5"></div>
+
+              <!-- BM25 パラメーター -->
+              <div class="section-sep">パラメーター</div>
+              <div class="param-row">
+                <label>k1 <small style="color:var(--text-dim)">(飽和速度)</small></label>
+                <input type="range" min="0.5" max="3" step="0.1" id="p-k1" oninput="syncParam('k1',this.value)">
+                <span class="param-val" id="v-k1">1.5</span>
+              </div>
+              <div class="param-row">
+                <label>b <small style="color:var(--text-dim)">(長さ補正)</small></label>
+                <input type="range" min="0" max="1" step="0.05" id="p-b" oninput="syncParam('b',this.value)">
+                <span class="param-val" id="v-b">0.75</span>
+              </div>
+              <div class="param-row">
+                <label>λ <small style="color:var(--text-dim)">(時間減衰)</small></label>
+                <input type="range" min="0" max="0.3" step="0.01" id="p-lambda" oninput="syncParam('lambda',this.value)">
+                <span class="param-val" id="v-lambda">0.1</span>
+              </div>
+              <div class="param-row">
+                <label>共起ボーナス</label>
+                <input type="range" min="0" max="3" step="0.1" id="p-ctx" oninput="syncParam('ctx',this.value)">
+                <span class="param-val" id="v-ctx">1.5</span>
+              </div>
+              <div class="param-row">
+                <label>重複閾値</label>
+                <input type="range" min="0.5" max="1" step="0.05" id="p-dedup" oninput="syncParam('dedup',this.value)">
+                <span class="param-val" id="v-dedup">0.8</span>
+              </div>
+              <div class="param-row">
+                <label>アーカイブ閾値</label>
+                <input type="range" min="0" max="2" step="0.1" id="p-arch" oninput="syncParam('arch',this.value)">
+                <span class="param-val" id="v-arch">0.5</span>
+              </div>
+
+              <!-- キーワード -->
+              <div class="section-sep">
+                キーワード
+                <button class="btn btn-secondary btn-sm" style="float:right" onclick="addKeyword()">＋</button>
+              </div>
+              <div class="kw-header"><span>キーワード</span><span>重み</span><span>同義語（カンマ区切り）</span><span></span></div>
+              <div class="kw-list" id="kw-list"></div>
+
+            </div>
+          </div>
+
+          <!-- 右：結果パネル -->
+          <div id="bm25-result">
+            <div id="bm25-result-header">
+              <div id="bm25-stats"></div>
+              <div class="spacer"></div>
+              <div id="bm25-result-actions" style="display:none;gap:6px">
+                <label style="font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:4px">
+                  上位 <input type="number" id="save-top-n" value="20" min="1" max="200" style="width:50px;padding:3px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px"> 件
+                </label>
+                <button class="btn btn-success btn-sm" onclick="saveTopAsCards()">💾 カードに保存</button>
+                <button class="btn btn-secondary btn-sm" onclick="toggleArchived()">📦 アーカイブ表示</button>
+              </div>
+            </div>
+            <div id="bm25-result-body">
+              <div class="empty-state">
+                <div class="icon">⚙</div>
+                <p>設定して「▶ 実行」を押してください</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
     </div>
@@ -305,30 +517,15 @@ body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: var(--bg
 
 </div>
 
-<!-- ── モーダル: 新規カード ───────────────────────── -->
+<!-- ── モーダル: 新規カード ── -->
 <div class="modal-overlay" id="modal-new">
   <div class="modal">
     <h2>📝 メモ作成</h2>
-    <div class="form-group">
-      <label>タイトル *</label>
-      <input type="text" id="new-title" placeholder="カードのタイトル">
-    </div>
-    <div class="form-group">
-      <label>本文</label>
-      <textarea id="new-body" placeholder="メモ内容を入力..."></textarea>
-    </div>
-    <div class="form-group">
-      <label>URL（任意）</label>
-      <input type="url" id="new-url" placeholder="https://...">
-    </div>
-    <div class="form-group">
-      <label>タグ（スペース区切り）</label>
-      <input type="text" id="new-tags" placeholder="例: AI 機械学習 論文">
-    </div>
-    <div class="form-group">
-      <label>カードの色</label>
-      <div class="color-strip" id="new-color-strip"></div>
-    </div>
+    <div class="form-group"><label>タイトル *</label><input type="text" id="new-title" placeholder="カードのタイトル"></div>
+    <div class="form-group"><label>本文</label><textarea id="new-body" placeholder="メモ内容..."></textarea></div>
+    <div class="form-group"><label>URL（任意）</label><input type="url" id="new-url" placeholder="https://..."></div>
+    <div class="form-group"><label>タグ（スペース区切り）</label><input type="text" id="new-tags" placeholder="例: AI 機械学習"></div>
+    <div class="form-group"><label>カードの色</label><div class="color-strip" id="new-color-strip"></div></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-new')">キャンセル</button>
       <button class="btn btn-primary" onclick="submitNewCard()">作成</button>
@@ -336,31 +533,16 @@ body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: var(--bg
   </div>
 </div>
 
-<!-- ── モーダル: 編集 ───────────────────────── -->
+<!-- ── モーダル: 編集 ── -->
 <div class="modal-overlay" id="modal-edit">
   <div class="modal">
     <h2>✏️ カード編集</h2>
     <input type="hidden" id="edit-id">
-    <div class="form-group">
-      <label>タイトル</label>
-      <input type="text" id="edit-title">
-    </div>
-    <div class="form-group">
-      <label>本文</label>
-      <textarea id="edit-body"></textarea>
-    </div>
-    <div class="form-group">
-      <label>URL</label>
-      <input type="url" id="edit-url">
-    </div>
-    <div class="form-group">
-      <label>タグ（スペース区切り）</label>
-      <input type="text" id="edit-tags">
-    </div>
-    <div class="form-group">
-      <label>カードの色</label>
-      <div class="color-strip" id="edit-color-strip"></div>
-    </div>
+    <div class="form-group"><label>タイトル</label><input type="text" id="edit-title"></div>
+    <div class="form-group"><label>本文</label><textarea id="edit-body"></textarea></div>
+    <div class="form-group"><label>URL</label><input type="url" id="edit-url"></div>
+    <div class="form-group"><label>タグ（スペース区切り）</label><input type="text" id="edit-tags"></div>
+    <div class="form-group"><label>カードの色</label><div class="color-strip" id="edit-color-strip"></div></div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" onclick="confirmDelete()" style="margin-right:auto">削除</button>
       <button class="btn btn-secondary" onclick="closeModal('modal-edit')">キャンセル</button>
@@ -369,93 +551,53 @@ body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: var(--bg
   </div>
 </div>
 
-<!-- ── モーダル: データ取り込み（CSV / JSON） ───────────────────────── -->
+<!-- ── モーダル: データ取り込み ── -->
 <div class="modal-overlay" id="modal-csv">
   <div class="modal">
     <h2>📂 データ取り込み</h2>
-
-    <!-- タブ切り替え -->
-    <div class="tab-group" style="margin-bottom:16px">
-      <button class="tab active" id="import-tab-csv" onclick="switchImportTab('csv')">CSV</button>
-      <button class="tab" id="import-tab-json" onclick="switchImportTab('json')">JSON</button>
+    <div class="modal-tabs">
+      <div class="modal-tab active" onclick="switchImportTab('csv',this)">CSV</div>
+      <div class="modal-tab" onclick="switchImportTab('json',this)">JSON</div>
     </div>
-
-    <!-- CSV パネル -->
-    <div id="import-panel-csv">
-      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">
-        対応列: <code>title</code>, <code>body</code>/<code>content</code>, <code>url</code>, <code>tags</code>（1行目はヘッダー必須）
-      </p>
-      <div class="csv-dropzone" id="csv-dropzone"
-           onclick="document.getElementById('csv-file').click()"
-           ondragover="importDragOver(event,'csv-dropzone')"
-           ondragleave="importDragLeave('csv-dropzone')"
-           ondrop="importDrop(event,'csv')">
+    <div id="import-tab-csv">
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">対応列: <code>title</code>, <code>body</code>/<code>content</code>, <code>url</code>, <code>tags</code>（1行目ヘッダー必須・UTF-8推奨）</p>
+      <div class="csv-dropzone" id="csv-dropzone" onclick="document.getElementById('csv-file').click()" ondragover="csvDragOver(event)" ondrop="csvDrop(event,'csv')">
         <div style="font-size:32px;margin-bottom:8px">📂</div>
         <div>クリックまたはドラッグ＆ドロップ</div>
         <div style="font-size:12px;margin-top:4px">CSVファイル（UTF-8推奨）</div>
-        <input type="file" id="csv-file" accept=".csv,.tsv,.txt" style="display:none" onchange="importFileSelect(this,'csv')">
+        <input type="file" id="csv-file" accept=".csv,.tsv,.txt" style="display:none" onchange="csvFileSelect(this,'csv')">
       </div>
       <div class="csv-preview" id="csv-preview"></div>
-      <div class="form-group" style="margin-top:14px">
-        <label>またはテキスト貼り付け</label>
-        <textarea id="csv-text" style="height:110px;font-family:monospace;font-size:12px"
-          placeholder="title,body,url,tags&#10;記事タイトル,本文テキスト,https://...,AI機械学習"></textarea>
+      <div class="form-group" style="margin-top:14px"><label>またはテキスト貼り付け</label>
+        <textarea id="csv-text" style="height:100px;font-family:monospace;font-size:12px" placeholder="title,body,url,tags&#10;記事名,本文,https://...,AI機械学習"></textarea>
       </div>
     </div>
-
-    <!-- JSON パネル -->
-    <div id="import-panel-json" style="display:none">
-      <p style="font-size:13px;color:var(--text-dim);margin-bottom:10px">
-        対応フォーマット（自動判定）:
-      </p>
-      <div style="font-size:12px;color:var(--text-dim);background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:14px;line-height:1.8">
-        ① <b>配列形式</b> <code>[{title, body, url, tags}, ...]</code><br>
-        ② <b>ラッパー形式</b> <code>{"cards":[...]} / {"articles":[...]} / {"items":[...]}</code><br>
-        ③ <b>このシステムのエクスポート</b> <code>data/cards.json</code> をそのまま再取り込み<br>
-        ④ <b>articles.json形式</b> <code>collector.ts</code> の収集データ<br>
-        ⑤ <b>単一オブジェクト</b> <code>{"title":"...", "body":"..."}</code>
-      </div>
-      <div class="csv-dropzone" id="json-dropzone"
-           onclick="document.getElementById('json-file').click()"
-           ondragover="importDragOver(event,'json-dropzone')"
-           ondragleave="importDragLeave('json-dropzone')"
-           ondrop="importDrop(event,'json')">
+    <div id="import-tab-json" style="display:none">
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">配列・ラッパー形式・<code>cards.json</code>・<code>articles.json</code> を自動判定します</p>
+      <div class="csv-dropzone" onclick="document.getElementById('json-file').click()" ondragover="csvDragOver(event)" ondrop="csvDrop(event,'json')">
         <div style="font-size:32px;margin-bottom:8px">{ }</div>
         <div>クリックまたはドラッグ＆ドロップ</div>
-        <div style="font-size:12px;margin-top:4px">JSONファイル（UTF-8）</div>
-        <input type="file" id="json-file" accept=".json" style="display:none" onchange="importFileSelect(this,'json')">
+        <input type="file" id="json-file" accept=".json" style="display:none" onchange="csvFileSelect(this,'json')">
       </div>
       <div class="csv-preview" id="json-preview"></div>
-      <div class="form-group" style="margin-top:14px">
-        <label>またはJSON貼り付け</label>
-        <textarea id="json-text" style="height:110px;font-family:monospace;font-size:12px"
-          placeholder='[&#10;  {"title": "記事タイトル", "body": "本文", "url": "https://...", "tags": ["AI", "ML"]},&#10;  ...&#10;]'></textarea>
+      <div class="form-group" style="margin-top:14px"><label>またはテキスト貼り付け</label>
+        <textarea id="json-text" style="height:100px;font-family:monospace;font-size:12px" placeholder='[{"title":"記事名","body":"本文","url":"https://...","tags":["AI"]}]'></textarea>
       </div>
     </div>
-
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-csv')">キャンセル</button>
-      <button class="btn btn-primary" id="import-submit-btn" onclick="submitImport()">取り込む</button>
+      <button class="btn btn-primary" onclick="submitImport()">取り込む</button>
     </div>
   </div>
 </div>
 
-<!-- ── モーダル: KJグループ作成 ───────────────────────── -->
+<!-- ── モーダル: KJグループ ── -->
 <div class="modal-overlay" id="modal-group">
   <div class="modal" style="min-width:320px;max-width:400px">
     <h2>グループ作成</h2>
-    <div class="form-group">
-      <label>グループ名 *</label>
-      <input type="text" id="group-name" placeholder="グループ名">
-    </div>
-    <div class="form-group">
-      <label>説明</label>
-      <input type="text" id="group-desc" placeholder="任意">
-    </div>
-    <div class="form-group">
-      <label>色</label>
-      <div class="color-strip" id="group-color-strip"></div>
-    </div>
+    <div class="form-group"><label>グループ名 *</label><input type="text" id="group-name" placeholder="グループ名"></div>
+    <div class="form-group"><label>説明</label><input type="text" id="group-desc" placeholder="任意"></div>
+    <div class="form-group"><label>色</label><div class="color-strip" id="group-color-strip"></div></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-group')">キャンセル</button>
       <button class="btn btn-primary" onclick="submitGroup()">作成</button>
@@ -465,50 +607,155 @@ body { font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif; background: var(--bg
 
 <div id="toast" class="toast"></div>
 
+
+<!-- ── フローティングボタン（スマホ） ── -->
+<div id="fab">
+  <div id="fab-menu">
+    <div class="fab-row">
+      <span class="fab-label">CSV読み込み</span>
+      <button class="fab-btn secondary" onclick="openCSVModal();toggleFab()">📂</button>
+    </div>
+    <div class="fab-row">
+      <span class="fab-label">新しいメモ</span>
+      <button class="fab-btn secondary" onclick="openNewCardModal();toggleFab()">📝</button>
+    </div>
+  </div>
+  <button class="fab-btn" id="fab-main" onclick="toggleFab()">＋</button>
+</div>
+
+<!-- ── モバイル用カード編集パネル ── -->
+<div id="mobile-edit-panel">
+  <div id="mep-header">
+    <button class="btn btn-secondary btn-sm" onclick="closeMobileEdit()">← 戻る</button>
+    <span id="mep-title" style="font-size:14px;font-weight:700;flex:1"></span>
+    <button class="btn btn-danger btn-sm" id="mep-del-btn" onclick="mepDelete()">削除</button>
+  </div>
+  <div id="mep-body">
+    <div class="mep-field">
+      <div class="mep-label">タイトル</div>
+      <input class="mep-input" id="mep-title-in" placeholder="タイトル">
+    </div>
+    <div class="mep-field">
+      <div class="mep-label">要約・本文</div>
+      <textarea class="mep-ta" id="mep-body-in" placeholder="本文・メモ内容..."></textarea>
+    </div>
+    <div class="mep-field">
+      <div class="mep-label">URL</div>
+      <input class="mep-input" id="mep-url-in" placeholder="https://..." type="url">
+    </div>
+    <div class="mep-field">
+      <div class="mep-label">タグ（カンマ区切り）</div>
+      <input class="mep-input" id="mep-tags-in" placeholder="例: AI, 論文, メモ">
+    </div>
+    <div class="mep-field">
+      <div class="mep-label">メモ</div>
+      <textarea class="mep-ta" id="mep-note-in" placeholder="個人メモ..."></textarea>
+    </div>
+    <div class="mep-field">
+      <div class="mep-label">Zettelkastenリンク</div>
+      <div id="mep-zk-links" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
+      <div style="display:flex;gap:6px">
+        <input class="mep-input" id="mep-zk-in" placeholder="カードID" style="flex:1;font-family:monospace;font-size:12px">
+        <button class="btn btn-secondary btn-sm" onclick="mepAddLink()">リンク</button>
+      </div>
+    </div>
+  </div>
+  <div id="mep-footer">
+    <button class="btn btn-secondary" style="flex:1" onclick="closeMobileEdit()">キャンセル</button>
+    <button class="btn btn-primary" style="flex:2" onclick="mepSave()">保存</button>
+  </div>
+</div>
+
+<!-- ── BM25モード管理モーダル ── -->
+<div class="modal-overlay" id="mode-manager-modal">
+  <div class="modal" style="max-width:560px">
+    <h2>⚙ BM25モード管理</h2>
+    <div id="mode-manager-list"></div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">新しいモードを追加</div>
+      <div style="display:flex;gap:8px">
+        <input class="mep-input" id="new-mode-name" placeholder="モード名" style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="confirmAddMode()">追加</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('mode-manager-modal')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ソースURL管理モーダル ── -->
+<div class="modal-overlay" id="source-modal">
+  <div class="modal" style="max-width:640px">
+    <h2>🌐 収集ソース管理</h2>
+    <div class="modal-tabs">
+      <div class="modal-tab active" onclick="switchSourceTab('rss',this)">RSSフィード</div>
+      <div class="modal-tab" onclick="switchSourceTab('arxiv',this)">arXiv</div>
+      <div class="modal-tab" onclick="switchSourceTab('github',this)">GitHub</div>
+    </div>
+    <div id="source-rss-tab">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">URL・ラベル・信頼度(0〜1)を設定します</div>
+      <div id="src-rss-list"></div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('rss')">＋ RSSを追加</button>
+    </div>
+    <div id="source-arxiv-tab" style="display:none">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">検索クエリ・最大件数・信頼度を設定します</div>
+      <div id="src-arxiv-list"></div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('arxiv')">＋ クエリを追加</button>
+    </div>
+    <div id="source-github-tab" style="display:none">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">言語・期間・信頼度を設定します</div>
+      <div id="src-github-list"></div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('github')">＋ 言語を追加</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('source-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveSourceConfig()">保存して適用</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 //  状態
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 let currentView = 'cards';
 let currentCardId = null;
 let currentFilter = { tag: null, type: null, q: '' };
 let allCards = [];
 let allTags = [];
 let kjData = { groups: [], ungrouped: [] };
-let selectedNewColor = null;
-let selectedEditColor = null;
-let selectedGroupColor = null;
+let selectedNewColor = null, selectedEditColor = null, selectedGroupColor = null;
 let dragCardId = null;
 let zettelNetwork = null;
+let importTab = 'csv';
+
+// BM25 状態
+let bm25Modes = {};
+let bm25ActiveMode = '';
+let bm25Params = { k1:1.5, b:0.75, lambda:0.1, ctx:1.5, dedup:0.8, arch:0.5 };
+let bm25Keywords = [];
+let bm25Result = null;
+let showArchived = false;
 
 const COLORS = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#C77DFF','#FF9A3C','#00C9A7','#F72585','#94a3b8'];
 
-// ════════════════════════════════════════════════════
-//  API
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
+//  API ヘルパー
+// ════════════════════════════════════════
 const api = {
-  async get(path) {
-    const r = await fetch(path); return r.json();
-  },
-  async post(path, body) {
-    const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    return r.json();
-  },
-  async put(path, body) {
-    const r = await fetch(path, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    return r.json();
-  },
-  async del(path) {
-    const r = await fetch(path, { method:'DELETE' }); return r.json();
-  },
+  async get(p)     { return (await fetch(p)).json() },
+  async post(p,b)  { return (await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})).json() },
+  async put(p,b)   { return (await fetch(p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})).json() },
+  async del(p)     { return (await fetch(p,{method:'DELETE'})).json() },
 };
 
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 //  初期化
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 async function init() {
   buildColorStrips();
-  await Promise.all([loadCards(), loadTags()]);
+  await Promise.all([loadCards(), loadTags(), loadBM25Modes()]);
 }
 
 async function loadCards() {
@@ -518,6 +765,7 @@ async function loadCards() {
   if (currentFilter.q)    params.set('q', currentFilter.q);
   allCards = await api.get('/api/cards?' + params);
   renderCardGrid();
+  updateBM25SourceInfo();
 }
 
 async function loadTags() {
@@ -525,44 +773,47 @@ async function loadTags() {
   renderTagCloud();
 }
 
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 //  ビュー切替
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 function switchView(view) {
   currentView = view;
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['cards','kj','zettel'][i] === view));
-  document.getElementById('card-grid').style.display = view === 'cards' ? 'grid' : 'none';
-  document.getElementById('kj-board').classList.toggle('active', view === 'kj');
-  document.getElementById('zettel-view').classList.toggle('active', view === 'zettel');
-  const titles = { cards:'カード一覧', kj:'KJ法ボード', zettel:'Zettelkasten ネットワーク' };
+  const tabs = ['cards','kj','zettel','bm25'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i]===view));
+  document.getElementById('card-grid').style.display = view==='cards' ? 'grid' : 'none';
+  document.getElementById('kj-board').classList.toggle('active', view==='kj');
+  document.getElementById('zettel-view').classList.toggle('active', view==='zettel');
+  document.getElementById('bm25-view').classList.toggle('active', view==='bm25');
+  document.getElementById('sidebar').style.display = view==='cards' ? 'flex' : 'none';
+  document.getElementById('content-header').style.display = view==='bm25' ? 'none' : 'flex';
+  const titles = {cards:'カード一覧',kj:'KJ法ボード',zettel:'Zettelkasten ネットワーク',bm25:'BM25スコアリング'};
   document.getElementById('view-title').textContent = titles[view];
-  document.getElementById('header-actions').style.display = view === 'cards' ? 'flex' : 'none';
-  if (view === 'kj') loadKJBoard();
-  if (view === 'zettel') loadZettelkasten();
+  document.getElementById('header-actions').style.display = view==='cards' ? 'flex' : 'none';
+  if (view==='kj') loadKJBoard();
+  if (view==='zettel') loadZettelkasten();
+  if (view==='bm25') updateBM25SourceInfo();
+  if (view!=='cards') closeDetail();
 }
 
-// ════════════════════════════════════════════════════
-//  カードグリッドレンダリング
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
+//  カードグリッド
+// ════════════════════════════════════════
 function renderCardGrid() {
   const grid = document.getElementById('card-grid');
   document.getElementById('count-badge').textContent = `${allCards.length}件`;
-
   if (!allCards.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📭</div><p>カードがありません</p><button class="btn btn-primary btn-sm" onclick="openNewCardModal()">メモを作成</button></div>`;
     return;
   }
-
   grid.innerHTML = allCards.map(card => {
     const strip = card.color ? `<div class="card-color-strip" style="background:${card.color}"></div>` : '';
-    const typeMap = { article:'📰 記事', memo:'📝 メモ', csv:'📊 CSV' };
+    const typeMap = {article:'📰 記事',memo:'📝 メモ',csv:'📊 CSV'};
     const typeCls = `card-type-${card.type}`;
-    const tagHtml = card.tags.slice(0,4).map(t => `<span class="card-tag">${esc(t)}</span>`).join('');
-    const moreTags = card.tags.length > 4 ? `<span class="card-tag">+${card.tags.length-4}</span>` : '';
-    const displayText = esc(card.summary || card.body).slice(0, 120) + (card.body.length > 120 ? '...' : '');
-    const date = new Date(card.createdAt).toLocaleDateString('ja-JP', {month:'short',day:'numeric'});
-    return `
-    <div class="card" id="card-${card.id}" onclick="selectCard('${card.id}')">
+    const tagHtml = card.tags.slice(0,4).map(t=>`<span class="card-tag">${esc(t)}</span>`).join('');
+    const moreTags = card.tags.length>4 ? `<span class="card-tag">+${card.tags.length-4}</span>` : '';
+    const disp = esc(card.summary||card.body).slice(0,120)+(card.body.length>120?'...':'');
+    const date = new Date(card.createdAt).toLocaleDateString('ja-JP',{month:'short',day:'numeric'});
+    return `<div class="card" id="card-${card.id}" onclick="selectCard('${card.id}')">
       ${strip}
       <div style="display:flex;align-items:center;gap:6px">
         <span class="card-type-badge ${typeCls}">${typeMap[card.type]??card.type}</span>
@@ -572,102 +823,63 @@ function renderCardGrid() {
         </div>
       </div>
       <div class="card-title">${esc(card.title)}</div>
-      ${displayText ? `<div class="card-summary">${displayText}</div>` : ''}
-      ${card.tags.length ? `<div class="card-tags">${tagHtml}${moreTags}</div>` : ''}
+      ${disp?`<div class="card-summary">${disp}</div>`:''}
+      ${card.tags.length?`<div class="card-tags">${tagHtml}${moreTags}</div>`:''}
       <div class="card-footer">
-        ${card.links.length ? `<span class="card-link-count">🔗 ${card.links.length}</span>` : ''}
+        ${card.links.length?`<span style="font-size:11px;color:var(--text-dim)">🔗 ${card.links.length}</span>`:''}
         <span class="card-date">${date}</span>
       </div>
     </div>`;
   }).join('');
 }
 
-function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
-// ════════════════════════════════════════════════════
-//  タグクラウド
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
+//  タグ・フィルター
+// ════════════════════════════════════════
 function renderTagCloud() {
   const cloud = document.getElementById('tag-cloud');
   document.getElementById('tag-count').textContent = `(${allTags.length})`;
-  cloud.innerHTML = allTags.map(({ tag, count }) =>
+  cloud.innerHTML = allTags.map(({tag,count})=>
     `<span class="tag-pill ${currentFilter.tag===tag?'active':''}" onclick="filterTag('${esc(tag)}')">${esc(tag)} <small>${count}</small></span>`
   ).join('');
 }
+function filterTag(tag) { currentFilter.tag = currentFilter.tag===tag?null:tag; renderTagCloud(); loadCards(); }
+function filterType(type,el) { currentFilter.type=type; document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); loadCards(); }
+function onSearch(q) { currentFilter.q=q; loadCards(); }
 
-function filterTag(tag) {
-  currentFilter.tag = currentFilter.tag === tag ? null : tag;
-  renderTagCloud();
-  loadCards();
-}
-
-function filterType(type, el) {
-  currentFilter.type = type;
-  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  loadCards();
-}
-
-function onSearch(q) {
-  currentFilter.q = q;
-  loadCards();
-}
-
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 //  カード詳細パネル
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 async function selectCard(id) {
   currentCardId = id;
-  document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
-  const el = document.getElementById(`card-${id}`);
-  if (el) el.classList.add('selected');
-
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('selected'));
+  const el = document.getElementById(`card-${id}`); if(el) el.classList.add('selected');
   const data = await api.get(`/api/cards/${id}`);
   renderDetailPanel(data);
   document.getElementById('detail-panel').classList.remove('hidden');
 }
-
 function closeDetail() {
-  currentCardId = null;
+  currentCardId=null;
   document.getElementById('detail-panel').classList.add('hidden');
-  document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('selected'));
 }
-
 function renderDetailPanel(card) {
   document.getElementById('detail-title').textContent = card.title;
-
-  let linksHtml = (card.links || []).map(lid => {
-    const linked = allCards.find(c => c.id === lid);
-    if (!linked) return '';
-    return `<div class="linked-card" onclick="selectCard('${lid}')">
-      <span>📇 ${esc(linked.title)}</span>
-      <button class="btn-icon btn-sm" onclick="event.stopPropagation();unlinkCard('${card.id}','${lid}')" title="リンク解除">✕</button>
-    </div>`;
+  const linksHtml = (card.links||[]).map(lid=>{
+    const lc = allCards.find(c=>c.id===lid); if(!lc) return '';
+    return `<div class="linked-card" onclick="selectCard('${lid}')"><span>📇 ${esc(lc.title)}</span><button class="btn-icon btn-sm" onclick="event.stopPropagation();unlinkCard('${card.id}','${lid}')">✕</button></div>`;
   }).join('');
-
-  let backlinksHtml = (card.backlinks || []).map(bl =>
-    `<div class="linked-card" onclick="selectCard('${bl.id}')"><span>← ${esc(bl.title)}</span></div>`
-  ).join('');
-
-  const tagsHtml = (card.tags || []).map(t =>
-    `<span class="tag-edit-pill">${esc(t)}<button onclick="removeTagFromCard('${card.id}','${esc(t)}')" title="削除">×</button></span>`
-  ).join('');
-
+  const backHtml = (card.backlinks||[]).map(bl=>`<div class="linked-card" onclick="selectCard('${bl.id}')"><span>← ${esc(bl.title)}</span></div>`).join('');
+  const tagsHtml = (card.tags||[]).map(t=>`<span class="tag-edit-pill">${esc(t)}<button onclick="removeTagFromCard('${card.id}','${esc(t)}')">×</button></span>`).join('');
   document.getElementById('detail-body').innerHTML = `
-    ${card.url ? `<div class="detail-section detail-url"><h4>リンク</h4><a href="${esc(card.url)}" target="_blank">🔗 ${esc(card.url)}</a></div>` : ''}
-    
+    ${card.url?`<div class="detail-section detail-url"><h4>リンク</h4><a href="${esc(card.url)}" target="_blank">🔗 ${esc(card.url)}</a></div>`:''}
     <div class="detail-section">
-      <h4>AI要約 ${card.summary ? '' : '<span style="color:var(--text-dim);font-weight:400">(未生成)</span>'}</h4>
-      ${card.summary
-        ? `<div class="detail-summary">${esc(card.summary)}</div>`
-        : `<button class="btn btn-secondary btn-sm" onclick="summarizeOne('${card.id}')">⚡ AI要約を生成</button>`}
+      <h4>AI要約${card.summary?'':'<span style="color:var(--text-dim);font-weight:400"> (未生成)</span>'}</h4>
+      ${card.summary?`<div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm" onclick="summarizeOne('${card.id}')">⚡ AI要約を生成</button>`}
     </div>
-
-    <div class="detail-section">
-      <h4>本文</h4>
-      <div class="detail-body-text">${esc(card.body).slice(0,400)}${card.body.length>400?'...':''}</div>
-    </div>
-
+    <div class="detail-section"><h4>本文</h4><div class="detail-body-text">${esc(card.body).slice(0,400)}${card.body.length>400?'...':''}</div></div>
     <div class="detail-section">
       <h4>タグ</h4>
       <div class="tag-edit">${tagsHtml}</div>
@@ -676,469 +888,785 @@ function renderDetailPanel(card) {
         <button class="btn btn-secondary btn-sm" onclick="addTagToCard('${card.id}')">追加</button>
       </div>
     </div>
-
     <div class="detail-section">
       <h4>Zettelkastenリンク (${(card.links||[]).length})</h4>
-      ${linksHtml || '<div style="font-size:12px;color:var(--text-dim)">リンクなし</div>'}
+      ${linksHtml||'<div style="font-size:12px;color:var(--text-dim)">リンクなし</div>'}
       <div class="link-search" style="margin-top:8px">
         <input type="text" id="link-search" placeholder="リンク先を検索..." oninput="searchLinkCandidates(this.value,'${card.id}')">
       </div>
       <div class="link-candidates" id="link-candidates"></div>
     </div>
-
-    ${backlinksHtml ? `<div class="detail-section"><h4>バックリンク (${(card.backlinks||[]).length})</h4>${backlinksHtml}</div>` : ''}
-  `;
+    ${backHtml?`<div class="detail-section"><h4>バックリンク (${(card.backlinks||[]).length})</h4>${backHtml}</div>`:''}`;
 }
-
-// タグ追加
 async function addTagToCard(cardId) {
-  const inp = document.getElementById('tag-add-input');
-  const tag = inp.value.trim();
-  if (!tag) return;
-  const card = allCards.find(c => c.id === cardId);
-  if (!card) return;
-  const tags = [...new Set([...card.tags, tag])];
-  await api.put(`/api/cards/${cardId}`, { tags });
-  inp.value = '';
-  await Promise.all([loadCards(), loadTags()]);
-  selectCard(cardId);
+  const inp=document.getElementById('tag-add-input'); const tag=inp.value.trim(); if(!tag) return;
+  const card=allCards.find(c=>c.id===cardId); if(!card) return;
+  await api.put(`/api/cards/${cardId}`,{tags:[...new Set([...card.tags,tag])]});
+  inp.value=''; await Promise.all([loadCards(),loadTags()]); selectCard(cardId);
+}
+async function removeTagFromCard(cardId,tag) {
+  const card=allCards.find(c=>c.id===cardId); if(!card) return;
+  await api.put(`/api/cards/${cardId}`,{tags:card.tags.filter(t=>t!==tag)});
+  await Promise.all([loadCards(),loadTags()]); selectCard(cardId);
+}
+function searchLinkCandidates(q,currentId) {
+  const box=document.getElementById('link-candidates');
+  const cur=allCards.find(c=>c.id===currentId);
+  if(!q.trim()){box.innerHTML='';return;}
+  const res=allCards.filter(c=>c.id!==currentId&&!(cur?.links||[]).includes(c.id)&&(c.title.toLowerCase().includes(q.toLowerCase())||c.tags.some(t=>t.includes(q)))).slice(0,8);
+  box.innerHTML=res.map(c=>`<div class="link-candidate" onclick="addLink('${currentId}','${c.id}')">📇 ${esc(c.title)}</div>`).join('')||'<div class="link-candidate" style="color:var(--text-dim)">該当なし</div>';
+}
+async function addLink(id1,id2) {
+  await api.post(`/api/cards/${id1}/links`,{targetId:id2});
+  toast('リンクを追加しました'); document.getElementById('link-search').value=''; document.getElementById('link-candidates').innerHTML='';
+  await loadCards(); selectCard(id1);
+}
+async function unlinkCard(id1,id2) {
+  await api.del(`/api/cards/${id1}/links/${id2}`); toast('リンクを解除しました'); await loadCards(); selectCard(id1);
 }
 
-async function removeTagFromCard(cardId, tag) {
-  const card = allCards.find(c => c.id === cardId);
-  if (!card) return;
-  const tags = card.tags.filter(t => t !== tag);
-  await api.put(`/api/cards/${cardId}`, { tags });
-  await Promise.all([loadCards(), loadTags()]);
-  selectCard(cardId);
-}
-
-// Zettelkasten リンク
-function searchLinkCandidates(q, currentId) {
-  const box = document.getElementById('link-candidates');
-  const current = allCards.find(c => c.id === currentId);
-  if (!q.trim()) { box.innerHTML = ''; return; }
-  const results = allCards.filter(c =>
-    c.id !== currentId &&
-    !(current?.links||[]).includes(c.id) &&
-    (c.title.toLowerCase().includes(q.toLowerCase()) || c.tags.some(t => t.includes(q)))
-  ).slice(0, 8);
-  box.innerHTML = results.map(c =>
-    `<div class="link-candidate" onclick="addLink('${currentId}','${c.id}')">📇 ${esc(c.title)}</div>`
-  ).join('') || '<div class="link-candidate" style="color:var(--text-dim)">該当なし</div>';
-}
-
-async function addLink(id1, id2) {
-  await api.post(`/api/cards/${id1}/links`, { targetId: id2 });
-  toast('リンクを追加しました');
-  document.getElementById('link-search').value = '';
-  document.getElementById('link-candidates').innerHTML = '';
-  await loadCards();
-  selectCard(id1);
-}
-
-async function unlinkCard(id1, id2) {
-  await api.del(`/api/cards/${id1}/links/${id2}`);
-  toast('リンクを解除しました');
-  await loadCards();
-  selectCard(id1);
-}
-
-// ════════════════════════════════════════════════════
-//  新規カードモーダル
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
+//  新規カード・編集・削除
+// ════════════════════════════════════════
 function openNewCardModal() {
-  selectedNewColor = null;
-  document.getElementById('new-title').value = '';
-  document.getElementById('new-body').value = '';
-  document.getElementById('new-url').value = '';
-  document.getElementById('new-tags').value = '';
-  updateColorStrip('new-color-strip', null, c => selectedNewColor = c);
-  openModal('modal-new');
-  setTimeout(() => document.getElementById('new-title').focus(), 100);
+  selectedNewColor=null;
+  ['new-title','new-body','new-url','new-tags'].forEach(id=>document.getElementById(id).value='');
+  updateColorStrip('new-color-strip',null,c=>selectedNewColor=c);
+  openModal('modal-new'); setTimeout(()=>document.getElementById('new-title').focus(),100);
 }
-
 async function submitNewCard() {
-  const title = document.getElementById('new-title').value.trim();
-  if (!title) { toast('タイトルを入力してください', 'warn'); return; }
-  const tags = document.getElementById('new-tags').value.trim().split(/\s+/).filter(Boolean);
-  await api.post('/api/cards', {
-    title,
-    body:  document.getElementById('new-body').value,
-    url:   document.getElementById('new-url').value || undefined,
-    tags,
-    color: selectedNewColor || undefined,
-    type:  'memo',
-  });
-  closeModal('modal-new');
-  toast('カードを作成しました');
-  await Promise.all([loadCards(), loadTags()]);
+  const title=document.getElementById('new-title').value.trim();
+  if(!title){toast('タイトルを入力してください','warn');return;}
+  const tags=document.getElementById('new-tags').value.trim().split(/\s+/).filter(Boolean);
+  await api.post('/api/cards',{title,body:document.getElementById('new-body').value,url:document.getElementById('new-url').value||undefined,tags,color:selectedNewColor||undefined,type:'memo'});
+  closeModal('modal-new'); toast('カードを作成しました'); await Promise.all([loadCards(),loadTags()]);
 }
-
-// ════════════════════════════════════════════════════
-//  編集モーダル
-// ════════════════════════════════════════════════════
 async function openEditModal(id) {
-  const card = allCards.find(c => c.id === id) || await api.get(`/api/cards/${id}`);
-  document.getElementById('edit-id').value = card.id;
-  document.getElementById('edit-title').value = card.title;
-  document.getElementById('edit-body').value = card.body;
-  document.getElementById('edit-url').value = card.url ?? '';
-  document.getElementById('edit-tags').value = card.tags.join(' ');
-  selectedEditColor = card.color || null;
-  updateColorStrip('edit-color-strip', selectedEditColor, c => selectedEditColor = c);
+  const card=allCards.find(c=>c.id===id)||await api.get(`/api/cards/${id}`);
+  document.getElementById('edit-id').value=card.id;
+  document.getElementById('edit-title').value=card.title;
+  document.getElementById('edit-body').value=card.body;
+  document.getElementById('edit-url').value=card.url??'';
+  document.getElementById('edit-tags').value=card.tags.join(' ');
+  selectedEditColor=card.color||null; updateColorStrip('edit-color-strip',selectedEditColor,c=>selectedEditColor=c);
   openModal('modal-edit');
 }
-
 async function submitEdit() {
-  const id = document.getElementById('edit-id').value;
-  const tags = document.getElementById('edit-tags').value.trim().split(/\s+/).filter(Boolean);
-  await api.put(`/api/cards/${id}`, {
-    title: document.getElementById('edit-title').value,
-    body:  document.getElementById('edit-body').value,
-    url:   document.getElementById('edit-url').value || undefined,
-    tags,
-    color: selectedEditColor || undefined,
-  });
-  closeModal('modal-edit');
-  toast('保存しました');
-  await Promise.all([loadCards(), loadTags()]);
-  if (currentCardId === id) selectCard(id);
+  const id=document.getElementById('edit-id').value;
+  const tags=document.getElementById('edit-tags').value.trim().split(/\s+/).filter(Boolean);
+  await api.put(`/api/cards/${id}`,{title:document.getElementById('edit-title').value,body:document.getElementById('edit-body').value,url:document.getElementById('edit-url').value||undefined,tags,color:selectedEditColor||undefined});
+  closeModal('modal-edit'); toast('保存しました'); await Promise.all([loadCards(),loadTags()]);
+  if(currentCardId===id) selectCard(id);
 }
-
 async function confirmDelete() {
-  const id = document.getElementById('edit-id').value;
-  if (!confirm('このカードを削除しますか？')) return;
-  await api.del(`/api/cards/${id}`);
-  closeModal('modal-edit');
-  if (currentCardId === id) closeDetail();
-  toast('削除しました');
-  await Promise.all([loadCards(), loadTags()]);
+  const id=document.getElementById('edit-id').value;
+  if(!confirm('このカードを削除しますか？')) return;
+  await api.del(`/api/cards/${id}`); closeModal('modal-edit');
+  if(currentCardId===id) closeDetail(); toast('削除しました'); await Promise.all([loadCards(),loadTags()]);
 }
 
-// ════════════════════════════════════════════════════
-//  CSV / JSON インポートモーダル
-// ════════════════════════════════════════════════════
-let currentImportTab = 'csv'; // 'csv' | 'json'
-
+// ════════════════════════════════════════
+//  CSV/JSON 取り込み
+// ════════════════════════════════════════
 function openCSVModal() {
-  document.getElementById('csv-text').value = '';
-  document.getElementById('json-text').value = '';
-  document.getElementById('csv-preview').textContent = '';
-  document.getElementById('json-preview').textContent = '';
-  switchImportTab('csv');
+  document.getElementById('csv-text').value=''; document.getElementById('json-text').value='';
+  document.getElementById('csv-preview').textContent=''; document.getElementById('json-preview').textContent='';
+  importTab='csv'; document.getElementById('import-tab-csv').style.display=''; document.getElementById('import-tab-json').style.display='none';
+  document.querySelectorAll('.modal-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
   openModal('modal-csv');
 }
-
-function switchImportTab(tab) {
-  currentImportTab = tab;
-  document.getElementById('import-tab-csv').classList.toggle('active', tab === 'csv');
-  document.getElementById('import-tab-json').classList.toggle('active', tab === 'json');
-  document.getElementById('import-panel-csv').style.display  = tab === 'csv'  ? '' : 'none';
-  document.getElementById('import-panel-json').style.display = tab === 'json' ? '' : 'none';
+function switchImportTab(tab,el) {
+  importTab=tab;
+  document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active')); el.classList.add('active');
+  document.getElementById('import-tab-csv').style.display=tab==='csv'?'':'none';
+  document.getElementById('import-tab-json').style.display=tab==='json'?'':'none';
 }
-
-function importDragOver(e, zoneId) {
-  e.preventDefault();
-  document.getElementById(zoneId).classList.add('drag-over');
-}
-function importDragLeave(zoneId) {
-  document.getElementById(zoneId).classList.remove('drag-over');
-}
-function importDrop(e, type) {
-  e.preventDefault();
-  importDragLeave(type === 'csv' ? 'csv-dropzone' : 'json-dropzone');
-  const file = e.dataTransfer.files[0];
-  if (file) readImportFile(file, type);
-}
-function importFileSelect(input, type) {
-  const file = input.files[0];
-  if (file) readImportFile(file, type);
-}
-function readImportFile(file, type) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    const text = e.target.result;
-    if (type === 'csv') {
-      document.getElementById('csv-text').value = text;
-      const lines = text.split('\n').filter(l => l.trim()).length;
-      document.getElementById('csv-preview').textContent = `✓ ${file.name}（${lines}行）を読み込みました`;
-    } else {
-      document.getElementById('json-text').value = text;
-      try {
-        const parsed = JSON.parse(text);
-        const count = Array.isArray(parsed) ? parsed.length
-          : Array.isArray(parsed.cards)    ? parsed.cards.length
-          : Array.isArray(parsed.articles) ? parsed.articles.length
-          : Array.isArray(parsed.items)    ? parsed.items.length
-          : 1;
-        document.getElementById('json-preview').textContent = `✓ ${file.name}（${count}件を検出）を読み込みました`;
-      } catch {
-        document.getElementById('json-preview').textContent = `✓ ${file.name} を読み込みました（形式はサーバーで検証）`;
-      }
-    }
+function csvDragOver(e){e.preventDefault()}
+function csvDrop(e,type){e.preventDefault();const f=e.dataTransfer.files[0];if(f)readImportFile(f,type)}
+function csvFileSelect(input,type){if(input.files[0])readImportFile(input.files[0],type)}
+function readImportFile(file,type) {
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const lines=text.split('\n').filter(l=>l.trim()).length;
+    if(type==='csv'){document.getElementById('csv-text').value=text;document.getElementById('csv-preview').textContent=`✓ ${file.name}（${lines}行）を読み込みました`;}
+    else{document.getElementById('json-text').value=text;document.getElementById('json-preview').textContent=`✓ ${file.name} を読み込みました`;}
   };
-  reader.readAsText(file, 'utf-8');
+  reader.readAsText(file,'utf-8');
 }
-
 async function submitImport() {
-  if (currentImportTab === 'csv') {
-    const csv = document.getElementById('csv-text').value.trim();
-    if (!csv) { toast('CSVを入力してください', 'warn'); return; }
-    const result = await api.post('/api/cards/import-csv', { csv });
-    if (result.error) { toast(`エラー: ${result.error}`, 'warn'); return; }
-    closeModal('modal-csv');
-    toast(`${result.count}件を取り込みました`);
+  if(importTab==='csv') {
+    const csv=document.getElementById('csv-text').value.trim();
+    if(!csv){toast('CSVを入力してください','warn');return;}
+    const r=await api.post('/api/cards/import-csv',{csv});
+    closeModal('modal-csv'); toast(`${r.count}件を取り込みました`); await Promise.all([loadCards(),loadTags()]);
   } else {
-    const json = document.getElementById('json-text').value.trim();
-    if (!json) { toast('JSONを入力してください', 'warn'); return; }
-    const result = await api.post('/api/cards/import-json', { json });
-    if (result.error) { toast(`エラー: ${result.error}`, 'warn'); return; }
-    closeModal('modal-csv');
-    const warnMsg = result.warnings?.length ? `（警告: ${result.warnings[0]}）` : '';
-    toast(`${result.count}件を取り込みました${warnMsg}`);
+    const json=document.getElementById('json-text').value.trim();
+    if(!json){toast('JSONを入力してください','warn');return;}
+    const r=await api.post('/api/cards/import-json',{json});
+    closeModal('modal-csv'); toast(`${r.count}件を取り込みました${r.warnings?.length?`（警告${r.warnings.length}件）`:''}`);
+    await Promise.all([loadCards(),loadTags()]);
   }
-  await Promise.all([loadCards(), loadTags()]);
 }
 
-
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 //  AI要約
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 async function summarizeOne(id) {
   toast('要約中...');
-  const result = await api.post(`/api/cards/${id}/summarize`, {});
-  if (result.summary) {
-    toast('要約しました');
-    await loadCards();
-    if (currentCardId === id) selectCard(id);
-  } else {
-    toast('要約に失敗しました', 'warn');
-  }
+  const r=await api.post(`/api/cards/${id}/summarize`,{});
+  if(r.summary){toast('要約しました');await loadCards();if(currentCardId===id)selectCard(id);}
+  else toast('要約に失敗しました','warn');
 }
-
 async function summarizeBulk() {
-  const unsummarized = allCards.filter(c => !c.summary).map(c => c.id);
-  if (!unsummarized.length) { toast('未要約のカードはありません'); return; }
-  await api.post('/api/cards/summarize-bulk', { ids: unsummarized });
-  toast(`${unsummarized.length}件の要約を開始しました（バックグラウンド）`);
-  setTimeout(() => loadCards(), 3000);
-  setTimeout(() => loadCards(), 8000);
+  const ids=allCards.filter(c=>!c.summary).map(c=>c.id);
+  if(!ids.length){toast('未要約のカードはありません');return;}
+  await api.post('/api/cards/summarize-bulk',{ids});
+  toast(`${ids.length}件の要約を開始しました（バックグラウンド）`);
+  setTimeout(()=>loadCards(),3000); setTimeout(()=>loadCards(),8000);
 }
 
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════════
 //  KJ法ボード
-// ════════════════════════════════════════════════════
-async function loadKJBoard() {
-  kjData = await api.get('/api/kj/groups');
-  renderKJBoard();
-}
-
-function renderKJBoard() {
-  const canvas = document.getElementById('kj-canvas');
-  let html = '';
-
-  // 各グループ列
-  html += kjData.groups.map(g => {
-    const cardHtml = g.cards.map(c => renderKJCard(c, g.color)).join('');
-    return `
-    <div class="kj-group-col" data-group-id="${g.id}">
+// ════════════════════════════════════════
+async function loadKJBoard(){kjData=await api.get('/api/kj/groups');renderKJBoard()}
+function renderKJBoard(){
+  const canvas=document.getElementById('kj-canvas');
+  let html=kjData.groups.map(g=>{
+    const cardHtml=g.cards.map(c=>renderKJCard(c,g.color)).join('');
+    return `<div class="kj-group-col" data-group-id="${g.id}">
       <div class="kj-group-header" style="background:${g.color}22;border-bottom:2px solid ${g.color}">
         <span class="kj-group-name" style="color:${g.color}">${esc(g.name)}</span>
         <span style="font-size:11px;color:var(--text-dim)">${g.cards.length}</span>
-        <button class="btn-icon btn-sm" onclick="editGroup('${g.id}','${esc(g.name)}')" title="編集">✏️</button>
-        <button class="btn-icon btn-sm" onclick="deleteGroup('${g.id}')" title="削除">🗑</button>
+        <button class="btn-icon btn-sm" onclick="editGroup('${g.id}','${esc(g.name)}')">✏️</button>
+        <button class="btn-icon btn-sm" onclick="deleteGroup('${g.id}')">🗑</button>
       </div>
-      <div class="kj-group-body kj-drop-zone" data-group-id="${g.id}"
-           ondragover="kjDragOver(event)" ondrop="kjDrop(event,'${g.id}')">
-        ${cardHtml}
-        ${!g.cards.length ? '<div style="font-size:12px;color:var(--text-dim);text-align:center;padding:12px">カードをここへ</div>' : ''}
+      <div class="kj-group-body kj-drop-zone" data-group-id="${g.id}" ondragover="kjDragOver(event)" ondrop="kjDrop(event,'${g.id}')">
+        ${cardHtml}${!g.cards.length?'<div style="font-size:12px;color:var(--text-dim);text-align:center;padding:12px">カードをここへ</div>':''}
+      </div></div>`;
+  }).join('');
+  const ugHtml=kjData.ungrouped.map(c=>renderKJCard(c,null)).join('');
+  html+=`<div class="kj-ungrouped-col"><div class="kj-group-header" style="border-bottom:1px dashed var(--border)">
+    <span class="kj-group-name" style="color:var(--text-dim)">未グループ</span>
+    <span style="font-size:11px;color:var(--text-dim)">${kjData.ungrouped.length}</span></div>
+    <div class="kj-group-body kj-drop-zone" data-group-id="__none__" ondragover="kjDragOver(event)" ondrop="kjDrop(event,'__none__')">${ugHtml}</div></div>`;
+  canvas.innerHTML=html;
+}
+function renderKJCard(card,col){
+  const bc=col||'var(--border)';
+  const tags=card.tags.slice(0,3).map(t=>`<span class="kj-card-tag">${esc(t)}</span>`).join('');
+  return `<div class="kj-card" draggable="true" data-card-id="${card.id}" style="border-left-color:${bc}"
+    ondragstart="kjDragStart(event,'${card.id}')" ondragend="kjDragEnd(event)"
+    onclick="selectCard('${card.id}');switchView('cards')">
+    <div class="kj-card-title">${esc(card.title)}</div>
+    ${tags?`<div class="kj-card-tags">${tags}</div>`:''}
+  </div>`;
+}
+function kjDragStart(e,id){dragCardId=id;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
+function kjDragEnd(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('.kj-drop-zone').forEach(z=>z.classList.remove('drag-over'))}
+function kjDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over')}
+async function kjDrop(e,gid){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');if(!dragCardId)return;
+  if(gid==='__none__') await api.put(`/api/cards/${dragCardId}`,{kjGroupId:null});
+  else await api.post(`/api/kj/groups/${gid}/cards`,{cardId:dragCardId});
+  dragCardId=null; await loadKJBoard();
+}
+function openNewGroupModal(){
+  document.getElementById('group-name').value=''; document.getElementById('group-desc').value='';
+  selectedGroupColor=COLORS[0]; updateColorStrip('group-color-strip',selectedGroupColor,c=>selectedGroupColor=c);
+  openModal('modal-group'); setTimeout(()=>document.getElementById('group-name').focus(),100);
+}
+async function submitGroup(){
+  const name=document.getElementById('group-name').value.trim();
+  if(!name){toast('グループ名を入力してください','warn');return;}
+  await api.post('/api/kj/groups',{name,description:document.getElementById('group-desc').value,color:selectedGroupColor});
+  closeModal('modal-group'); toast('グループを作成しました'); await loadKJBoard();
+}
+async function editGroup(id,cur){const name=prompt('グループ名を変更:',cur);if(!name||name===cur)return;await api.put(`/api/kj/groups/${id}`,{name});await loadKJBoard()}
+async function deleteGroup(id){if(!confirm('グループを削除しますか？（カードは未グループになります）'))return;await api.del(`/api/kj/groups/${id}`);toast('削除しました');await loadKJBoard()}
+
+// ════════════════════════════════════════
+//  Zettelkasten
+// ════════════════════════════════════════
+async function loadZettelkasten(){
+  const gd=await api.get('/api/zettelkasten/graph');
+  const container=document.getElementById('zettel-network');
+  const nodes=new vis.DataSet(gd.nodes.map(n=>({...n,shape:'box',font:{color:'#e2e8f0',size:12},color:{background:n.color||'#252836',border:'#6c8aff',highlight:{background:'#6c8aff33',border:'#a78bfa'}},borderWidth:1,borderWidthSelected:2})));
+  const edges=new vis.DataSet(gd.edges.map(e=>({...e,color:{color:'#2e3347',highlight:'#6c8aff'},width:1.5,smooth:{type:'continuous'}})));
+  if(zettelNetwork) zettelNetwork.destroy();
+  zettelNetwork=new vis.Network(container,{nodes,edges},{physics:{solver:'forceAtlas2Based',stabilization:{iterations:80}},interaction:{hover:true,tooltipDelay:100}});
+  zettelNetwork.on('selectNode',({nodes:sel})=>{if(sel.length===1){switchView('cards');selectCard(sel[0])}});
+}
+
+// ════════════════════════════════════════
+//  BM25 エンジン
+// ════════════════════════════════════════
+async function loadBM25Modes() {
+  try {
+    bm25Modes = await api.get('/api/modes');
+    const ids = Object.keys(bm25Modes);
+    if(!ids.length) return;
+    // モードタブ描画
+    const tabsEl = document.getElementById('mode-tabs');
+    tabsEl.innerHTML = ids.map(id=>`<button class="mode-tab" id="mtab-${id}" onclick="selectBM25Mode('${id}')">${bm25Modes[id].label}</button>`).join('');
+    selectBM25Mode(ids[0]);
+  } catch(e) { console.warn('BM25 modes load failed', e); }
+}
+
+function selectBM25Mode(modeId) {
+  bm25ActiveMode = modeId;
+  document.querySelectorAll('.mode-tab').forEach(t=>t.classList.remove('active'));
+  const el=document.getElementById(`mtab-${modeId}`); if(el) el.classList.add('active');
+  const mode = bm25Modes[modeId];
+  if(!mode) return;
+  document.getElementById('mode-desc').textContent = mode.description||'';
+  // パラメーター同期
+  bm25Params.k1 = mode.k1; bm25Params.b = mode.b; bm25Params.lambda = mode.lambda; bm25Params.ctx = mode.contextBonus;
+  ['k1','b','lambda','ctx'].forEach(k=>{
+    const raw = k==='ctx'?mode.contextBonus:mode[k];
+    document.getElementById(`p-${k}`).value = raw;
+    document.getElementById(`v-${k}`).textContent = Number(raw).toFixed(2);
+  });
+  // キーワード同期
+  bm25Keywords = (mode.keywords||[]).map(kw=>({term:kw.term,weight:kw.weight,synonyms:(kw.synonyms||[]).join(',')}));
+  renderKeywords();
+}
+
+function syncParam(key, val) {
+  bm25Params[key] = parseFloat(val);
+  document.getElementById(`v-${key}`).textContent = parseFloat(val).toFixed(2);
+}
+
+function renderKeywords() {
+  document.getElementById('kw-list').innerHTML = bm25Keywords.map((kw,i)=>`
+    <div class="kw-row">
+      <input class="kw-term" type="text" value="${esc(kw.term)}" placeholder="キーワード" oninput="bm25Keywords[${i}].term=this.value">
+      <input class="kw-weight" type="number" value="${kw.weight}" step="0.1" min="0" max="5" oninput="bm25Keywords[${i}].weight=parseFloat(this.value)||1">
+      <input class="kw-syn" type="text" value="${esc(kw.synonyms||'')}" placeholder="同義語,..." oninput="bm25Keywords[${i}].synonyms=this.value">
+      <button onclick="removeKeyword(${i})">×</button>
+    </div>`).join('');
+}
+function addKeyword() { bm25Keywords.push({term:'',weight:1.0,synonyms:''}); renderKeywords(); }
+function removeKeyword(i) { bm25Keywords.splice(i,1); renderKeywords(); }
+
+function updateBM25SourceInfo() {
+  const el = document.getElementById('bm25-source-info');
+  if(!el) return;
+  const src = document.querySelector('input[name="bm25src"]:checked')?.value||'articles';
+  if(src==='cards') el.textContent = `カード ${allCards.length} 件を使用`;
+  else el.textContent = `収集記事を使用（/api/articles）`;
+}
+
+async function runBM25() {
+  const btn = document.getElementById('bm25-run-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 実行中...';
+  showArchived = false;
+
+  try {
+    const src = document.querySelector('input[name="bm25src"]:checked')?.value||'articles';
+
+    // キーワードを構築
+    const keywords = bm25Keywords.filter(kw=>kw.term.trim()).map(kw=>({
+      term: kw.term.trim(),
+      weight: kw.weight,
+      synonyms: kw.synonyms ? kw.synonyms.split(',').map(s=>s.trim()).filter(Boolean) : [],
+    }));
+
+    const config = {
+      label: bm25Modes[bm25ActiveMode]?.label || 'カスタム',
+      description: bm25Modes[bm25ActiveMode]?.description || '',
+      k1: bm25Params.k1,
+      b: bm25Params.b,
+      lambda: bm25Params.lambda,
+      contextBonus: bm25Params.ctx,
+      keywords,
+    };
+
+    // カードをarticle形式に変換して渡す
+    let articles = null;
+    if(src === 'cards') {
+      const cards = await api.get('/api/cards');
+      articles = cards.map(c=>({
+        id: c.id,
+        title: c.title,
+        body: c.summary ? `${c.summary} ${c.body}` : c.body,
+        publishedAt: c.createdAt,
+        sourceAuthority: 0.8,
+        url: c.url||'',
+      }));
+    }
+
+    const payload = { modeId: bm25ActiveMode, config, options: {
+      dedupThreshold: bm25Params.dedup,
+      archiveScoreThreshold: bm25Params.arch,
+    }};
+    if(articles) payload.articles = articles;
+
+    bm25Result = await api.post('/api/run', payload);
+    renderBM25Result();
+
+  } catch(e) {
+    toast('実行エラー: '+String(e), 'warn');
+  } finally {
+    btn.disabled=false; btn.innerHTML='▶ 実行';
+  }
+}
+
+function renderBM25Result() {
+  if(!bm25Result) return;
+  const { active, archived, stats } = bm25Result;
+
+  // 統計
+  const maxScore = active.length ? active[0].score : 1;
+  document.getElementById('bm25-stats').innerHTML = `
+    <div class="bm25-stat"><div class="bm25-stat-val">${stats.inputCount}</div><div class="bm25-stat-lbl">入力</div></div>
+    <div class="bm25-stat"><div class="bm25-stat-val">${stats.afterDedup}</div><div class="bm25-stat-lbl">重複除去後</div></div>
+    <div class="bm25-stat"><div class="bm25-stat-val" style="color:var(--success)">${stats.activeCount}</div><div class="bm25-stat-lbl">アクティブ</div></div>
+    <div class="bm25-stat"><div class="bm25-stat-val" style="color:var(--text-dim)">${stats.archivedCount}</div><div class="bm25-stat-lbl">アーカイブ</div></div>
+    <div class="bm25-stat"><div class="bm25-stat-val">${stats.avgScore.toFixed(2)}</div><div class="bm25-stat-lbl">平均スコア</div></div>`;
+  document.getElementById('bm25-result-actions').style.display = 'flex';
+
+  // 結果一覧
+  const items = showArchived ? archived.map(a=>({...a.article,_archived:true,_reason:a.reason,score:0,breakdown:null})) : active;
+  document.getElementById('bm25-result-body').innerHTML = items.length === 0
+    ? `<div class="empty-state"><div class="icon">📭</div><p>${showArchived?'アーカイブなし':'結果なし'}</p></div>`
+    : items.map((item,i) => {
+        const isActive = !item._archived;
+        const s = isActive ? item : null;
+        const art = isActive ? item.article : item;
+        const score = isActive ? item.score : 0;
+        const bd = isActive ? item.breakdown : null;
+        const pct = isActive ? Math.min(100, (score/maxScore)*100) : 0;
+
+        const termsHtml = bd ? (bd.matchedTerms||[]).map(t=>
+          `<span class="matched-term" title="TF:${t.tf?.toFixed(2)} IDF:${t.idf?.toFixed(2)} BM25:${t.bm25?.toFixed(2)}">${esc(t.term)} ×${t.weight?.toFixed(1)}</span>`
+        ).join('') : '';
+
+        const breakdownHtml = bd ? `
+          <div class="score-breakdown">
+            <span class="breakdown-pill highlight">BM25: ${bd.bm25Raw?.toFixed(3)}</span>
+            <span class="breakdown-pill">文脈ボーナス: +${bd.contextBonus?.toFixed(3)}</span>
+            <span class="breakdown-pill">時間減衰: ×${bd.timeDecay?.toFixed(3)}</span>
+            <span class="breakdown-pill highlight">最終: ${bd.finalScore?.toFixed(3)}</span>
+          </div>
+          ${termsHtml?`<div class="matched-terms">${termsHtml}</div>`:''}` : '';
+
+        const date = new Date(art.publishedAt||art.createdAt||Date.now()).toLocaleDateString('ja-JP',{year:'numeric',month:'short',day:'numeric'});
+
+        return `<div class="score-card">
+          <div class="score-card-header">
+            <span class="score-badge ${isActive?'':'archived'}">${isActive?`#${i+1} ${score.toFixed(2)}`:'ARCHIVED'}</span>
+            <div class="score-title">${esc(art.title)}</div>
+          </div>
+          ${isActive?`<div class="score-bar"><div class="score-bar-fill" style="width:${pct}%"></div></div>`:''}
+          <div class="score-meta">
+            <span>📅 ${date}</span>
+            ${art.url?`<span><a href="${esc(art.url)}" target="_blank" style="color:var(--accent);text-decoration:none">🔗 リンク</a></span>`:''}
+            ${item._reason?`<span style="color:var(--warning)">⚠ ${esc(item._reason)}</span>`:''}
+          </div>
+          ${breakdownHtml}
+          <div class="score-actions">
+            <button class="btn btn-secondary btn-sm" onclick="saveOneAsCard('${esc(art.id).replace(/'/g,"\\'")}')">💾 カードに保存</button>
+            ${isActive?`<button class="btn btn-secondary btn-sm" onclick="showScoreDetail(${i})">詳細</button>`:''}
+          </div>
+        </div>`;
+      }).join('');
+}
+
+function toggleArchived() { showArchived=!showArchived; renderBM25Result(); }
+
+async function saveTopAsCards() {
+  if(!bm25Result) return;
+  const n = parseInt(document.getElementById('save-top-n').value)||20;
+  const top = bm25Result.active.slice(0,n);
+  let saved=0;
+  for(const s of top) {
+    const art=s.article;
+    try {
+      await api.post('/api/cards',{title:art.title,body:art.body,url:art.url,tags:[],type:'article',summary:undefined});
+      saved++;
+    } catch {}
+  }
+  toast(`${saved}件をカードに保存しました`);
+  await loadCards();
+}
+
+async function saveOneAsCard(artId) {
+  const src = document.querySelector('input[name="bm25src"]:checked')?.value||'articles';
+  let art;
+  if(src==='cards') {
+    art = allCards.find(c=>c.id===artId);
+    if(art) { toast('このカードは既にカード一覧にあります'); return; }
+  }
+  if(!art && bm25Result) {
+    const found = bm25Result.active.find(s=>s.article.id===artId)||bm25Result.archived.find(s=>s.article.id===artId);
+    if(found) art = found.article||found;
+  }
+  if(!art) { toast('記事が見つかりません','warn'); return; }
+  await api.post('/api/cards',{title:art.title,body:art.body,url:art.url,tags:[],type:'article'});
+  toast('カードに保存しました'); await loadCards();
+}
+
+function showScoreDetail(idx) {
+  if(!bm25Result) return;
+  const s = bm25Result.active[idx];
+  const bd = s.breakdown;
+  const terms = (bd.matchedTerms||[]).map(t=>
+    `${t.term}: TF=${t.tf?.toFixed(3)}, IDF=${t.idf?.toFixed(3)}, BM25=${t.bm25?.toFixed(3)}, W=${t.weight?.toFixed(2)}, contribution=${t.contribution?.toFixed(3)}`
+  ).join('\n');
+  alert(`【${s.article.title}】\n\n最終スコア: ${bd.finalScore?.toFixed(4)}\nBM25生: ${bd.bm25Raw?.toFixed(4)}\n文脈ボーナス: ${bd.contextBonus?.toFixed(4)}\n時間減衰: ${bd.timeDecay?.toFixed(4)}\n\n■マッチタームの内訳:\n${terms||'（なし）'}`);
+}
+
+document.querySelectorAll('input[name="bm25src"]').forEach(r=>r.addEventListener('change',updateBM25SourceInfo));
+
+// ════════════════════════════════════════
+//  カラーストリップ
+// ════════════════════════════════════════
+function buildColorStrips(){
+  ['new-color-strip','edit-color-strip','group-color-strip'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    el.innerHTML=[null,...COLORS].map(c=>c
+      ?`<span class="color-dot" data-color="${c}" style="background:${c}" title="${c}"></span>`
+      :`<span class="color-dot" data-color="" style="background:var(--surface2);border-color:var(--border)" title="色なし">✕</span>`
+    ).join('');
+  });
+}
+function updateColorStrip(stripId,selected,onSelect){
+  const strip=document.getElementById(stripId); if(!strip)return;
+  strip.querySelectorAll('.color-dot').forEach(dot=>{
+    const c=dot.dataset.color||null;
+    dot.classList.toggle('selected',c===selected);
+    dot.onclick=()=>{onSelect(c);updateColorStrip(stripId,c,onSelect)};
+  });
+}
+
+// ════════════════════════════════════════
+//  モーダル
+// ════════════════════════════════════════
+function openModal(id){document.getElementById(id).classList.add('active')}
+function closeModal(id){document.getElementById(id).classList.remove('active')}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('active')}));
+
+// ════════════════════════════════════════
+//  トースト
+// ════════════════════════════════════════
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.style.borderColor=type==='warn'?'var(--warning)':'var(--border)';
+  el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+// キーボード
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.active').forEach(m=>m.classList.remove('active'));closeDetail();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='n'){e.preventDefault();openNewCardModal();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&currentView==='bm25'){e.preventDefault();runBM25();}
+});
+
+
+// ════════════════════════════════════════
+//  FAB（スマホフローティングボタン）
+// ════════════════════════════════════════
+let fabOpen = false;
+function toggleFab(){
+  fabOpen = !fabOpen;
+  document.getElementById('fab-menu').classList.toggle('open', fabOpen);
+  document.getElementById('fab-main').textContent = fabOpen ? '✕' : '＋';
+}
+
+// ════════════════════════════════════════
+//  モバイル用カード編集パネル
+// ════════════════════════════════════════
+let mepCardId = null;   // null = 新規作成
+let mepZkLinks = [];    // 現在のリンクリスト
+
+function openMobileEdit(cardId) {
+  mepCardId = cardId || null;
+  mepZkLinks = [];
+  const panel = document.getElementById('mobile-edit-panel');
+  const delBtn = document.getElementById('mep-del-btn');
+
+  if (cardId) {
+    // 既存カード編集
+    const card = allCards.find(c => c.id === cardId) || {};
+    document.getElementById('mep-title').textContent = card.title || '無題';
+    document.getElementById('mep-title-in').value   = card.title || '';
+    document.getElementById('mep-body-in').value    = card.body  || '';
+    document.getElementById('mep-url-in').value     = card.url   || '';
+    document.getElementById('mep-tags-in').value    = (card.tags||[]).join(', ');
+    document.getElementById('mep-note-in').value    = card.note  || '';
+    mepZkLinks = [...(card.links||[])];
+    delBtn.style.display = '';
+  } else {
+    // 新規
+    document.getElementById('mep-title').textContent = '新規メモ';
+    ['mep-title-in','mep-body-in','mep-url-in','mep-tags-in','mep-note-in'].forEach(id=>document.getElementById(id).value='');
+    mepZkLinks = [];
+    delBtn.style.display = 'none';
+  }
+
+  renderMepZkLinks();
+  panel.classList.add('open');
+  document.getElementById('mep-title-in').focus();
+}
+
+function renderMepZkLinks(){
+  const el = document.getElementById('mep-zk-links');
+  el.innerHTML = mepZkLinks.map(lid => {
+    const c = allCards.find(x=>x.id===lid);
+    return `<span style="font-size:11px;padding:2px 8px;border-radius:5px;background:var(--surface2);
+      border:1px solid var(--border);color:var(--accent);display:inline-flex;align-items:center;gap:4px">
+      ${esc(c?.title?.slice(0,16)||lid)}
+      <button onclick="mepRemLink('${lid}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-dim);font-size:12px">✕</button>
+    </span>`;
+  }).join('');
+}
+function mepRemLink(lid){
+  mepZkLinks = mepZkLinks.filter(x=>x!==lid);
+  renderMepZkLinks();
+}
+function mepAddLink(){
+  const lid = document.getElementById('mep-zk-in').value.trim();
+  if(!lid) return;
+  if(!allCards.find(c=>c.id===lid)){ toast('カードが見つかりません: '+lid,'warn'); return; }
+  if(lid===mepCardId){ toast('自分自身にはリンクできません','warn'); return; }
+  if(!mepZkLinks.includes(lid)) mepZkLinks.push(lid);
+  document.getElementById('mep-zk-in').value='';
+  renderMepZkLinks();
+}
+
+async function mepSave(){
+  const title = document.getElementById('mep-title-in').value.trim();
+  const body  = document.getElementById('mep-body-in').value.trim();
+  const url   = document.getElementById('mep-url-in').value.trim();
+  const tags  = document.getElementById('mep-tags-in').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const note  = document.getElementById('mep-note-in').value.trim();
+  if(!title && !body){ toast('タイトルか本文を入力してください','warn'); return; }
+
+  try {
+    if(mepCardId){
+      // 更新
+      await api.put('/api/cards/'+mepCardId, { title: title||body.slice(0,40), body, url, tags, note });
+      // ZKリンク同期（既存を一旦全解除→再付与）
+      const old = allCards.find(c=>c.id===mepCardId);
+      for(const lid of (old?.links||[])) await api.del(`/api/cards/${mepCardId}/links/${lid}`);
+      for(const lid of mepZkLinks)        await api.post(`/api/cards/${mepCardId}/links`,{targetId:lid});
+      toast('保存しました');
+    } else {
+      // 新規
+      const card = await api.post('/api/cards', { title: title||body.slice(0,40), body, url, tags, note, type:'memo' });
+      for(const lid of mepZkLinks) await api.post(`/api/cards/${card.id}/links`,{targetId:lid});
+      toast('メモを作成しました');
+    }
+    await loadCards();
+    closeMobileEdit();
+  } catch(e) { toast('保存エラー: '+String(e),'warn'); }
+}
+
+async function mepDelete(){
+  if(!mepCardId || !confirm('このカードを削除しますか？')) return;
+  await api.del('/api/cards/'+mepCardId);
+  toast('削除しました');
+  await loadCards();
+  closeMobileEdit();
+}
+
+function closeMobileEdit(){
+  document.getElementById('mobile-edit-panel').classList.remove('open');
+  mepCardId = null;
+}
+
+// スマホでカードをタップしたらモバイルパネルを開く（768px以下）
+function openCardMobile(cardId){
+  if(window.innerWidth <= 700){ openMobileEdit(cardId); }
+  else { selectCard(cardId); }
+}
+
+// ════════════════════════════════════════
+//  BM25 モード追加・管理
+// ════════════════════════════════════════
+function addBM25Mode(){
+  const name = prompt('新しいモード名を入力してください');
+  if(!name?.trim()) return;
+  const id = 'mode_'+Date.now();
+  bm25Modes[id] = {
+    label: name.trim(),
+    description: '',
+    status: 'stopped',
+    k1: 1.5, b: 0.75, lambda: 0.1, contextBonus: 1.5,
+    keywords: [{term:'キーワード1', weight:1.0, synonyms:[]}],
+  };
+  loadBM25Modes();          // タブ再描画
+  selectBM25Mode(id);       // 新モードを選択状態に
+  toast('モード「'+name+'」を追加しました');
+  // サーバーには /api/run 時に config として渡すので永続化不要
+}
+
+function openModeManagerModal(){
+  renderModeManagerList();
+  openModal('mode-manager-modal');
+}
+
+function renderModeManagerList(){
+  const ids = Object.keys(bm25Modes);
+  const lbl = {active:'稼働',paused:'停止',stopped:'無効'};
+  const pillCls = {active:'pill-active',paused:'pill-paused',stopped:'pill-stopped'};
+  document.getElementById('mode-manager-list').innerHTML = ids.map(id=>{
+    const m = bm25Modes[id];
+    return `<div class="mode-edit-row">
+      <input class="mode-edit-name" value="${esc(m.label)}"
+        oninput="bm25Modes['${id}'].label=this.value;loadBM25Modes()">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="mode-badge-pill ${pillCls[m.status]??'pill-stopped'}">${lbl[m.status]??'—'}</span>
+        <select style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;
+          color:var(--text);font-size:11px;padding:2px 5px;outline:none"
+          onchange="bm25Modes['${id}'].status=this.value;renderModeManagerList()">
+          <option value="active"${m.status==='active'?' selected':''}>稼働</option>
+          <option value="paused"${m.status==='paused'?' selected':''}>停止</option>
+          <option value="stopped"${m.status==='stopped'?' selected':''}>無効</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="selectBM25Mode('${id}');closeModal('mode-manager-modal')">選択</button>
+        ${ids.length>1?`<button class="btn btn-danger btn-sm" onclick="deleteBM25Mode('${id}')">削除</button>`:''}
       </div>
     </div>`;
   }).join('');
-
-  // 未グループ列
-  const ungroupedHtml = kjData.ungrouped.map(c => renderKJCard(c, null)).join('');
-  html += `
-  <div class="kj-ungrouped-col">
-    <div class="kj-group-header" style="border-bottom:1px dashed var(--border)">
-      <span class="kj-group-name" style="color:var(--text-dim)">未グループ</span>
-      <span style="font-size:11px;color:var(--text-dim)">${kjData.ungrouped.length}</span>
-    </div>
-    <div class="kj-group-body kj-drop-zone" data-group-id="__none__"
-         ondragover="kjDragOver(event)" ondrop="kjDrop(event,'__none__')">
-      ${ungroupedHtml}
-    </div>
-  </div>`;
-
-  canvas.innerHTML = html;
 }
 
-function renderKJCard(card, groupColor) {
-  const borderColor = groupColor || 'var(--border)';
-  const tagsHtml = card.tags.slice(0,3).map(t => `<span class="kj-card-tag">${esc(t)}</span>`).join('');
-  return `
-  <div class="kj-card" draggable="true" data-card-id="${card.id}"
-       style="border-left-color:${borderColor}"
-       ondragstart="kjDragStart(event,'${card.id}')" ondragend="kjDragEnd(event)"
-       onclick="selectCard('${card.id}');switchView('cards')">
-    <div class="kj-card-title">${esc(card.title)}</div>
-    ${tagsHtml ? `<div class="kj-card-tags">${tagsHtml}</div>` : ''}
-  </div>`;
-}
-
-function kjDragStart(e, cardId) {
-  dragCardId = cardId;
-  e.currentTarget.classList.add('dragging');
-  e.dataTransfer.effectAllowed = 'move';
-}
-
-function kjDragEnd(e) {
-  e.currentTarget.classList.remove('dragging');
-  document.querySelectorAll('.kj-drop-zone').forEach(z => z.classList.remove('drag-over'));
-}
-
-function kjDragOver(e) {
-  e.preventDefault();
-  e.currentTarget.classList.add('drag-over');
-}
-
-async function kjDrop(e, groupId) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-  if (!dragCardId) return;
-
-  if (groupId === '__none__') {
-    await api.put(`/api/cards/${dragCardId}`, { kjGroupId: null });
-  } else {
-    await api.post(`/api/kj/groups/${groupId}/cards`, { cardId: dragCardId });
-  }
-  dragCardId = null;
-  await loadKJBoard();
-}
-
-function openNewGroupModal() {
-  document.getElementById('group-name').value = '';
-  document.getElementById('group-desc').value = '';
-  selectedGroupColor = COLORS[0];
-  updateColorStrip('group-color-strip', selectedGroupColor, c => selectedGroupColor = c);
-  openModal('modal-group');
-  setTimeout(() => document.getElementById('group-name').focus(), 100);
-}
-
-async function submitGroup() {
-  const name = document.getElementById('group-name').value.trim();
-  if (!name) { toast('グループ名を入力してください', 'warn'); return; }
-  await api.post('/api/kj/groups', {
-    name, description: document.getElementById('group-desc').value, color: selectedGroupColor
-  });
-  closeModal('modal-group');
-  toast('グループを作成しました');
-  await loadKJBoard();
-}
-
-async function editGroup(id, currentName) {
-  const name = prompt('グループ名を変更:', currentName);
-  if (!name || name === currentName) return;
-  await api.put(`/api/kj/groups/${id}`, { name });
-  await loadKJBoard();
-}
-
-async function deleteGroup(id) {
-  if (!confirm('グループを削除しますか？（カードは未グループになります）')) return;
-  await api.del(`/api/kj/groups/${id}`);
-  toast('グループを削除しました');
-  await loadKJBoard();
-}
-
-// ════════════════════════════════════════════════════
-//  Zettelkasten ネットワーク
-// ════════════════════════════════════════════════════
-async function loadZettelkasten() {
-  const graphData = await api.get('/api/zettelkasten/graph');
-  const container = document.getElementById('zettel-network');
-
-  const nodes = new vis.DataSet(graphData.nodes.map(n => ({
-    ...n,
-    shape: 'box',
-    font: { color: '#e2e8f0', size: 12 },
-    color: { background: n.color || '#252836', border: '#6c8aff', highlight: { background: '#6c8aff33', border: '#a78bfa' } },
-    borderWidth: 1,
-    borderWidthSelected: 2,
-  })));
-
-  const edges = new vis.DataSet(graphData.edges.map(e => ({
-    ...e,
-    color: { color: '#2e3347', highlight: '#6c8aff' },
-    width: 1.5,
-    smooth: { type: 'continuous' },
-  })));
-
-  const options = {
-    physics: { solver: 'forceAtlas2Based', stabilization: { iterations: 80 } },
-    interaction: { hover: true, tooltipDelay: 100 },
+function confirmAddMode(){
+  const name = document.getElementById('new-mode-name').value.trim();
+  if(!name){ toast('モード名を入力してください','warn'); return; }
+  const id = 'mode_'+Date.now();
+  bm25Modes[id] = {
+    label: name, description:'', status:'stopped',
+    k1:1.5, b:0.75, lambda:0.1, contextBonus:1.5,
+    keywords:[{term:'キーワード1',weight:1.0,synonyms:[]}],
   };
-
-  if (zettelNetwork) zettelNetwork.destroy();
-  zettelNetwork = new vis.Network(container, { nodes, edges }, options);
-  zettelNetwork.on('selectNode', ({ nodes: sel }) => {
-    if (sel.length === 1) { switchView('cards'); selectCard(sel[0]); }
-  });
+  document.getElementById('new-mode-name').value='';
+  loadBM25Modes();
+  renderModeManagerList();
+  toast('モード追加: '+name);
 }
 
-// ════════════════════════════════════════════════════
-//  カラーストリップ
-// ════════════════════════════════════════════════════
-function buildColorStrips() {
-  ['new-color-strip','edit-color-strip','group-color-strip'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = [null, ...COLORS].map(c => {
-      if (!c) return `<span class="color-dot" data-color="" style="background:var(--surface2);border-color:var(--border)" title="色なし">✕</span>`;
-      return `<span class="color-dot" data-color="${c}" style="background:${c}" title="${c}"></span>`;
-    }).join('');
-  });
+function deleteBM25Mode(id){
+  if(!confirm(`モード「${bm25Modes[id]?.label}」を削除しますか？`)) return;
+  delete bm25Modes[id];
+  const remaining = Object.keys(bm25Modes);
+  if(remaining.length) selectBM25Mode(remaining[0]);
+  loadBM25Modes();
+  renderModeManagerList();
+  toast('削除しました');
 }
 
-function updateColorStrip(stripId, selected, onSelect) {
-  const strip = document.getElementById(stripId);
-  if (!strip) return;
-  strip.querySelectorAll('.color-dot').forEach(dot => {
-    const c = dot.dataset.color || null;
-    dot.classList.toggle('selected', c === selected);
-    dot.onclick = () => { onSelect(c); updateColorStrip(stripId, c, onSelect); };
-  });
-}
-
-// ════════════════════════════════════════════════════
-//  モーダル開閉
-// ════════════════════════════════════════════════════
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); }));
-
-// ════════════════════════════════════════════════════
-//  トースト通知
-// ════════════════════════════════════════════════════
-function toast(msg, type = 'ok') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.borderColor = type === 'warn' ? 'var(--warning)' : 'var(--border)';
-  el.classList.add('show');
-  clearTimeout(el._timer);
-  el._timer = setTimeout(() => el.classList.remove('show'), 2600);
-}
-
-// キーボードショートカット
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
-    closeDetail();
+// loadBM25Modes をオーバーライド（非同期を同期的に使えるよう）
+const _origLoadBM25 = loadBM25Modes;
+loadBM25Modes = async function(){
+  // サーバーからのロードは初回のみ、以降は bm25Modes を直接使う
+  if(!Object.keys(bm25Modes).length){
+    try{
+      bm25Modes = await api.get('/api/modes');
+    } catch(e){ console.warn('modes load failed',e); }
   }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); openNewCardModal(); }
-});
+  const ids = Object.keys(bm25Modes);
+  if(!ids.length) return;
+  const tabsEl = document.getElementById('mode-tabs');
+  if(!tabsEl) return;
+  tabsEl.innerHTML = ids.map(id=>
+    `<button class="mode-tab" id="mtab-${id}" onclick="selectBM25Mode('${id}')">${esc(bm25Modes[id].label)}</button>`
+  ).join('');
+  if(!bm25ActiveMode || !bm25Modes[bm25ActiveMode]) selectBM25Mode(ids[0]);
+  else { document.getElementById('mtab-'+bm25ActiveMode)?.classList.add('active'); }
+};
 
-// ── 起動
+// ════════════════════════════════════════
+//  ソースURL管理
+// ════════════════════════════════════════
+let sourceConfig = null;
+let sourceTab    = 'rss';
+
+async function openSourceModal(){
+  try{
+    sourceConfig = await api.get('/api/source/config');
+    // 旧エンドポイント名フォールバック
+  }catch{
+    try{ sourceConfig = await api.get('/api/collect/config'); }
+    catch{ sourceConfig = { rss:[], arxiv:[], github:[] }; }
+  }
+  renderSourceList();
+  openModal('source-modal');
+}
+
+function switchSourceTab(tab, el){
+  sourceTab = tab;
+  document.querySelectorAll('#source-modal .modal-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['rss','arxiv','github'].forEach(t=>{
+    document.getElementById('source-'+t+'-tab').style.display = t===tab?'block':'none';
+  });
+}
+
+function renderSourceList(){
+  const rss    = sourceConfig?.rss    ?? [];
+  const arxiv  = sourceConfig?.arxiv  ?? [];
+  const github = sourceConfig?.github ?? [];
+
+  // RSS
+  document.getElementById('src-rss-list').innerHTML = rss.map((s,i)=>`
+    <div class="src-row">
+      <input class="src-in" value="${esc(s.url)}" placeholder="https://example.com/feed.xml"
+        oninput="sourceConfig.rss[${i}].url=this.value">
+      <input class="src-label-in" value="${esc(s.label??'')}" placeholder="ラベル"
+        oninput="sourceConfig.rss[${i}].label=this.value">
+      <input class="src-auth" type="number" min="0" max="1" step="0.05" value="${s.authority??0.8}"
+        oninput="sourceConfig.rss[${i}].authority=parseFloat(this.value)">
+      <button class="src-del" onclick="sourceConfig.rss.splice(${i},1);renderSourceList()">🗑</button>
+    </div>`).join('');
+
+  // arXiv
+  document.getElementById('src-arxiv-list').innerHTML = arxiv.map((s,i)=>`
+    <div class="src-row">
+      <input class="src-in" value="${esc(s.query)}" placeholder="例: large language model"
+        oninput="sourceConfig.arxiv[${i}].query=this.value">
+      <input class="src-auth" type="number" min="1" max="50" step="1" value="${s.maxResults??10}"
+        title="最大件数" oninput="sourceConfig.arxiv[${i}].maxResults=parseInt(this.value)">
+      <input class="src-auth" type="number" min="0" max="1" step="0.05" value="${s.authority??0.95}"
+        oninput="sourceConfig.arxiv[${i}].authority=parseFloat(this.value)">
+      <button class="src-del" onclick="sourceConfig.arxiv.splice(${i},1);renderSourceList()">🗑</button>
+    </div>`).join('');
+
+  // GitHub
+  document.getElementById('src-github-list').innerHTML = github.map((s,i)=>`
+    <div class="src-row">
+      <input class="src-in" value="${esc(s.language)}" placeholder="例: typescript"
+        oninput="sourceConfig.github[${i}].language=this.value">
+      <select class="src-label-in" onchange="sourceConfig.github[${i}].since=this.value">
+        <option value="daily"${s.since==='daily'?' selected':''}>daily</option>
+        <option value="weekly"${s.since==='weekly'?' selected':''}>weekly</option>
+        <option value="monthly"${s.since==='monthly'?' selected':''}>monthly</option>
+      </select>
+      <input class="src-auth" type="number" min="0" max="1" step="0.05" value="${s.authority??0.8}"
+        oninput="sourceConfig.github[${i}].authority=parseFloat(this.value)">
+      <button class="src-del" onclick="sourceConfig.github.splice(${i},1);renderSourceList()">🗑</button>
+    </div>`).join('');
+}
+
+function addSrcRow(type){
+  if(!sourceConfig) sourceConfig={rss:[],arxiv:[],github:[]};
+  if(type==='rss')    sourceConfig.rss.push({url:'',label:'新しいフィード',authority:0.8});
+  if(type==='arxiv')  sourceConfig.arxiv.push({query:'',maxResults:10,authority:0.95});
+  if(type==='github') sourceConfig.github.push({language:'',since:'weekly',authority:0.8});
+  renderSourceList();
+}
+
+async function saveSourceConfig(){
+  try{
+    // 新エンドポイントを試してフォールバック
+    try{ await api.post('/api/source/config', sourceConfig); }
+    catch{ await api.post('/api/collect/config', sourceConfig); }
+    toast('ソース設定を保存しました');
+    closeModal('source-modal');
+  } catch(e){ toast('保存エラー: '+String(e),'warn'); }
+}
+
 init();
 </script>
 </body>
