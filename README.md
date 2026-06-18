@@ -31,7 +31,7 @@
 ├── bm25_engine.ts      ← BM25 スコアリングエンジン（既存）
 ├── collector.ts        ← RSS / arXiv / GitHub 収集（既存）
 ├── package.json        ← 依存パッケージ定義
-├── .env                ← APIキー設定（ANTHROPIC_API_KEY=sk-ant-...）
+├── .env                ← .env.example
 ├── data/               ← データ保存先（自動生成）
 │   ├── cards.json      ← カードデータ
 │   ├── kj_groups.json  ← KJグループデータ
