@@ -29,6 +29,13 @@
 - Anthropic API
 - BM25検索
 - HTML/CSS/JavaScript
+
+## 工夫した点
+
+- BM25による関連度検索
+- CSV/JSONの自動判定
+- 双方向リンクによる知識ネットワーク
+- AI要約の永続保存
   
 ## 構成（ファイル一覧）
 
