@@ -1,3 +1,7 @@
+<img width="957" height="446" alt="スクリーンショット 2026-06-18 214659" src="https://github.com/user-attachments/assets/57d13dcf-0e32-41cb-9e04-bef4807195a5" />
+<img width="955" height="487" alt="スクリーンショット 2026-06-18 214532" src="https://github.com/user-attachments/assets/ed6f28a4-b823-43f1-81ac-fd9cdc5016e0" />
+<img width="957" height="446" alt="スクリーンショット 2026-06-18 214659" src="https://github.com/user-attachments/assets/bc7c26ae-9467-4bae-8d25-7ceeeef4c5a5" />
+<img width="955" height="487" alt="スクリーンショット 2026-06-18 214532" src="https://github.com/user-attachments/assets/55fcfe41-d0d2-4b36-93ef-8e70889bc95f" />
 # カード索引システム — README
 
 ## 構成（ファイル一覧）
