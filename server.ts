@@ -111,11 +111,13 @@ app.post('/api/run', async (req, res) => {
 /** 全カード取得（タグ・KJグループでフィルタ可） */
 app.get('/api/cards', (req, res) => {
   let cards = loadCards();
-  const { tag, kjGroupId, type, q } = req.query as Record<string, string>;
+  const { tag, kjGroupId, type, q, archived } = req.query as Record<string, string>;
 
   if (tag)       cards = cards.filter(c => c.tags.includes(tag));
   if (kjGroupId) cards = cards.filter(c => c.kjGroupId === kjGroupId);
   if (type)      cards = cards.filter(c => c.type === type);
+  if (archived === 'true')  cards = cards.filter(c => c.archived === true);
+  if (archived === 'false') cards = cards.filter(c => c.archived !== true);
   if (q) {
     const kw = q.toLowerCase();
     cards = cards.filter(c =>
@@ -160,6 +162,33 @@ app.put('/api/cards/:id', (req, res) => {
 app.delete('/api/cards/:id', (req, res) => {
   const ok = deleteCard(req.params.id);
   res.json({ ok });
+});
+
+app.put('/api/cards/:id/archive', (req, res) => {
+  const card = updateCard(req.params.id, { archived: true, archivedAt: new Date().toISOString() });
+  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  res.json(card);
+});
+
+app.put('/api/cards/:id/unarchive', (req, res) => {
+  const card = updateCard(req.params.id, { archived: false, archivedAt: undefined });
+  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  res.json(card);
+});
+
+app.post('/api/cards/archive-bulk', (req, res) => {
+  const { ids } = req.body as { ids?: string[] };
+  if (!Array.isArray(ids) || !ids.length) {
+    res.status(400).json({ error: 'ids is required' });
+    return;
+  }
+  const now = new Date().toISOString();
+  const updated: string[] = [];
+  for (const id of ids) {
+    const card = updateCard(id, { archived: true, archivedAt: now });
+    if (card) updated.push(id);
+  }
+  res.json({ ok: true, updated });
 });
 
 // ════════════════════════════════════════════════════

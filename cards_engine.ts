@@ -27,6 +27,8 @@ export interface Card {
   kjGroupId?:  string;       // KJ法グループID
   type:        'article' | 'memo' | 'csv';
   color?:      string;       // カード色 (例: '#FFD700')
+  archived?:   boolean;
+  archivedAt?: string;
   createdAt:   string;       // ISO文字列
   updatedAt:   string;
 }
@@ -101,6 +103,8 @@ export function createCard(
     kjGroupId: fields.kjGroupId,
     type:      fields.type      ?? 'memo',
     color:     fields.color,
+    archived:  fields.archived ?? false,
+    archivedAt: fields.archivedAt,
     createdAt: now,
     updatedAt: now,
   };
