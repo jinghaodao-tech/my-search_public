@@ -20,6 +20,15 @@
 - タグ管理
 - Zettelkasten形式の双方向リンク
 - グルーピングボードによる情報整理
+
+## 技術スタック
+
+- TypeScript
+- Node.js
+- Express
+- Anthropic API
+- BM25検索
+- HTML/CSS/JavaScript
   
 ## 構成（ファイル一覧）
 
