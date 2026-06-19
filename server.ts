@@ -4,6 +4,7 @@
  * GUI:  http://localhost:3000
  */
 import 'dotenv/config';
+import { db } from "./db/database.ts";
 import express           from 'express';
 import cors              from 'cors';
 import path              from 'path';
@@ -16,12 +17,17 @@ import {
   type CollectResult,
 } from './collector.js';
 import {
-  loadCards, saveCards, createCard, updateCard, deleteCard, getCard,
+  loadCards, getCards, saveCards, createCard, updateCard, deleteCard, getCard,
+  bulkArchiveCards, bulkRestoreCards, bulkDeleteCards, restoreCard,
   linkCards, unlinkCards, getBacklinks, getAllTags,
   loadKJGroups, createKJGroup, updateKJGroup, deleteKJGroup, assignKJGroup,
   parseAndImportCSV,
-  parseAndImportJSON,
-  type Card,
+  parseAndImportJSON
+} from './cards_engine.js';
+
+import type {
+  Card,
+  KJGroup
 } from './cards_engine.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -110,27 +116,14 @@ app.post('/api/run', async (req, res) => {
 
 /** 全カード取得（タグ・KJグループでフィルタ可） */
 app.get('/api/cards', (req, res) => {
-  let cards = loadCards();
   const { tag, kjGroupId, type, q, archived } = req.query as Record<string, string>;
-
-  if (tag)       cards = cards.filter(c => c.tags.includes(tag));
-  if (kjGroupId) cards = cards.filter(c => c.kjGroupId === kjGroupId);
-  if (type)      cards = cards.filter(c => c.type === type);
-  if (archived === 'true')  cards = cards.filter(c => c.archived === true);
-  if (archived === 'false') cards = cards.filter(c => c.archived !== true);
-  if (q) {
-    const kw = q.toLowerCase();
-    cards = cards.filter(c =>
-      c.title.toLowerCase().includes(kw) ||
-      c.body.toLowerCase().includes(kw) ||
-      (c.summary ?? '').toLowerCase().includes(kw) ||
-      c.tags.some(t => t.toLowerCase().includes(kw))
-    );
-  }
-
-  // 降順（新しい順）
-  cards.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  res.json(cards);
+  res.json(getCards({
+    tag,
+    kjGroupId,
+    type,
+    q,
+    archived: archived === 'true' ? true : archived === 'false' ? false : undefined,
+  }));
 });
 
 /** カード作成（メモ新規） */
@@ -171,7 +164,13 @@ app.put('/api/cards/:id/archive', (req, res) => {
 });
 
 app.put('/api/cards/:id/unarchive', (req, res) => {
-  const card = updateCard(req.params.id, { archived: false, archivedAt: undefined });
+  const card = restoreCard(req.params.id);
+  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  res.json(card);
+});
+
+app.post('/api/cards/:id/restore', (req, res) => {
+  const card = restoreCard(req.params.id);
   if (!card) { res.status(404).json({ error: 'Not found' }); return; }
   res.json(card);
 });
@@ -189,6 +188,36 @@ app.post('/api/cards/archive-bulk', (req, res) => {
     if (card) updated.push(id);
   }
   res.json({ ok: true, updated });
+});
+
+app.post('/api/cards/bulk-archive', (req, res) => {
+  const { ids } = req.body as { ids?: string[] };
+  if (!Array.isArray(ids) || !ids.length) {
+    res.status(400).json({ error: 'ids is required' });
+    return;
+  }
+  const updated = bulkArchiveCards(ids);
+  res.json({ ok: true, updated });
+});
+
+app.post('/api/cards/bulk-restore', (req, res) => {
+  const { ids } = req.body as { ids?: string[] };
+  if (!Array.isArray(ids) || !ids.length) {
+    res.status(400).json({ error: 'ids is required' });
+    return;
+  }
+  const updated = bulkRestoreCards(ids);
+  res.json({ ok: true, updated });
+});
+
+app.post('/api/cards/bulk-delete', (req, res) => {
+  const { ids } = req.body as { ids?: string[] };
+  if (!Array.isArray(ids) || !ids.length) {
+    res.status(400).json({ error: 'ids is required' });
+    return;
+  }
+  const deleted = bulkDeleteCards(ids);
+  res.json({ ok: true, deleted });
 });
 
 // ════════════════════════════════════════════════════

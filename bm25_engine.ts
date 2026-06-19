@@ -40,7 +40,7 @@ interface ModesConfig {
   [modeId: string]: ModeConfig;
 }
 
-interface Article {
+export interface Article {
   id: string;
   title: string;
   body: string;

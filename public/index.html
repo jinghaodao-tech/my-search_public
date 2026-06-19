@@ -359,8 +359,15 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
     </div>
     <div id="sidebar-body">
       <div class="sidebar-section">
-        <h3>フィルター</h3>
+        <h3>表示</h3>
         <div class="type-filter">
+          <button id="normal-filter-btn" class="type-btn active" onclick="filterArchived(false)">通常</button>
+          <button id="archive-filter-btn" class="type-btn" onclick="filterArchived(true)">アーカイブ</button>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <h3>フィルター</h3>
+        <div class="type-filter" id="card-type-filter">
           <button class="type-btn active" onclick="filterType(null,this)">すべて</button>
           <button class="type-btn" onclick="filterType('memo',this)">📝 メモ</button>
           <button class="type-btn" onclick="filterType('csv',this)">📊 CSV</button>
@@ -381,6 +388,10 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
       <span id="count-badge">0件</span>
       <div class="spacer"></div>
       <div id="header-actions">
+        <button id="multi-select-btn" class="btn btn-secondary btn-sm" onclick="toggleMultiSelect()">選択</button>
+        <button id="bulk-archive-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="archiveSelected()">一括アーカイブ</button>
+        <button id="bulk-restore-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="restoreSelected()">一括復元</button>
+        <button id="bulk-delete-btn" class="btn btn-danger btn-sm" style="display:none" onclick="deleteSelected()">一括削除</button>
         <button class="btn btn-secondary btn-sm" onclick="summarizeBulk()">⚡ 一括要約</button>
       </div>
     </div>
@@ -721,7 +732,7 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
 // ════════════════════════════════════════
 let currentView = 'cards';
 let currentCardId = null;
-let currentFilter = { tag: null, type: null, q: '' };
+let currentFilter = { tag: null, type: null, q: '', archived: false };
 let allCards = [];
 let allTags = [];
 let kjData = { groups: [], ungrouped: [] };
@@ -737,6 +748,8 @@ let bm25Params = { k1:1.5, b:0.75, lambda:0.1, ctx:1.5, dedup:0.8, arch:0.5 };
 let bm25Keywords = [];
 let bm25Result = null;
 let showArchived = false;
+let selectedCards = new Set();
+let multiSelectMode = false;
 
 const COLORS = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#C77DFF','#FF9A3C','#00C9A7','#F72585','#94a3b8'];
 
@@ -760,11 +773,14 @@ async function init() {
 
 async function loadCards() {
   const params = new URLSearchParams();
+  params.set('archived', String(currentFilter.archived));
   if (currentFilter.tag)  params.set('tag', currentFilter.tag);
   if (currentFilter.type) params.set('type', currentFilter.type);
   if (currentFilter.q)    params.set('q', currentFilter.q);
   allCards = await api.get('/api/cards?' + params);
+  selectedCards = new Set([...selectedCards].filter(id => allCards.some(card => card.id === id)));
   renderCardGrid();
+  updateSelectedUI();
   updateBM25SourceInfo();
 }
 
@@ -786,7 +802,7 @@ function switchView(view) {
   document.getElementById('bm25-view').classList.toggle('active', view==='bm25');
   document.getElementById('sidebar').style.display = view==='cards' ? 'flex' : 'none';
   document.getElementById('content-header').style.display = view==='bm25' ? 'none' : 'flex';
-  const titles = {cards:'カード一覧',kj:'KJ法ボード',zettel:'Zettelkasten ネットワーク',bm25:'BM25スコアリング'};
+  const titles = {cards:currentFilter.archived?'アーカイブ一覧':'カード一覧',kj:'KJ法ボード',zettel:'Zettelkasten ネットワーク',bm25:'BM25スコアリング'};
   document.getElementById('view-title').textContent = titles[view];
   document.getElementById('header-actions').style.display = view==='cards' ? 'flex' : 'none';
   if (view==='kj') loadKJBoard();
@@ -802,7 +818,7 @@ function renderCardGrid() {
   const grid = document.getElementById('card-grid');
   document.getElementById('count-badge').textContent = `${allCards.length}件`;
   if (!allCards.length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📭</div><p>カードがありません</p><button class="btn btn-primary btn-sm" onclick="openNewCardModal()">メモを作成</button></div>`;
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📭</div><p>${currentFilter.archived?'アーカイブされたカードはありません':'カードがありません'}</p>${currentFilter.archived?'':'<button class="btn btn-primary btn-sm" onclick="openNewCardModal()">メモを作成</button>'}</div>`;
     return;
   }
   grid.innerHTML = allCards.map(card => {
@@ -813,11 +829,15 @@ function renderCardGrid() {
     const moreTags = card.tags.length>4 ? `<span class="card-tag">+${card.tags.length-4}</span>` : '';
     const disp = esc(card.summary||card.body).slice(0,120)+(card.body.length>120?'...':'');
     const date = new Date(card.createdAt).toLocaleDateString('ja-JP',{month:'short',day:'numeric'});
-    return `<div class="card" id="card-${card.id}" onclick="selectCard('${card.id}')">
+    const restoreButton = currentFilter.archived
+      ? `<button class="btn-icon btn-sm" onclick="event.stopPropagation();restoreOne('${card.id}')" title="復元">↩</button>`
+      : '';
+    return `<div class="card ${selectedCards.has(card.id)?'selected':''}" id="card-${card.id}" onclick="cardClick('${card.id}')">
       ${strip}
       <div style="display:flex;align-items:center;gap:6px">
         <span class="card-type-badge ${typeCls}">${typeMap[card.type]??card.type}</span>
         <div class="card-actions">
+          ${restoreButton}
           <button class="btn-icon btn-sm" onclick="event.stopPropagation();openEditModal('${card.id}')" title="編集">✏️</button>
           <button class="btn-icon btn-sm" onclick="event.stopPropagation();summarizeOne('${card.id}')" title="AI要約">⚡</button>
         </div>
@@ -833,6 +853,74 @@ function renderCardGrid() {
   }).join('');
 }
 
+function toggleMultiSelect() {
+  multiSelectMode = !multiSelectMode;
+  selectedCards.clear();
+  if (multiSelectMode) closeDetail();
+  renderCardGrid();
+  updateSelectedUI();
+}
+
+function cardClick(id) {
+  if (!multiSelectMode) {
+    selectCard(id);
+    return;
+  }
+  if (selectedCards.has(id)) selectedCards.delete(id);
+  else selectedCards.add(id);
+  updateSelectedUI();
+}
+
+function updateSelectedUI() {
+  document.querySelectorAll('#card-grid .card').forEach(card => {
+    card.classList.toggle('selected', selectedCards.has(card.id.replace('card-', '')));
+  });
+  const count = selectedCards.size;
+  document.getElementById('count-badge').textContent =
+    multiSelectMode ? `${count}件選択中 / ${allCards.length}件` : `${allCards.length}件`;
+  document.getElementById('multi-select-btn').textContent = multiSelectMode ? '選択終了' : '選択';
+  document.getElementById('bulk-archive-btn').style.display =
+    multiSelectMode && !currentFilter.archived ? '' : 'none';
+  document.getElementById('bulk-restore-btn').style.display =
+    multiSelectMode && currentFilter.archived ? '' : 'none';
+  document.getElementById('bulk-delete-btn').style.display = multiSelectMode ? '' : 'none';
+  document.getElementById('bulk-archive-btn').disabled = count === 0;
+  document.getElementById('bulk-restore-btn').disabled = count === 0;
+  document.getElementById('bulk-delete-btn').disabled = count === 0;
+}
+
+async function archiveSelected() {
+  if (!selectedCards.size) return;
+  await api.post('/api/cards/bulk-archive', { ids: [...selectedCards] });
+  selectedCards.clear();
+  await Promise.all([loadCards(), loadTags()]);
+  toast('選択したカードをアーカイブしました');
+}
+
+async function restoreOne(id) {
+  await api.post(`/api/cards/${id}/restore`, {});
+  selectedCards.delete(id);
+  await Promise.all([loadCards(), loadTags()]);
+  toast('カードを復元しました');
+}
+
+async function restoreSelected() {
+  if (!selectedCards.size) return;
+  await api.post('/api/cards/bulk-restore', { ids: [...selectedCards] });
+  selectedCards.clear();
+  await Promise.all([loadCards(), loadTags()]);
+  toast('選択したカードを復元しました');
+}
+
+async function deleteSelected() {
+  if (!selectedCards.size) return;
+  if (!confirm(`${selectedCards.size}件のカードを削除しますか？`)) return;
+  await api.post('/api/cards/bulk-delete', { ids: [...selectedCards] });
+  selectedCards.clear();
+  await Promise.all([loadCards(), loadTags()]);
+  toast('選択したカードを削除しました');
+}
+
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
 // ════════════════════════════════════════
@@ -846,8 +934,18 @@ function renderTagCloud() {
   ).join('');
 }
 function filterTag(tag) { currentFilter.tag = currentFilter.tag===tag?null:tag; renderTagCloud(); loadCards(); }
-function filterType(type,el) { currentFilter.type=type; document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); loadCards(); }
+function filterType(type,el) { currentFilter.type=type; document.querySelectorAll('#card-type-filter .type-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); loadCards(); }
 function onSearch(q) { currentFilter.q=q; loadCards(); }
+function filterArchived(archived) {
+  currentFilter.archived = archived;
+  selectedCards.clear();
+  multiSelectMode = false;
+  closeDetail();
+  document.getElementById('normal-filter-btn').classList.toggle('active', !archived);
+  document.getElementById('archive-filter-btn').classList.toggle('active', archived);
+  document.getElementById('view-title').textContent = archived ? 'アーカイブ一覧' : 'カード一覧';
+  loadCards();
+}
 
 // ════════════════════════════════════════
 //  カード詳細パネル

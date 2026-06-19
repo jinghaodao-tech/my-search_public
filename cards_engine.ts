@@ -49,19 +49,95 @@ function ensureDataDir() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+import { db } from "./db/database.ts";
+
 export function loadCards(): Card[] {
-  ensureDataDir();
-  if (!fs.existsSync(CARDS_FILE)) return [];
-  try {
-    return JSON.parse(fs.readFileSync(CARDS_FILE, 'utf-8')) as Card[];
-  } catch {
-    return [];
-  }
+  const rows = db.prepare(`
+    SELECT * FROM cards
+  `).all();
+
+  return rows.map((row: any) => ({
+    id: row.id,
+    title: row.title,
+    body: row.body ?? "",
+    summary: row.summary ?? undefined,
+    url: row.url ?? undefined,
+    type: row.type ?? "memo",
+    color: row.color ?? undefined,
+    tags: JSON.parse(row.tags_json ?? "[]"),
+    links: JSON.parse(row.links_json ?? "[]"),
+    kjGroupId: row.kj_group_id ?? undefined,
+    archived: Boolean(row.archived),
+    archivedAt: row.archived_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
 }
 
 export function saveCards(cards: Card[]): void {
-  ensureDataDir();
-  fs.writeFileSync(CARDS_FILE, JSON.stringify(cards, null, 2), 'utf-8');
+  const clear = db.prepare(`
+    DELETE FROM cards
+  `);
+
+  const insert = db.prepare(`
+    INSERT INTO cards (
+      id,
+      title,
+      body,
+      summary,
+      url,
+      type,
+      color,
+      tags_json,
+      links_json,
+      kj_group_id,
+      archived,
+      archived_at,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      @id,
+      @title,
+      @body,
+      @summary,
+      @url,
+      @type,
+      @color,
+      @tags_json,
+      @links_json,
+      @kj_group_id,
+      @archived,
+      @archived_at,
+      @created_at,
+      @updated_at
+    )
+  `);
+
+  const tx = db.transaction(() => {
+    clear.run();
+
+    for (const card of cards) {
+      insert.run({
+        id: card.id,
+        title: card.title,
+        body: card.body ?? "",
+        summary: card.summary ?? null,
+        url: card.url ?? null,
+        type: card.type ?? "memo",
+        color: card.color ?? null,
+        tags_json: JSON.stringify(card.tags ?? []),
+        links_json: JSON.stringify(card.links ?? []),
+        kj_group_id: card.kjGroupId ?? null,
+        archived: card.archived ? 1 : 0,
+        archived_at: card.archivedAt ?? null,
+        created_at: card.createdAt,
+        updated_at: card.updatedAt,
+      });
+    }
+  });
+
+  tx();
 }
 
 export function loadKJGroups(): KJGroup[] {
