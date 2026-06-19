@@ -12,6 +12,22 @@
 調べた情報やメモが増えると、後から探せなくなったり、関連する情報を結び付けにくくなる問題があった  
 そこで、検索・要約・分類・関連付けを一つの画面で扱えるツールとして開発
 
+## 技術的な課題
+
+### JSON保存の限界
+
+当初は cards.json に全データを保存していたが、
+
+- データ量増加時の読み込みコスト
+- 将来的な検索機能拡張
+- 一括更新処理
+
+に課題があった。
+
+そこで SQLite へ移行し、
+既存の CRUD API を維持したまま
+永続化層のみ差し替えた。
+
 ## 最近の改善(20260619)
 
 - JSON保存からSQLite保存へ移行
@@ -29,30 +45,42 @@
 - Zettelkasten形式の双方向リンク
 - グルーピングボードによる情報整理
 
-## 技術スタック
-
-- TypeScript
-- Node.js
-- Express
-- Anthropic API
-- BM25検索
-- HTML/CSS/JavaScript
+## アーキテクチャ
+Frontend
+  HTML/CSS/JavaScript
+Backend
+  Node.js + Express
+Storage
+  SQLite
+Search
+  BM25
+AI
+  Anthropic API
 
 ## 工夫した点
 
-- BM25による関連度検索
-- CSV/JSONの自動判定
-- 双方向リンクによる知識ネットワーク
-- AI要約の永続保存
+- BM25を用いてタイトル・本文・タグを対象に関連度検索を実装
+- JSON保存からSQLiteへ移行し、将来的なデータ増加に対応
+- Zettelkastenの双方向リンクを自動管理
+- AI要約結果を永続化し再生成コストを削減
+
+## 今後の改善予定
+
+- デプロイ
+- 自動バックアップ
+- 全文検索高速化
+- ユーザー認証
+- ベクトル検索
   
 **セットアップ(初回のみ)**
-
+<details>
 1. Node.js 18以上 をインストール（https://nodejs.org/）
 2. `.env` ファイルを編集して APIキーを設定：
    ```
    ANTHROPIC_API_KEY
    ```
 3. `start.bat` をダブルクリック → ブラウザが自動で開く
+</details>
 
 ## 使い方
 <details>
