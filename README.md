@@ -45,43 +45,18 @@
 - 双方向リンクによる知識ネットワーク
 - AI要約の永続保存
   
-## 構成（ファイル一覧）
+**セットアップ(初回のみ)**
 
-```
-プロジェクトルート/
-├── start.bat           ← Windows 起動スクリプト（ダブルクリックで起動）
-├── server.ts           ← Express サーバー（BM25 + カード管理API）
-├── cards_engine.ts     ← カード管理エンジン（CRUD / Zettelkasten / KJ法 / CSV）
-├── bm25_engine.ts      ← BM25 スコアリングエンジン（既存）
-├── collector.ts        ← RSS / arXiv / GitHub 収集（既存）
-├── package.json        ← 依存パッケージ定義
-├── .env                ← .env.example
-├── data/               ← データ保存先（自動生成）
-│   ├── cards.json      ← カードデータ
-│   ├── kj_groups.json  ← KJグループデータ
-│   ├── articles.json   ← 収集記事キャッシュ
-│   └── stats.json      ← 収集統計
-└── public/
-    └── index.html      ← GUI（ブラウザで表示）
-```
-
----
-
-## セットアップ（初回のみ）
-
-1. **Node.js 18以上** をインストール（https://nodejs.org/）
+1. Node.js 18以上 をインストール（https://nodejs.org/）
 2. `.env` ファイルを編集して APIキーを設定：
    ```
-   ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxx
+   ANTHROPIC_API_KEY
    ```
 3. `start.bat` をダブルクリック → ブラウザが自動で開く
-
 ---
 
-## 使い方
-
+**使い方**
 ### 基本操作
-
 | 操作 | 方法 |
 |------|------|
 | メモ新規作成 | 右上「＋ メモ作成」ボタン、または Ctrl+N |
