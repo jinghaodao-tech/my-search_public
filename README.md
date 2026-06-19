@@ -53,9 +53,9 @@
    ANTHROPIC_API_KEY
    ```
 3. `start.bat` をダブルクリック → ブラウザが自動で開く
----
-<details>
+
 **使い方**
+<details>
 ### 基本操作
 | 操作 | 方法 |
 |------|------|
@@ -150,9 +150,8 @@ title,body,url,tags
 - **タグフィルター**: タグをクリック（再クリックで解除）
 </details>
 ---
-<details>
 ## API エンドポイント一覧（上級者向け）
-
+<details>
 ```
 GET    /api/cards               カード一覧（?tag=&type=&q= でフィルタ）
 POST   /api/cards               カード作成
