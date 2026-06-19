@@ -4,7 +4,6 @@
  * GUI:  http://localhost:3000
  */
 import 'dotenv/config';
-import { db } from "./db/database.ts";
 import express           from 'express';
 import cors              from 'cors';
 import path              from 'path';
@@ -17,7 +16,7 @@ import {
   type CollectResult,
 } from './collector.js';
 import {
-  loadCards, getCards, saveCards, createCard, updateCard, deleteCard, getCard,
+  loadCards, getCards, createCard, updateCard, deleteCard, getCard,
   bulkArchiveCards, bulkRestoreCards, bulkDeleteCards, restoreCard,
   linkCards, unlinkCards, getBacklinks, getAllTags,
   loadKJGroups, createKJGroup, updateKJGroup, deleteKJGroup, assignKJGroup,
@@ -164,14 +163,16 @@ app.put('/api/cards/:id/archive', (req, res) => {
 });
 
 app.put('/api/cards/:id/unarchive', (req, res) => {
-  const card = restoreCard(req.params.id);
-  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  const ok = restoreCard(req.params.id);
+  if (!ok) { res.status(404).json({ error: 'Not found' }); return; }
+  const card = getCard(req.params.id);
   res.json(card);
 });
 
 app.post('/api/cards/:id/restore', (req, res) => {
-  const card = restoreCard(req.params.id);
-  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  const ok = restoreCard(req.params.id);
+  if (!ok) { res.status(404).json({ error: 'Not found' }); return; }
+  const card = getCard(req.params.id);
   res.json(card);
 });
 

@@ -214,6 +214,102 @@ export function getCard(id: string): Card | null {
   return loadCards().find(c => c.id === id) ?? null;
 }
 
+export function getCards(filters?: {
+  archived?: boolean;
+  tag?: string;
+  type?: string;
+  q?: string;
+  kjGroupId?: string;
+}): Card[] {
+  let cards = loadCards();
+
+  if (filters?.archived !== undefined) {
+    cards = cards.filter(card => Boolean(card.archived) === filters.archived);
+  }
+  if (filters?.tag) {
+    cards = cards.filter(card => card.tags.includes(filters.tag!));
+  }
+  if (filters?.type) {
+    cards = cards.filter(card => card.type === filters.type);
+  }
+  if (filters?.kjGroupId) {
+    cards = cards.filter(card => (card.kjGroupId ?? '') === filters.kjGroupId);
+  }
+  if (filters?.q) {
+    const q = filters.q.toLowerCase();
+    cards = cards.filter(card =>
+      card.title.toLowerCase().includes(q) ||
+      card.body.toLowerCase().includes(q) ||
+      (card.summary ?? '').toLowerCase().includes(q) ||
+      (card.url ?? '').toLowerCase().includes(q) ||
+      card.tags.some(tag => tag.toLowerCase().includes(q))
+    );
+  }
+
+  return cards;
+}
+
+export function restoreCard(id: string): boolean {
+  const restored = updateCard(id, {
+    archived: false,
+    archivedAt: undefined,
+  });
+  return Boolean(restored);
+}
+
+export function bulkArchiveCards(ids: string[]): string[] {
+  const idSet = new Set(ids);
+  const cards = loadCards();
+  const now = new Date().toISOString();
+  const updated: string[] = [];
+
+  for (const card of cards) {
+    if (!idSet.has(card.id)) continue;
+    card.archived = true;
+    card.archivedAt = now;
+    card.updatedAt = now;
+    updated.push(card.id);
+  }
+
+  if (updated.length) saveCards(cards);
+  return updated;
+}
+
+export function bulkRestoreCards(ids: string[]): string[] {
+  const idSet = new Set(ids);
+  const cards = loadCards();
+  const now = new Date().toISOString();
+  const updated: string[] = [];
+
+  for (const card of cards) {
+    if (!idSet.has(card.id)) continue;
+    card.archived = false;
+    card.archivedAt = undefined;
+    card.updatedAt = now;
+    updated.push(card.id);
+  }
+
+  if (updated.length) saveCards(cards);
+  return updated;
+}
+
+export function bulkDeleteCards(ids: string[]): string[] {
+  const idSet = new Set(ids);
+  const cards = loadCards();
+  const now = new Date().toISOString();
+  const remaining = cards
+    .filter(card => !idSet.has(card.id))
+    .map(card => {
+      const nextLinks = card.links.filter(linkId => !idSet.has(linkId));
+      if (nextLinks.length === card.links.length) return card;
+      return { ...card, links: nextLinks, updatedAt: now };
+    });
+
+  const deleted = cards.filter(card => idSet.has(card.id)).map(card => card.id);
+  if (deleted.length) saveCards(remaining);
+  return deleted;
+}
+
 // ════════════════════════════════════════════════════
 //  § 4. Zettelkasten リンク管理
 // ════════════════════════════════════════════════════
