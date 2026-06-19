@@ -1,5 +1,6 @@
-<img width="957" height="446" alt="スクリーンショット 2026-06-18 214659" src="https://github.com/user-attachments/assets/57d13dcf-0e32-41cb-9e04-bef4807195a5" />
-<img width="955" height="487" alt="スクリーンショット 2026-06-18 214532" src="https://github.com/user-attachments/assets/ed6f28a4-b823-43f1-81ac-fd9cdc5016e0" />
+<img width="956" height="486" alt="スクリーンショット 2026-06-19 180008" src="https://github.com/user-attachments/assets/04ac2908-02ff-4252-a1bb-090625f31e98" />
+<img width="956" height="491" alt="スクリーンショット 2026-06-19 175828" src="https://github.com/user-attachments/assets/94ef29a1-2dd1-4e26-b48a-77a75c0a9e57" />
+
 # カード索引システム — README
 
 # カード索引システム
