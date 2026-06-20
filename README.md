@@ -38,6 +38,13 @@ https://github.com/user-attachments/assets/2f19da62-a574-4ee0-8e36-c4c7f11b961e
 既存の CRUD API を維持したまま
 永続化層のみ差し替えた。
 
+検索時に毎回トークン化していたため約10秒かかっていた。
+
+tokens_jsonとdoc_lengthをSQLiteへ保存し、
+保存時に前処理を行う方式へ変更。
+
+検索時間を約10秒から1秒未満へ改善。
+
 ## 最近の改善(20260619)
 
 - JSON保存からSQLite保存へ移行
