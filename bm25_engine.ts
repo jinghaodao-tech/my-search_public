@@ -47,6 +47,15 @@ export interface Article {
   publishedAt: Date;
   sourceAuthority: number; // 0–1 : ソースの信頼度
   url: string;
+  tokens?: string[];
+  docLength?: number;
+  summary?: string;
+  tags?: string[];
+  type?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  archived?: boolean;
+  archivedAt?: string;
 }
 
 interface ScoredArticle {
@@ -209,7 +218,7 @@ async function getTokenizer(): Promise<KuromojiTokenizer> {
  * - base_form（基本形）に正規化することで活用ゆれを吸収
  * - NFKC 正規化で全角→半角統一
  */
-async function tokenize(text: string): Promise<string[]> {
+export async function tokenize(text: string): Promise<string[]> {
   const tokenizer = await getTokenizer();
   const normalized = text.normalize("NFKC").toLowerCase();
   const tokens = tokenizer.tokenize(normalized);
@@ -309,25 +318,31 @@ class BM25Engine {
     return Math.log((N - df + 0.5) / (df + 0.5) + 1);
   }
 
-  async score(article: Article, mode: ModeConfig): Promise<ScoredArticle> {
-    const synonymMap = await buildSynonymMap(mode.keywords);
-
+  async score(
+    article: Article,
+    mode: ModeConfig,
+    synonymMap: Map<string, string>,
+    queryTokens: string[]
+  ): Promise<ScoredArticle> {
     // タイトルを 2 回結合して重みを 2 倍にする
-    const text = `${article.title} ${article.title} ${article.body}`;
-    const tokens = await normalizeTokens(text, synonymMap);
-    const tf = computeTF(tokens);
-    const docLen = tokens.length;
-
-    const queryTerms = mode.keywords.map(
-      (kw) => synonymMap.get(kw.term.toLowerCase()) ?? kw.term.toLowerCase()
+    const tokens = (article.tokens ?? []).map(
+      (token) => synonymMap.get(token) ?? token
     );
+    const tf = computeTF(tokens);
+    const docLen = article.docLength ?? tokens.length;
+
+    const queryTerms = queryTokens.map(
+      (token) => synonymMap.get(token) ?? token
+    );
+    const defaultWeight = mode.keywords.length > 0
+      ? Math.max(...mode.keywords.map((keyword) => keyword.weight))
+      : 1;
 
     const matchedTerms: MatchedTerm[] = [];
     let bm25Sum = 0;
 
-    for (const kw of mode.keywords) {
-      const canonical =
-        synonymMap.get(kw.term.toLowerCase()) ?? kw.term.toLowerCase();
+    for (const queryTerm of new Set(queryTerms)) {
+      const canonical = synonymMap.get(queryTerm) ?? queryTerm;
       const f = tf.get(canonical) ?? 0;
       if (f === 0) continue;
 
@@ -336,9 +351,16 @@ class BM25Engine {
       const denominator =
         f + mode.k1 * (1 - mode.b + mode.b * (docLen / this.corpus.avgDocLength));
       const bm25 = idfVal * (numerator / denominator);
-      const contribution = bm25 * kw.weight;
+      const contribution = bm25 * defaultWeight;
 
-      matchedTerms.push({ term: kw.term, tf: f, idf: idfVal, bm25, weight: kw.weight, contribution });
+      matchedTerms.push({
+        term: queryTerm,
+        tf: f,
+        idf: idfVal,
+        bm25,
+        weight: defaultWeight,
+        contribution,
+      });
       bm25Sum += contribution;
     }
 
@@ -359,26 +381,32 @@ class BM25Engine {
     };
   }
 
-  async rank(articles: Article[], mode: ModeConfig): Promise<ScoredArticle[]> {
-    const scored = await Promise.all(articles.map((a) => this.score(a, mode)));
+  async rank(
+    articles: Article[],
+    mode: ModeConfig,
+    synonymMap: Map<string, string>,
+    queryTokens: string[]
+  ): Promise<ScoredArticle[]> {
+    const scored = await Promise.all(
+      articles.map((a) => this.score(a, mode, synonymMap, queryTokens))
+    );
     return scored.sort((a, b) => b.score - a.score);
   }
 }
 
 async function buildCorpusStats(
   articles: Article[],
-  mode: ModeConfig
+  mode: ModeConfig,
+  synonymMap: Map<string, string>
 ): Promise<CorpusStats> {
-  const synonymMap = await buildSynonymMap(mode.keywords);
   const termDocFreq = new Map<string, number>();
   let totalLen = 0;
 
   for (const article of articles) {
-    const tokens = await normalizeTokens(
-      `${article.title} ${article.body}`,
-      synonymMap
+    const tokens = (article.tokens ?? []).map(
+      (token) => synonymMap.get(token) ?? token
     );
-    totalLen += tokens.length;
+    totalLen += article.docLength ?? tokens.length;
     const seen = new Set(tokens);
     for (const t of seen) termDocFreq.set(t, (termDocFreq.get(t) ?? 0) + 1);
   }
@@ -388,6 +416,26 @@ async function buildCorpusStats(
     avgDocLength: articles.length > 0 ? totalLen / articles.length : 500,
     termDocFreq,
   };
+}
+
+function resolveArticleTokens(articles: Article[]): {
+  articles: Article[];
+  fallbackCount: number;
+} {
+  const resolved: Article[] = [];
+
+  for (const article of articles) {
+    const tokens = Array.isArray(article.tokens) ? article.tokens : [];
+    resolved.push({
+      ...article,
+      tokens,
+      docLength: article.docLength && article.docLength > 0
+        ? article.docLength
+        : tokens.length,
+    });
+  }
+
+  return { articles: resolved, fallbackCount: 0 };
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -490,6 +538,8 @@ export async function runPipeline(
     viewCounts?: Map<string, number>;
   } = {}
 ): Promise<PipelineResult> {
+  console.time("bm25");
+  try {
   const {
     dedupThreshold = 0.8,
     archiveScoreThreshold = 0.5,
@@ -501,9 +551,39 @@ export async function runPipeline(
   const deduped = deduplicateArticles(rawArticles, dedupThreshold);
 
   // Layer 2: コーパス統計構築 → BM25 スコアリング
-  const corpus = await buildCorpusStats(deduped, mode);
+  const queryText = mode.keywords.map((keyword) => keyword.term).join(" ");
+  const queryTokens = await tokenize(queryText);
+  if (queryTokens.length === 0) {
+    return {
+      active: [],
+      archived: [],
+      stats: {
+        inputCount: rawArticles.length,
+        afterDedup: deduped.length,
+        activeCount: 0,
+        archivedCount: 0,
+        modeUsed: modeId,
+        avgScore: 0,
+      },
+    };
+  }
+
+  console.time("tokenize");
+  const resolved = resolveArticleTokens(deduped);
+  console.timeEnd("tokenize");
+  const synonymMap = await buildSynonymMap(mode.keywords);
+  const corpus = await buildCorpusStats(resolved.articles, mode, synonymMap);
   const engine = new BM25Engine(corpus);
-  const scored = await engine.rank(deduped, mode);
+  console.time("score");
+  const scored = (await engine.rank(
+    resolved.articles,
+    mode,
+    synonymMap,
+    queryTokens
+  ))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  console.timeEnd("score");
 
   // Layer 3: 自動アーカイブ判定
   const active: ScoredArticle[] = [];
@@ -519,23 +599,29 @@ export async function runPipeline(
     }
   }
 
+  const limitedActive = active.slice(0, 50);
+  const limitedArchived = archived.slice(0, Math.max(0, 50 - limitedActive.length));
+
   const avgScore =
-    active.length > 0
-      ? active.reduce((sum, s) => sum + s.score, 0) / active.length
+    limitedActive.length > 0
+      ? limitedActive.reduce((sum, s) => sum + s.score, 0) / limitedActive.length
       : 0;
 
   return {
-    active,
-    archived,
+    active: limitedActive,
+    archived: limitedArchived,
     stats: {
       inputCount: rawArticles.length,
       afterDedup: deduped.length,
-      activeCount: active.length,
-      archivedCount: archived.length,
+      activeCount: limitedActive.length,
+      archivedCount: limitedArchived.length,
       modeUsed: modeId,
       avgScore,
     },
   };
+  } finally {
+    console.timeEnd("bm25");
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════

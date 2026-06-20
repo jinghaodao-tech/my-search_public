@@ -11,7 +11,7 @@ import https     from 'https';
 import fs        from 'fs';
 import path      from 'path';
 import { fileURLToPath } from 'url';
-import type { Article } from './bm25_engine.js';
+import { tokenize, type Article } from './bm25_engine.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -42,6 +42,24 @@ export function loadArticles(): CollectResult | null {
     console.warn('  ⚠ 読み込み失敗:', (e as Error).message);
     return null;
   }
+}
+
+export async function ensureArticleTokens(result: CollectResult): Promise<CollectResult> {
+  const articles = await Promise.all(result.articles.map(async (article) => {
+    if (Array.isArray(article.tokens) && article.tokens.length > 0) {
+      return {
+        ...article,
+        docLength: article.docLength && article.docLength > 0
+          ? article.docLength
+          : article.tokens.length,
+      };
+    }
+
+    const tokens = await tokenize(`${article.title} ${article.body}`);
+    return { ...article, tokens, docLength: tokens.length };
+  }));
+
+  return { ...result, articles };
 }
 
 // ════════════════════════════════════════════════════
@@ -308,9 +326,10 @@ export async function collectAll(
   };
 
   console.log(`✓ 収集完了: RSS=${result.stats.rss} arXiv=${result.stats.arxiv} GitHub=${result.stats.github} 合計=${result.stats.total}`);
-  saveArticles(result); // ← data/articles.json に自動保存
+  const indexedResult = await ensureArticleTokens(result);
+  saveArticles(indexedResult); // ← data/articles.json に自動保存
   if (errors.length) console.warn(`⚠ エラー ${errors.length} 件:`, errors);
-  return result;
+  return indexedResult;
 }
 
 // ════════════════════════════════════════════════════

@@ -1291,6 +1291,8 @@ async function runBM25() {
         publishedAt: c.createdAt,
         sourceAuthority: 0.8,
         url: c.url||'',
+        tokens: c.tokens,
+        docLength: c.docLength,
       }));
     }
 

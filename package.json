@@ -6,7 +6,10 @@
   "scripts": {
     "start": "npx tsx server.ts",
     "dev": "npx tsx --watch server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate:tokens": "tsx scripts/regenerate_card_tokens.ts",
+    "backfill:tokens": "tsx scripts/backfill_card_tokens.ts",
+    "backfill:article-tokens": "tsx scripts/backfill_article_tokens.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",

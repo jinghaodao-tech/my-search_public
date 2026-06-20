@@ -11,7 +11,7 @@ import path              from 'path';
 import { fileURLToPath } from 'url';
 import { runPipeline, MODES } from './bm25_engine.js';
 import {
-  collectAll, startScheduler, saveArticles, loadArticles,
+  collectAll, startScheduler, saveArticles, loadArticles, ensureArticleTokens,
   DEFAULT_CONFIG,
   type CollectorConfig,
   type CollectResult,
@@ -22,7 +22,7 @@ import {
   linkCards, unlinkCards, getBacklinks, getAllTags,
   loadKJGroups, createKJGroup, updateKJGroup, deleteKJGroup, assignKJGroup,
   parseAndImportCSV,
-  parseAndImportJSON
+  parseAndImportJSON, backfillCardTokens
 } from './cards_engine.js';
 
 import type {
@@ -363,9 +363,51 @@ app.post('/api/run', async (req, res) => {
       res.status(400).json({ error: '記事がありません。先に /api/collect を実行してください' });
       return;
     }
-    const parsed = rawArticles.map((a: any) => ({ ...a, publishedAt: new Date(a.publishedAt) }));
+    const cardsById = new Map(loadCards().map((card) => [card.id, card]));
+    const parsed = rawArticles.map((a: any) => {
+      const stored = cardsById.get(a.id);
+      return {
+        ...a,
+        title: stored?.title ?? a.title,
+        body: stored?.body ?? a.body,
+        summary: stored?.summary ?? a.summary,
+        tags: stored?.tags ?? a.tags ?? [],
+        url: stored?.url ?? a.url ?? '',
+        type: stored?.type ?? a.type,
+        createdAt: stored?.createdAt ?? a.createdAt,
+        updatedAt: stored?.updatedAt ?? a.updatedAt,
+        archived: stored?.archived ?? a.archived,
+        archivedAt: stored?.archivedAt ?? a.archivedAt,
+        publishedAt: new Date(a.publishedAt),
+        tokens: stored?.tokens ?? a.tokens,
+        docLength: stored?.docLength ?? a.docLength,
+      };
+    });
     const result = await runPipeline(parsed, config, modeId ?? 'custom', options);
-    res.json(result);
+    const stripSearchFields = (article: any) => {
+      const { tokens: _tokens, docLength: _docLength, ...publicArticle } = article;
+      return {
+        ...publicArticle,
+        summary: publicArticle.summary ?? null,
+        tags: publicArticle.tags ?? [],
+        type: publicArticle.type ?? 'article',
+        createdAt: publicArticle.createdAt ?? publicArticle.publishedAt,
+        archived: publicArticle.archived ?? false,
+      };
+    };
+    const response = {
+      ...result,
+      active: result.active.map((item) => ({
+        ...item,
+        article: stripSearchFields(item.article),
+      })),
+      archived: result.archived.map((item) => ({
+        ...item,
+        article: stripSearchFields(item.article),
+      })),
+    };
+    console.log("results.length", response.active.length + response.archived.length);
+    res.json(response);
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -388,9 +430,9 @@ app.get('/api/cards', (req, res) => {
 });
 
 /** カード作成（メモ新規） */
-app.post('/api/cards', (req, res) => {
+app.post('/api/cards', async (req, res) => {
   try {
-    const card = createCard({ type: 'memo', ...req.body });
+    const card = await createCard({ type: 'memo', ...req.body });
     res.status(201).json(card);
   } catch (err) {
     res.status(400).json({ error: String(err) });
@@ -406,8 +448,8 @@ app.get('/api/cards/:id', (req, res) => {
 });
 
 /** カード更新 */
-app.put('/api/cards/:id', (req, res) => {
-  const card = updateCard(req.params.id, req.body);
+app.put('/api/cards/:id', async (req, res) => {
+  const card = await updateCard(req.params.id, req.body);
   if (!card) { res.status(404).json({ error: 'Not found' }); return; }
   res.json(card);
 });
@@ -418,27 +460,25 @@ app.delete('/api/cards/:id', (req, res) => {
   res.json({ ok });
 });
 
-app.put('/api/cards/:id/archive', (req, res) => {
-  const card = updateCard(req.params.id, { archived: true, archivedAt: new Date().toISOString() });
+app.put('/api/cards/:id/archive', async (req, res) => {
+  const card = await updateCard(req.params.id, { archived: true, archivedAt: new Date().toISOString() });
   if (!card) { res.status(404).json({ error: 'Not found' }); return; }
   res.json(card);
 });
 
-app.put('/api/cards/:id/unarchive', (req, res) => {
-  const ok = restoreCard(req.params.id);
-  if (!ok) { res.status(404).json({ error: 'Not found' }); return; }
-  const card = getCard(req.params.id);
+app.put('/api/cards/:id/unarchive', async (req, res) => {
+  const card = await restoreCard(req.params.id);
+  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
   res.json(card);
 });
 
-app.post('/api/cards/:id/restore', (req, res) => {
-  const ok = restoreCard(req.params.id);
-  if (!ok) { res.status(404).json({ error: 'Not found' }); return; }
-  const card = getCard(req.params.id);
+app.post('/api/cards/:id/restore', async (req, res) => {
+  const card = await restoreCard(req.params.id);
+  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
   res.json(card);
 });
 
-app.post('/api/cards/archive-bulk', (req, res) => {
+app.post('/api/cards/archive-bulk', async (req, res) => {
   const { ids } = req.body as { ids?: string[] };
   if (!Array.isArray(ids) || !ids.length) {
     res.status(400).json({ error: 'ids is required' });
@@ -447,7 +487,7 @@ app.post('/api/cards/archive-bulk', (req, res) => {
   const now = new Date().toISOString();
   const updated: string[] = [];
   for (const id of ids) {
-    const card = updateCard(id, { archived: true, archivedAt: now });
+    const card = await updateCard(id, { archived: true, archivedAt: now });
     if (card) updated.push(id);
   }
   res.json({ ok: true, updated });
@@ -493,7 +533,7 @@ app.post('/api/cards/:id/summarize', async (req, res) => {
 
   try {
     const summary = await summarizeCard(card);
-    const updated = updateCard(card.id, { summary });
+    const updated = await updateCard(card.id, { summary });
     res.json({ summary, card: updated });
   } catch (err) {
     if (err instanceof AiSummaryError) {
@@ -534,7 +574,7 @@ app.post('/api/cards/summarize-bulk', async (req, res) => {
       if (!card || card.summary) continue;
       try {
         const summary = await summarizeCard(card);
-        updateCard(id, { summary });
+        await updateCard(id, { summary });
         await new Promise(r => setTimeout(r, 300)); // レート制限対応
       } catch (error) {
         console.error('[AI SUMMARY] bulk summarize failed:', { id, error });
@@ -620,15 +660,15 @@ app.delete('/api/kj/groups/:id', (req, res) => {
 });
 
 /** カードをグループへ割り当て */
-app.post('/api/kj/groups/:id/cards', (req, res) => {
+app.post('/api/kj/groups/:id/cards', async (req, res) => {
   const { cardId } = req.body as { cardId: string };
-  assignKJGroup(cardId, req.params.id);
+  await assignKJGroup(cardId, req.params.id);
   res.json({ ok: true });
 });
 
 /** カードをグループから外す */
-app.delete('/api/kj/groups/:id/cards/:cardId', (req, res) => {
-  assignKJGroup(req.params.cardId, null);
+app.delete('/api/kj/groups/:id/cards/:cardId', async (req, res) => {
+  await assignKJGroup(req.params.cardId, null);
   res.json({ ok: true });
 });
 
@@ -666,7 +706,7 @@ app.post('/api/cards/import-json', (req, res) => {
 });
 
 
-app.post('/api/cards/import-articles', (req, res) => {
+app.post('/api/cards/import-articles', async (req, res) => {
   const { articleIds }: { articleIds?: string[] } = req.body;
   const articles = cachedArticles?.articles ?? [];
   const targets  = articleIds
@@ -678,7 +718,7 @@ app.post('/api/cards/import-articles', (req, res) => {
 
   for (const a of targets) {
     if (existing.has(`card_from_${a.id}`)) continue;
-    const card = createCard({
+    const card = await createCard({
       id:    `card_from_${a.id}`,
       title: a.title,
       body:  a.body,
@@ -694,6 +734,12 @@ app.post('/api/cards/import-articles', (req, res) => {
 // ════════════════════════════════════════════════════
 //  起動
 // ════════════════════════════════════════════════════
+await backfillCardTokens();
+if (cachedArticles) {
+  cachedArticles = await ensureArticleTokens(cachedArticles);
+  saveArticles(cachedArticles);
+}
+
 const PORT = Number(process.env.PORT ?? 3000);
 app.listen(PORT, () => {
   console.log(`\n  ✓ カード管理サーバー  http://localhost:${PORT}`);

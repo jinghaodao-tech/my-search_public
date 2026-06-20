@@ -3,9 +3,7 @@ import Database from "better-sqlite3";
 
 fs.mkdirSync("data", { recursive: true });
 
-const DB_PATH = process.env.DB_PATH ?? "data/cards.db";
-console.log("DB_PATH =", DB_PATH);
-export const db = new Database(DB_PATH);
+export const db = new Database("data/cards.db");
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS cards (
@@ -21,6 +19,8 @@ CREATE TABLE IF NOT EXISTS cards (
   kj_group_id TEXT,
   archived INTEGER NOT NULL DEFAULT 0,
   archived_at TEXT,
+  tokens_json TEXT NOT NULL DEFAULT '[]',
+  doc_length INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -29,3 +29,14 @@ CREATE INDEX IF NOT EXISTS idx_cards_title ON cards(title);
 CREATE INDEX IF NOT EXISTS idx_cards_type ON cards(type);
 CREATE INDEX IF NOT EXISTS idx_cards_created_at ON cards(created_at);
 `);
+
+const cardColumns = db.prepare(`PRAGMA table_info(cards)`).all() as Array<{ name: string }>;
+const cardColumnNames = new Set(cardColumns.map((column) => column.name));
+
+if (!cardColumnNames.has("tokens_json")) {
+  db.exec(`ALTER TABLE cards ADD COLUMN tokens_json TEXT NOT NULL DEFAULT '[]'`);
+}
+
+if (!cardColumnNames.has("doc_length")) {
+  db.exec(`ALTER TABLE cards ADD COLUMN doc_length INTEGER NOT NULL DEFAULT 0`);
+}

@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS cards (
   kj_group_id TEXT,
   archived INTEGER NOT NULL DEFAULT 0,
   archived_at TEXT,
+  tokens_json TEXT NOT NULL DEFAULT '[]',
+  doc_length INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

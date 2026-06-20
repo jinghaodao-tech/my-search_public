@@ -31,6 +31,8 @@ export interface Card {
   archivedAt?: string;
   createdAt:   string;       // ISO文字列
   updatedAt:   string;
+  tokens?:     string[];
+  docLength?:  number;
 }
 
 export interface KJGroup {
@@ -49,29 +51,63 @@ function ensureDataDir() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-import { db } from "./db/database.ts";
+import { db } from "./db/database.js";
+import { tokenize } from "./bm25_engine.js";
 
 export function loadCards(): Card[] {
-  const rows = db.prepare(`
-    SELECT * FROM cards
-  `).all();
+  console.time("load cards");
+  try {
+    const rows = db.prepare(`
+      SELECT * FROM cards
+    `).all();
 
-  return rows.map((row: any) => ({
-    id: row.id,
-    title: row.title,
-    body: row.body ?? "",
-    summary: row.summary ?? undefined,
-    url: row.url ?? undefined,
-    type: row.type ?? "memo",
-    color: row.color ?? undefined,
-    tags: JSON.parse(row.tags_json ?? "[]"),
-    links: JSON.parse(row.links_json ?? "[]"),
-    kjGroupId: row.kj_group_id ?? undefined,
-    archived: Boolean(row.archived),
-    archivedAt: row.archived_at ?? undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
+    return rows.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      body: row.body ?? "",
+      summary: row.summary ?? undefined,
+      url: row.url ?? undefined,
+      type: row.type ?? "memo",
+      color: row.color ?? undefined,
+      tags: JSON.parse(row.tags_json ?? "[]"),
+      links: JSON.parse(row.links_json ?? "[]"),
+      kjGroupId: row.kj_group_id ?? undefined,
+      archived: Boolean(row.archived),
+      archivedAt: row.archived_at ?? undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      tokens: JSON.parse(row.tokens_json ?? "[]"),
+      docLength: row.doc_length ?? 0,
+    }));
+  } finally {
+    console.timeEnd("load cards");
+  }
+}
+
+export function getCards(filters: {
+  archived?: boolean;
+  tag?: string;
+  type?: string;
+  q?: string;
+  kjGroupId?: string;
+} = {}): Card[] {
+  let cards = loadCards();
+  if (typeof filters.archived === 'boolean') {
+    cards = cards.filter(card => Boolean(card.archived) === filters.archived);
+  }
+  if (filters.tag) cards = cards.filter(card => card.tags.includes(filters.tag!));
+  if (filters.type) cards = cards.filter(card => card.type === filters.type);
+  if (filters.kjGroupId) cards = cards.filter(card => card.kjGroupId === filters.kjGroupId);
+  if (filters.q) {
+    const keyword = filters.q.toLowerCase();
+    cards = cards.filter(card =>
+      card.title.toLowerCase().includes(keyword) ||
+      card.body.toLowerCase().includes(keyword) ||
+      (card.summary ?? '').toLowerCase().includes(keyword) ||
+      card.tags.some(tag => tag.toLowerCase().includes(keyword))
+    );
+  }
+  return cards.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export function saveCards(cards: Card[]): void {
@@ -93,6 +129,8 @@ export function saveCards(cards: Card[]): void {
       kj_group_id,
       archived,
       archived_at,
+      tokens_json,
+      doc_length,
       created_at,
       updated_at
     )
@@ -109,6 +147,8 @@ export function saveCards(cards: Card[]): void {
       @kj_group_id,
       @archived,
       @archived_at,
+      @tokens_json,
+      @doc_length,
       @created_at,
       @updated_at
     )
@@ -131,6 +171,8 @@ export function saveCards(cards: Card[]): void {
         kj_group_id: card.kjGroupId ?? null,
         archived: card.archived ? 1 : 0,
         archived_at: card.archivedAt ?? null,
+        tokens_json: JSON.stringify(card.tokens ?? []),
+        doc_length: card.docLength ?? card.tokens?.length ?? 0,
         created_at: card.createdAt,
         updated_at: card.updatedAt,
       });
@@ -163,9 +205,9 @@ function newId(): string {
   return `card_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export function createCard(
+export async function createCard(
   fields: Pick<Card, 'title' | 'body'> & Partial<Omit<Card, 'id' | 'createdAt' | 'updatedAt'>>
-): Card {
+): Promise<Card> {
   const cards = loadCards();
   const now   = new Date().toISOString();
   const card: Card = {
@@ -184,16 +226,22 @@ export function createCard(
     createdAt: now,
     updatedAt: now,
   };
+  card.tokens = await tokenize(`${card.title} ${card.body} ${(card.tags ?? []).join(" ")}`);
+  card.docLength = card.tokens.length;
   cards.push(card);
   saveCards(cards);
   return card;
 }
 
-export function updateCard(id: string, updates: Partial<Card>): Card | null {
+export async function updateCard(id: string, updates: Partial<Card>): Promise<Card | null> {
   const cards = loadCards();
   const idx   = cards.findIndex(c => c.id === id);
   if (idx === -1) return null;
   cards[idx] = { ...cards[idx], ...updates, id, updatedAt: new Date().toISOString() };
+  cards[idx].tokens = await tokenize(
+    `${cards[idx].title} ${cards[idx].body} ${(cards[idx].tags ?? []).join(" ")}`
+  );
+  cards[idx].docLength = cards[idx].tokens.length;
   saveCards(cards);
   return cards[idx];
 }
@@ -210,85 +258,32 @@ export function deleteCard(id: string): boolean {
   return true;
 }
 
-export function getCard(id: string): Card | null {
-  return loadCards().find(c => c.id === id) ?? null;
-}
-
-export function getCards(filters?: {
-  archived?: boolean;
-  tag?: string;
-  type?: string;
-  q?: string;
-  kjGroupId?: string;
-}): Card[] {
-  let cards = loadCards();
-
-  if (filters?.archived !== undefined) {
-    cards = cards.filter(card => Boolean(card.archived) === filters.archived);
-  }
-  if (filters?.tag) {
-    cards = cards.filter(card => card.tags.includes(filters.tag!));
-  }
-  if (filters?.type) {
-    cards = cards.filter(card => card.type === filters.type);
-  }
-  if (filters?.kjGroupId) {
-    cards = cards.filter(card => (card.kjGroupId ?? '') === filters.kjGroupId);
-  }
-  if (filters?.q) {
-    const q = filters.q.toLowerCase();
-    cards = cards.filter(card =>
-      card.title.toLowerCase().includes(q) ||
-      card.body.toLowerCase().includes(q) ||
-      (card.summary ?? '').toLowerCase().includes(q) ||
-      (card.url ?? '').toLowerCase().includes(q) ||
-      card.tags.some(tag => tag.toLowerCase().includes(q))
-    );
-  }
-
-  return cards;
-}
-
-export function restoreCard(id: string): boolean {
-  const restored = updateCard(id, {
-    archived: false,
-    archivedAt: undefined,
-  });
-  return Boolean(restored);
-}
-
 export function bulkArchiveCards(ids: string[]): string[] {
   const idSet = new Set(ids);
-  const cards = loadCards();
   const now = new Date().toISOString();
   const updated: string[] = [];
-
-  for (const card of cards) {
-    if (!idSet.has(card.id)) continue;
-    card.archived = true;
-    card.archivedAt = now;
-    card.updatedAt = now;
+  const cards = loadCards().map(card => {
+    if (!idSet.has(card.id)) return card;
     updated.push(card.id);
-  }
-
+    return { ...card, archived: true, archivedAt: now, updatedAt: now };
+  });
   if (updated.length) saveCards(cards);
   return updated;
 }
 
+export async function restoreCard(id: string): Promise<Card | null> {
+  return updateCard(id, { archived: false, archivedAt: undefined });
+}
+
 export function bulkRestoreCards(ids: string[]): string[] {
   const idSet = new Set(ids);
-  const cards = loadCards();
   const now = new Date().toISOString();
   const updated: string[] = [];
-
-  for (const card of cards) {
-    if (!idSet.has(card.id)) continue;
-    card.archived = false;
-    card.archivedAt = undefined;
-    card.updatedAt = now;
+  const cards = loadCards().map(card => {
+    if (!idSet.has(card.id)) return card;
     updated.push(card.id);
-  }
-
+    return { ...card, archived: false, archivedAt: undefined, updatedAt: now };
+  });
   if (updated.length) saveCards(cards);
   return updated;
 }
@@ -296,18 +291,21 @@ export function bulkRestoreCards(ids: string[]): string[] {
 export function bulkDeleteCards(ids: string[]): string[] {
   const idSet = new Set(ids);
   const cards = loadCards();
-  const now = new Date().toISOString();
+  const deleted = cards.filter(card => idSet.has(card.id)).map(card => card.id);
+  if (!deleted.length) return [];
+
   const remaining = cards
     .filter(card => !idSet.has(card.id))
-    .map(card => {
-      const nextLinks = card.links.filter(linkId => !idSet.has(linkId));
-      if (nextLinks.length === card.links.length) return card;
-      return { ...card, links: nextLinks, updatedAt: now };
-    });
-
-  const deleted = cards.filter(card => idSet.has(card.id)).map(card => card.id);
-  if (deleted.length) saveCards(remaining);
+    .map(card => ({
+      ...card,
+      links: card.links.filter(linkId => !idSet.has(linkId)),
+    }));
+  saveCards(remaining);
   return deleted;
+}
+
+export function getCard(id: string): Card | null {
+  return loadCards().find(c => c.id === id) ?? null;
 }
 
 // ════════════════════════════════════════════════════
@@ -398,8 +396,23 @@ export function deleteKJGroup(id: string): void {
 }
 
 /** カードをKJグループへ割り当て（nullで解除） */
-export function assignKJGroup(cardId: string, groupId: string | null): void {
-  updateCard(cardId, { kjGroupId: groupId ?? undefined });
+export async function assignKJGroup(cardId: string, groupId: string | null): Promise<void> {
+  await updateCard(cardId, { kjGroupId: groupId ?? undefined });
+}
+
+export async function backfillCardTokens(): Promise<number> {
+  const cards = loadCards();
+  let updated = 0;
+
+  for (const card of cards) {
+    if ((card.tokens?.length ?? 0) > 0 && (card.docLength ?? 0) > 0) continue;
+    card.tokens = await tokenize(`${card.title} ${card.body} ${(card.tags ?? []).join(" ")}`);
+    card.docLength = card.tokens.length;
+    updated += 1;
+  }
+
+  if (updated > 0) saveCards(cards);
+  return updated;
 }
 
 // ════════════════════════════════════════════════════
