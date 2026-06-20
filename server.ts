@@ -1,9 +1,10 @@
-/**
+﻿/**
  * server.ts — BM25 Web サーバー + カード管理統合版
  * 起動: npx tsx server.ts
  * GUI:  http://localhost:3000
  */
-import 'dotenv/config';
+import fs                from 'fs';
+import dotenv            from 'dotenv';
 import express           from 'express';
 import cors              from 'cors';
 import path              from 'path';
@@ -30,6 +31,267 @@ import type {
 } from './cards_engine.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+for (const envPath of [
+  path.join(__dirname, '.env'),
+  path.join(path.dirname(__dirname), 'my-search-app', '.env'),
+]) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath, override: false });
+  }
+}
+
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const MODEL =
+  process.env.ANTHROPIC_MODEL ??
+  'claude-haiku-4-5-20251001';
+const AI_PROVIDER = (process.env.AI_PROVIDER ?? 'anthropic').trim().toLowerCase();
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
+const MOCK_AI_SUMMARY = process.env.MOCK_AI_SUMMARY?.trim().toLowerCase() === 'true';
+const AI_DEBUG = process.env.NODE_ENV !== 'production';
+
+type AiSummaryErrorCode =
+  | 'missing_api_key'
+  | 'invalid_api_key'
+  | 'forbidden'
+  | 'model_not_found'
+  | 'rate_limited'
+  | 'server_error'
+  | 'network_error'
+  | 'timeout'
+  | 'empty_summary'
+  | 'api_error';
+
+class AiSummaryError extends Error {
+  status: number;
+  code: AiSummaryErrorCode;
+  details?: string;
+
+  constructor(status: number, code: AiSummaryErrorCode, message: string, details?: string) {
+    super(message);
+    this.name = 'AiSummaryError';
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+}
+
+function getAnthropicApiKey(): string | null {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  return apiKey ? apiKey : null;
+}
+
+function getGeminiApiKey(): string | null {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  return apiKey ? apiKey : null;
+}
+
+function logMissingApiKey() {
+  console.error('[AI SUMMARY]');
+  console.error('ANTHROPIC_API_KEY is not configured');
+}
+
+function buildMissingApiKeyResponse() {
+  return {
+    error: '\u0041\u004e\u0054\u0048\u0052\u004f\u0050\u0049\u0043_\u0041\u0050\u0049_\u004b\u0045\u0059 \u304c\u8a2d\u5b9a\u3055\u308c\u3066\u3044\u307e\u305b\u3093',
+    code: 'missing_api_key',
+  };
+}
+
+function mapAnthropicStatus(status: number, body: string): AiSummaryError {
+  switch (status) {
+    case 401:
+      return new AiSummaryError(status, 'invalid_api_key', '\u0041\u0050\u0049\u30ad\u30fc\u304c\u7121\u52b9\u3067\u3059', body);
+    case 403:
+      return new AiSummaryError(status, 'forbidden', '\u0041\u0050\u0049\u8a8d\u8a3c\u30a8\u30e9\u30fc', body);
+    case 404:
+      return new AiSummaryError(status, 'model_not_found', '\u30e2\u30c7\u30eb\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093', body);
+    case 429:
+      return new AiSummaryError(status, 'rate_limited', '\u30ec\u30fc\u30c8\u5236\u9650\u306b\u9054\u3057\u307e\u3057\u305f', body);
+    case 500:
+      return new AiSummaryError(status, 'server_error', '\u30b5\u30fc\u30d0\u30fc\u30a8\u30e9\u30fc', body);
+    default:
+      if (status >= 500) {
+        return new AiSummaryError(status, 'server_error', '\u30b5\u30fc\u30d0\u30fc\u30a8\u30e9\u30fc', body);
+      }
+      return new AiSummaryError(status, 'api_error', '\u0041\u006e\u0074\u0068\u0072\u006f\u0070\u0069\u0063 API\u3067\u30a8\u30e9\u30fc\u304c\u767a\u751f\u3057\u307e\u3057\u305f', body);
+  }
+}
+
+function buildSummaryPayload(card: Card) {
+  return {
+    model: MODEL,
+    max_tokens: 300,
+    messages: [{
+      role: 'user' as const,
+      content:
+        `以下の記事を日本語で3行以内に要約してください。数字・固有名詞は省略しないでください。\n\n` +
+        `タイトル: ${card.title}\n本文: ${card.body}`,
+    }],
+  };
+}
+
+async function summarizeWithAnthropic(card: Card): Promise<string> {
+  const apiKey = getAnthropicApiKey();
+  if (!apiKey) {
+    logMissingApiKey();
+    throw new AiSummaryError(500, 'missing_api_key', '\u0041\u004e\u0054\u0048\u0052\u004f\u0050\u0049\u0043_\u0041\u0050\u0049_\u004b\u0045\u0059 \u304c\u8a2d\u5b9a\u3055\u308c\u3066\u3044\u307e\u305b\u3093');
+  }
+
+  const payload = buildSummaryPayload(card);
+  if (AI_DEBUG) {
+    console.log('[AI SUMMARY] request payload:', payload);
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+  try {
+    const response = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    const responseBody = await response.text();
+    if (AI_DEBUG) {
+      console.log('[AI SUMMARY] response body:', responseBody);
+    }
+
+    if (!response.ok) {
+      console.error('[AI SUMMARY]', {
+        status: response.status,
+        statusText: response.statusText,
+        body: responseBody,
+      });
+      throw mapAnthropicStatus(response.status, responseBody);
+    }
+
+    let data: { content?: Array<{ text?: string }> };
+    try {
+      data = JSON.parse(responseBody);
+    } catch {
+      throw new AiSummaryError(500, 'api_error', '\u0041\u006e\u0074\u0068\u0072\u006f\u0070\u0069\u0063 API\u306e\u30ec\u30b9\u30dd\u30f3\u30b9\u3092\u89e3\u6790\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f', responseBody);
+    }
+
+    const summary = data.content?.[0]?.text?.trim() ?? '';
+    if (!summary) {
+      throw new AiSummaryError(500, 'empty_summary', '\u8981\u7d04\u7d50\u679c\u304c\u7a7a\u3067\u3057\u305f', responseBody);
+    }
+
+    return summary;
+  } catch (error) {
+    if (error instanceof AiSummaryError) {
+      throw error;
+    }
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new AiSummaryError(500, 'timeout', '\u30cd\u30c3\u30c8\u30ef\u30fc\u30af\u30a8\u30e9\u30fc');
+    }
+    throw new AiSummaryError(500, 'network_error', '\u30cd\u30c3\u30c8\u30ef\u30fc\u30af\u30a8\u30e9\u30fc', String(error));
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function summarizeWithGemini(card: Card): Promise<string> {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
+    console.error('[AI SUMMARY]');
+    console.error('GEMINI_API_KEY is not configured');
+    throw new AiSummaryError(500, 'missing_api_key', 'GEMINI_API_KEY is not configured');
+  }
+
+  const payload = {
+    contents: [{
+      parts: [{
+        text: buildSummaryPayload(card).messages[0].content,
+      }],
+    }],
+  };
+  if (AI_DEBUG) {
+    console.log('[AI SUMMARY] Gemini request payload:', payload);
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}` +
+    `:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    const responseBody = await response.text();
+
+    if (AI_DEBUG) {
+      console.log('[AI SUMMARY] Gemini response body:', responseBody);
+    }
+    if (!response.ok) {
+      console.error('[AI SUMMARY] Gemini Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: responseBody,
+      });
+      throw mapAnthropicStatus(response.status, responseBody);
+    }
+
+    let data: {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    try {
+      data = JSON.parse(responseBody);
+    } catch {
+      throw new AiSummaryError(500, 'api_error', 'Invalid Gemini API response', responseBody);
+    }
+
+    const summary = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+    if (!summary) {
+      throw new AiSummaryError(500, 'empty_summary', 'Gemini returned an empty summary', responseBody);
+    }
+    return summary;
+  } catch (error) {
+    if (error instanceof AiSummaryError) throw error;
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new AiSummaryError(500, 'timeout', 'Gemini API request timed out');
+    }
+    throw new AiSummaryError(500, 'network_error', 'Gemini API network error', String(error));
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function summarizeCard(card: Card): Promise<string> {
+  if (MOCK_AI_SUMMARY) {
+    return card.body.trim().slice(0, 120) || card.title.trim();
+  }
+  if (AI_PROVIDER === 'gemini') return summarizeWithGemini(card);
+  if (AI_PROVIDER === 'anthropic') return summarizeWithAnthropic(card);
+  throw new AiSummaryError(500, 'api_error', `Unsupported AI_PROVIDER: ${AI_PROVIDER}`);
+}
+
+function hasConfiguredProviderKey(): boolean {
+  if (MOCK_AI_SUMMARY) return true;
+  if (AI_PROVIDER === 'gemini') return !!getGeminiApiKey();
+  if (AI_PROVIDER === 'anthropic') return !!getAnthropicApiKey();
+  return false;
+}
+
+if (!MOCK_AI_SUMMARY && AI_PROVIDER === 'gemini' && !getGeminiApiKey()) {
+  console.error('[AI SUMMARY]');
+  console.error('GEMINI_API_KEY is not configured');
+} else if (!MOCK_AI_SUMMARY && AI_PROVIDER === 'anthropic' && !getAnthropicApiKey()) {
+  logMissingApiKey();
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -230,36 +492,39 @@ app.post('/api/cards/:id/summarize', async (req, res) => {
   if (!card) { res.status(404).json({ error: 'Not found' }); return; }
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        messages: [{
-          role: 'user',
-          content:
-            `以下の記事を日本語で3行以内に要約してください。数字・固有名詞は省略しないでください。\n\n` +
-            `タイトル: ${card.title}\n本文: ${card.body}`,
-        }],
-      }),
-    });
-    const data = await response.json() as { content: { text: string }[] };
-    const summary = data.content?.[0]?.text ?? '';
+    const summary = await summarizeCard(card);
     const updated = updateCard(card.id, { summary });
     res.json({ summary, card: updated });
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    if (err instanceof AiSummaryError) {
+      res.status(err.status).json({
+        error: err.message,
+        code: err.code,
+        details: AI_DEBUG ? err.details : undefined,
+      });
+      return;
+    }
+    res.status(500).json({ error: '\u0041\u006e\u0074\u0068\u0072\u006f\u0070\u0069\u0063 API\u3067\u30a8\u30e9\u30fc\u304c\u767a\u751f\u3057\u307e\u3057\u305f', code: 'api_error' });
   }
 });
 
 /** 複数カードを一括要約（バックグラウンド） */
 app.post('/api/cards/summarize-bulk', async (req, res) => {
   const { ids }: { ids: string[] } = req.body;
+  if (!Array.isArray(ids) || !ids.length) {
+    res.status(400).json({ error: 'ids is required', code: 'invalid_request' });
+    return;
+  }
+  if (!hasConfiguredProviderKey()) {
+    const keyName = AI_PROVIDER === 'gemini' ? 'GEMINI_API_KEY' : 'ANTHROPIC_API_KEY';
+    console.error('[AI SUMMARY]');
+    console.error(`${keyName} is not configured`);
+    res.status(500).json({
+      error: `${keyName} is not configured`,
+      code: 'missing_api_key',
+    });
+    return;
+  }
   res.json({ ok: true, message: `${ids.length}件の要約を開始しました` });
 
   // バックグラウンド処理
@@ -268,27 +533,12 @@ app.post('/api/cards/summarize-bulk', async (req, res) => {
       const card = getCard(id);
       if (!card || card.summary) continue;
       try {
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 300,
-            messages: [{
-              role: 'user',
-              content: `以下の記事を日本語で3行以内に要約してください。\n\nタイトル: ${card.title}\n本文: ${card.body}`,
-            }],
-          }),
-        });
-        const data = await resp.json() as { content: { text: string }[] };
-        const summary = data.content?.[0]?.text ?? '';
+        const summary = await summarizeCard(card);
         updateCard(id, { summary });
         await new Promise(r => setTimeout(r, 300)); // レート制限対応
-      } catch { /* skip */ }
+      } catch (error) {
+        console.error('[AI SUMMARY] bulk summarize failed:', { id, error });
+      }
     }
   })();
 });
