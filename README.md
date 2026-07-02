@@ -1,243 +1,203 @@
+# My Search App
 
+[![CI](https://github.com/jingh/my-search-app_public/actions/workflows/ci.yml/badge.svg)](https://github.com/jingh/my-search-app_public/actions/workflows/ci.yml)
 
-https://github.com/user-attachments/assets/2f19da62-a574-4ee0-8e36-c4c7f11b961e
+My Search App is a personal search and knowledge-management application. It combines card-style notes, BM25 search, tags, links between cards, a KJ-style grouping board, CSV/JSON import, and AI summaries.
 
+For portfolio purposes, the project focuses not only on application features but also on backend engineering practices. The app was migrated from JSON file storage to SQLite, search-related token data is persisted to improve search performance, and the main API paths now include request validation, security headers, CORS configuration, rate limiting, API tests, and CI checks.
 
+## Features
 
+- Create, edit, delete, archive, and restore card-style notes
+- Search cards with BM25 scoring
+- Organize cards with tags
+- Connect related cards with bidirectional links and backlinks
+- Group cards on a KJ-style board
+- Import cards from CSV and JSON
+- Generate AI summaries with Anthropic or Gemini
+- Run locally or with Docker Compose
+- Run type checks, API tests, and dependency audit in GitHub Actions
 
+## Tech Stack
 
+| Area | Technologies |
+|---|---|
+| Backend | Node.js, TypeScript, Express |
+| Database | SQLite, better-sqlite3 |
+| Search | BM25, persisted token data |
+| Validation / Security | Zod, Helmet, CORS, express-rate-limit |
+| Testing | Vitest, Supertest |
+| DevOps | Docker, Docker Compose, GitHub Actions |
+| Frontend | HTML, CSS, JavaScript |
+| AI | Anthropic API, Gemini API |
 
+## Project Background
 
-<img width="956" height="486" alt="スクリーンショット 2026-06-19 180008" src="https://github.com/user-attachments/assets/04ac2908-02ff-4252-a1bb-090625f31e98" />
-<img width="956" height="491" alt="スクリーンショット 2026-06-19 175828" src="https://github.com/user-attachments/assets/94ef29a1-2dd1-4e26-b48a-77a75c0a9e57" />
+The first version stored card data in a JSON file. That approach was simple, but it made full-file reads and bulk updates more expensive as the data grew. The storage layer was migrated to SQLite while keeping the existing card CRUD behavior.
 
-# カード索引システム — README
+Search is implemented with BM25. Instead of tokenizing card content on every search request, token data and document length are generated when cards are saved and then persisted in SQLite. This reduces repeated preprocessing work during search.
 
-# カード索引システム
-
-情報収集した記事・メモ・CSVデータをカード化し、検索・AI要約・タグ管理・カード間リンク・KJ法ボードで整理できる個人用ナレッジ管理ツール
-
-## 作った理由
-
-調べた情報やメモが増えると、後から探せなくなったり、関連する情報を結び付けにくくなる問題があった  
-そこで、検索・要約・分類・関連付けを一つの画面で扱えるツールとして開発
-
-## 技術的な課題
-
-### JSON保存の限界
-
-当初は cards.json に全データを保存していたが、
-
-- データ量増加時の読み込みコスト
-- 将来的な検索機能拡張
-- 一括更新処理
-
-に課題があった。
-
-そこで SQLite へ移行し、
-既存の CRUD API を維持したまま
-永続化層のみ差し替えた。
-
-検索時に毎回トークン化していたため約10秒かかっていた。
-
-tokens_jsonとdoc_lengthをSQLiteへ保存し、
-保存時に前処理を行う方式へ変更。
-
-検索時間を約10秒から1秒未満へ改善。
-
-## 最近の改善(20260620)
-- SQLite移行
-- Docker対応
-- BM25高速化
-  9.7秒 → 0.3〜0.8秒
-- GitHub Actions
-
-## 主な機能
-
-- カード作成・編集・削除
-- CSV / JSON 取り込み
-- BM25によるキーワード検索
-- Anthropic APIによるAI要約
-- タグ管理
-- Zettelkasten形式の双方向リンク
-- グルーピングボードによる情報整理
-
-## アーキテクチャ
-Frontend
-  HTML/CSS/JavaScript
-Backend
-  Node.js + Express
-Storage
-  SQLite
-Search
-  BM25
-AI
-  Anthropic API
-
-## 工夫した点
-
-- BM25を用いてタイトル・本文・タグを対象に関連度検索を実装
-- JSON保存からSQLiteへ移行し、将来的なデータ増加に対応
-- Zettelkastenの双方向リンクを自動管理
-- AI要約結果を永続化し再生成コストを削減
-
-## 今後の改善予定
-
-- デプロイ
-- 自動バックアップ
-- 全文検索高速化
-- ユーザー認証
-- ベクトル検索
-  
-**セットアップ(初回のみ)**
-<details>
-1. Node.js 18以上 をインストール（https://nodejs.org/）
-2. `.env` ファイルを編集して APIキーを設定：
-   ```
-   ANTHROPIC_API_KEY
-   ```
-3. `start.bat` をダブルクリック → ブラウザが自動で開く
-</details>
+The API has also been improved as a backend portfolio project. Card creation/update, bulk operations, imports, links, AI summary, and KJ group APIs now validate request bodies before application logic is executed.
 
 ## Security and API Quality
 
-This app is designed as a backend portfolio project, so the API layer includes basic production-oriented safeguards rather than relying only on happy-path UI input.
+This project adds request validation, rate limiting, security headers, and CI checks around the main API paths. These measures are not meant to claim complete security coverage for every possible scenario. The goal is to show practical backend quality improvements for the most important and higher-risk endpoints.
 
-- **Input validation with Zod**: Card creation/update, bulk operations, imports, links, AI summary, and KJ group APIs validate request bodies before touching application logic. This prevents empty titles, oversized bodies/import payloads, malformed URLs, invalid tag arrays, unexpected fields, and invalid ID lists from entering the system.
-- **Consistent validation errors**: Invalid requests return `400` with `{ "error": "Invalid request", "details": ... }`, making API failures easier to handle from the frontend and easier to test.
-- **Security headers with Helmet**: Express uses Helmet to add common HTTP security headers. Content Security Policy is disabled for compatibility with the existing static UI, while the rest of Helmet's default protections remain enabled.
-- **Environment-controlled CORS**: CORS is restricted by `CORS_ORIGIN`, defaulting to `http://localhost:3000` for local development. This avoids shipping a permanently open `cors()` configuration.
-- **Rate limits for costly endpoints**: AI summary, bulk AI summary, CSV/JSON import, and collect APIs are rate-limited to reduce accidental load, abuse risk, and external API cost exposure. Limits can be tuned through environment variables such as `AI_RATE_LIMIT` and `IMPORT_RATE_LIMIT`.
-- **Automated API quality checks**: GitHub Actions runs both `npm run typecheck` and `npm test`. Vitest + Supertest cover successful card creation, validation failures, missing resources, invalid imports, self-link rejection, and limiter behavior.
-- **Docker-friendly SQLite path**: The database path is read from `DB_PATH`, defaulting to `data/cards.db`. Docker Compose sets `DB_PATH=/app/data/cards.db` and mounts `./data:/app/data`, so local and container environments can use different persistent storage paths without code changes.
+- **Zod validation**: Card creation/update, bulk operations, imports, links, AI summary, and KJ group APIs validate request bodies with Zod before executing application logic. Invalid types, empty strings, oversized input, malformed URLs, unexpected fields, and invalid ID lists are rejected at the API layer.
+- **Helmet**: Helmet is used to set common HTTP security headers.
+- **CORS**: CORS is not hard-coded as fully open. Allowed origins can be configured with `CORS_ORIGIN`.
+- **Rate limiting**: AI summary and import-related APIs are protected with rate limits to reduce abuse, excessive load, and external API cost risks.
+- **Error handling**: Validation errors return consistent `400` responses in the form `{ "error": "Invalid request", "details": ... }`.
+- **Dependency audit**: CI runs `npm audit --audit-level=high` to detect known high-severity vulnerabilities in npm dependencies.
+- **Testing**: API tests cover both normal and invalid request cases.
+- **DB path**: `DB_PATH` allows local and Docker environments to use different database paths.
 
-## 使い方
-<details>
-### 基本操作
-| 操作 | 方法 |
-|------|------|
-| メモ新規作成 | 右上「＋ メモ作成」ボタン、または Ctrl+N |
-| カード詳細表示 | カードをクリック → 右パネルに表示 |
-| カード編集 | カードの ✏️ ボタン、または詳細パネルの ✏️ |
-| カード削除 | 編集モーダルの「削除」ボタン |
-| モーダルを閉じる | Esc キー |
+## CI / Testing
 
----
+GitHub Actions runs the following commands on push and pull request to `main`.
 
-### CSV / JSON からのカード作成
-
-1. 右上「**📂 データ取り込み**」をクリック
-2. モーダル上部タブで **CSV** または **JSON** を選択
-3. ファイルをドラッグ＆ドロップ（またはクリックして選択）
-4. 「取り込む」ボタン → カードが自動生成される
-
-**CSVのフォーマット**（1行目はヘッダー必須、UTF-8推奨）：
-```csv
-title,body,url,tags
-記事タイトル,本文テキスト,https://example.com,AI 機械学習
+```bash
+npm ci
+npm run typecheck
+npm test
+npm audit --audit-level=high
 ```
 
-| 列名 | 別名も対応 | 必須 |
-|------|----------|------|
-| title | タイトル / name / headline | ✓ |
-| body | content / description / text / 本文 | |
-| url | link / リンク | |
-| tags | tag / タグ / keywords（カンマ or スペース区切り） | |
+The API test suite currently covers:
 
-**JSONの対応フォーマット**（自動判定）：
+- successful card creation
+- validation errors for empty title and oversized body
+- `404` for missing card IDs
+- invalid bulk operation payloads
+- rejecting self-links
+- invalid CSV / JSON import requests
+- rate limiting on import-related APIs
 
-```json
-// ① 配列形式
-[{"title": "記事名", "body": "本文", "url": "https://...", "tags": ["AI"]}]
+## Environment Variables
 
-// ② ラッパー形式
-{"cards": [...]}  {"articles": [...]}  {"items": [...]}
+| Variable | Required | Default | Description |
+|---|---:|---|---|
+| `PORT` | No | `3000` | Express server port |
+| `DB_PATH` | No | `data/cards.db` | SQLite database path |
+| `CORS_ORIGIN` | No | `http://localhost:3000` | Allowed CORS origin |
+| `AI_PROVIDER` | No | `anthropic` | AI summary provider, such as `anthropic` or `gemini` |
+| `ANTHROPIC_API_KEY` | Only for Anthropic summaries | - | Anthropic API key |
+| `ANTHROPIC_MODEL` | No | app default | Anthropic model name |
+| `GEMINI_API_KEY` | Only for Gemini summaries | - | Gemini API key |
+| `GEMINI_MODEL` | No | app default | Gemini model name |
+| `MOCK_AI_SUMMARY` | No | `false` | Use mock summary output for tests or local verification |
+| `AI_RATE_LIMIT` | No | `10` | Requests per minute for AI summary endpoints |
+| `IMPORT_RATE_LIMIT` | No | `10` | Requests per minute for CSV/JSON import endpoints |
+| `API_RATE_LIMIT` | No | `60` | Requests per minute for collect-related endpoints |
 
-// ③ このシステムの data/cards.json をそのまま再取り込み
-// ④ collector.ts の articles.json 形式（sourceAuthority フィールドで自動識別）
-// ⑤ 単一オブジェクト {"title": "...", "body": "..."}
+Example `.env`:
+
+```env
+PORT=3000
+DB_PATH=data/cards.db
+CORS_ORIGIN=http://localhost:3000
+AI_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your_api_key
 ```
 
-> タグは配列 `["AI","ML"]` でも文字列 `"AI,ML"` でも受け付けます。
-> フィールド名の大文字小文字・日英は自動判定します。
+## Local Setup
 
----
+Requirements:
 
-### AI要約
+- Node.js 24 or compatible version
+- npm
 
-- **1件ずつ**: カードの ⚡ ボタン、または詳細パネルの「AI要約を生成」
-- **一括**: 右上「⚡ 一括要約」→ 未要約カードを全てバックグラウンド処理
-- 要約結果はカード本文の上にハイライト表示・永続保存される
+Install dependencies:
 
----
-
-### タグ管理
-
-- 左サイドバーのタグをクリック → そのタグのカードだけ表示
-- 詳細パネルからタグの追加・削除が可能
-- 複数タグを組み合わせたい場合は検索欄にキーワードを入力
-
----
-
-### Zettelkasten（カード間リンク）
-
-1. カードをクリックして詳細パネルを開く
-2. 「Zettelkastenリンク」欄の検索ボックスにリンク先のカード名を入力
-3. 候補が表示されたらクリック → **双方向リンク**が自動で貼られる
-4. 「Zettelkasten」タブ → **ネットワークグラフ**でリンクの全体像を確認
-   - ノードをドラッグして位置調整可
-   - ノードをクリック → カード詳細を表示
-
----
-
-### KJ法ボード
-
-1. 上部「**KJ法ボード**」タブをクリック
-2. 「**＋ グループ追加**」でグループ（テーマ）を作成
-3. 右端「未グループ」列のカードを**ドラッグ**してグループ列に移動
-4. グループ名の ✏️ で名前変更、🗑 で削除（カードは未グループに戻る）
-5. カードをクリック → カード一覧ビューに切り替わり詳細を確認できる
-
----
-
-### 検索・フィルター
-
-- **キーワード検索**: 左上の検索ボックス（タイトル・本文・要約・タグを対象）
-- **種別フィルター**: サイドバーの「メモ / CSV / 記事」ボタン
-- **タグフィルター**: タグをクリック（再クリックで解除）
-</details>
-
-## API エンドポイント一覧（上級者向け）
-<details>
+```bash
+npm ci
 ```
-GET    /api/cards               カード一覧（?tag=&type=&q= でフィルタ）
-POST   /api/cards               カード作成
-GET    /api/cards/:id           カード取得（バックリンク付き）
-PUT    /api/cards/:id           カード更新
-DELETE /api/cards/:id           カード削除
-POST   /api/cards/:id/summarize AI要約
-POST   /api/cards/import-csv    CSV取り込み
 
-POST   /api/cards/:id/links            Zettelkastenリンク追加
-DELETE /api/cards/:id/links/:targetId  リンク削除
-GET    /api/zettelkasten/graph         グラフデータ取得
+Run checks:
 
-GET    /api/kj/groups                KJグループ一覧（カード含む）
-POST   /api/kj/groups                グループ作成
-PUT    /api/kj/groups/:id            グループ更新
-DELETE /api/kj/groups/:id            グループ削除
-POST   /api/kj/groups/:id/cards      カードをグループへ割り当て
+```bash
+npm run typecheck
+npm test
+```
 
-GET    /api/tags                タグ一覧（件数付き）
-</details>
+Start the app:
 
----
+```bash
+npm start
+```
 
-## トラブルシューティング
+Open the app:
 
-| 症状 | 対処 |
-|------|------|
-| AI要約が動かない | `.env` の `ANTHROPIC_API_KEY` を確認 |
-| ブラウザが開かない | 手動で `http://localhost:3000` を開く |
-| 文字化け（CSV） | CSVファイルをUTF-8で保存し直す |
-| データが消えた | `data/cards.json` を確認（自動バックアップ非対応） |
+```text
+http://localhost:3000
+```
+
+For local development with file watching:
+
+```bash
+npm run dev
+```
+
+## Docker Setup
+
+Docker Compose sets `DB_PATH=/app/data/cards.db` and mounts `./data` into the container, so the SQLite database can persist outside the container.
+
+```bash
+docker compose up --build
+```
+
+Open the app:
+
+```text
+http://localhost:3000
+```
+
+## API Overview
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/cards` | List and filter cards |
+| `POST` | `/api/cards` | Create a card |
+| `GET` | `/api/cards/:id` | Get a card with backlinks |
+| `PUT` | `/api/cards/:id` | Update a card |
+| `DELETE` | `/api/cards/:id` | Delete a card |
+| `POST` | `/api/cards/bulk-archive` | Archive multiple cards |
+| `POST` | `/api/cards/bulk-restore` | Restore multiple cards |
+| `POST` | `/api/cards/bulk-delete` | Delete multiple cards |
+| `POST` | `/api/cards/:id/summarize` | Generate AI summary |
+| `POST` | `/api/cards/summarize-bulk` | Start bulk AI summary |
+| `POST` | `/api/cards/import-csv` | Import cards from CSV |
+| `POST` | `/api/cards/import-json` | Import cards from JSON |
+| `POST` | `/api/cards/:id/links` | Add card link |
+| `DELETE` | `/api/cards/:id/links/:targetId` | Remove card link |
+| `GET` | `/api/zettelkasten/graph` | Get graph data |
+| `GET` | `/api/kj/groups` | List KJ groups |
+| `POST` | `/api/kj/groups` | Create KJ group |
+| `PUT` | `/api/kj/groups/:id` | Update KJ group |
+| `DELETE` | `/api/kj/groups/:id` | Delete KJ group |
+| `POST` | `/api/kj/groups/:id/cards` | Assign card to KJ group |
+
+## Technical Outcomes
+
+- Migrated persistence from JSON file storage to SQLite
+- Implemented BM25 search over card title, body, and tags
+- Improved search performance by persisting token data and document length at save time
+- Added Zod validation to reject invalid request bodies before business logic runs
+- Added rate limits to AI summary and import APIs, where cost and load risks are higher
+- Separated Express `app` export from server `listen` to make API tests easier
+- Added `DB_PATH` so local and Docker environments can use different SQLite paths
+- Automated type checks, API tests, and high-severity dependency audit in GitHub Actions
+
+## Roadmap
+
+- Split API routes and service logic into smaller modules
+- Add OpenAPI documentation or a lightweight API specification
+- Add authentication and authorization
+- Extend Zod validation to GET query parameters
+- Add preview or dry-run support for import operations
+- Improve search result highlighting and ranking explanations
+- Add a CI job that verifies Docker build
+
+## Notes on Native Dependencies
+
+This project uses `better-sqlite3`, which includes native bindings. If CI fails during install, likely causes include Node.js version compatibility, missing prebuilt binaries, or native build tooling. Practical mitigations are to pin a stable Node.js version, update `better-sqlite3` to a compatible version, or install the required build tools in CI.
