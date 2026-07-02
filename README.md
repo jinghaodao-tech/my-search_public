@@ -1,10 +1,10 @@
 # My Search App
 
-[![CI](https://github.com/jingh/my-search-app_public/actions/workflows/ci.yml/badge.svg)](https://github.com/jingh/my-search-app_public/actions/workflows/ci.yml)
+[![CI](https://github.com/jinghaodao-tech/my-search_public/actions/workflows/ci.yml/badge.svg)](https://github.com/jinghaodao-tech/my-search_public/actions/workflows/ci.yml)
 
 My Search App is a personal search and knowledge-management application. It combines card-style notes, BM25 search, tags, links between cards, a KJ-style grouping board, CSV/JSON import, and AI summaries.
 
-For portfolio purposes, the project focuses not only on application features but also on backend engineering practices. The app was migrated from JSON file storage to SQLite, search-related token data is persisted to improve search performance, and the main API paths now include request validation, security headers, CORS configuration, rate limiting, API tests, and CI checks.
+For portfolio purposes, the project focuses not only on application features but also on backend engineering practices. The app was migrated from JSON file storage to SQLite, search-related token data is persisted to improve search performance, and the main API paths now include request validation, security headers, CORS configuration, rate limiting, API tests, dependency audit, and CI checks.
 
 ## Features
 
@@ -16,7 +16,7 @@ For portfolio purposes, the project focuses not only on application features but
 - Import cards from CSV and JSON
 - Generate AI summaries with Anthropic or Gemini
 - Run locally or with Docker Compose
-- Run type checks, API tests, and dependency audit in GitHub Actions
+- Run type checks, API tests, and high-severity dependency audit in GitHub Actions
 
 ## Tech Stack
 
@@ -37,7 +37,7 @@ The first version stored card data in a JSON file. That approach was simple, but
 
 Search is implemented with BM25. Instead of tokenizing card content on every search request, token data and document length are generated when cards are saved and then persisted in SQLite. This reduces repeated preprocessing work during search.
 
-The API has also been improved as a backend portfolio project. Card creation/update, bulk operations, imports, links, AI summary, and KJ group APIs now validate request bodies before application logic is executed.
+The API has also been improved as a backend portfolio project. Card creation/update, bulk operations, imports, links, AI summary, and KJ group APIs now validate request bodies before application logic is executed. The Express app is exported separately from the server startup code so the API can be tested directly with Supertest.
 
 ## Security and API Quality
 
@@ -51,6 +51,8 @@ This project adds request validation, rate limiting, security headers, and CI ch
 - **Dependency audit**: CI runs `npm audit --audit-level=high` to detect known high-severity vulnerabilities in npm dependencies.
 - **Testing**: API tests cover both normal and invalid request cases.
 - **DB path**: `DB_PATH` allows local and Docker environments to use different database paths.
+
+In other words, the project does not claim that every API is fully secured. It shows that the main API paths have been improved with validation, security headers, rate limits, tests, and CI checks.
 
 ## CI / Testing
 
@@ -96,9 +98,17 @@ Example `.env`:
 PORT=3000
 DB_PATH=data/cards.db
 CORS_ORIGIN=http://localhost:3000
+
 AI_PROVIDER=anthropic
 ANTHROPIC_API_KEY=your_api_key
+GEMINI_API_KEY=
+
+AI_RATE_LIMIT=10
+IMPORT_RATE_LIMIT=10
+API_RATE_LIMIT=60
 ```
+
+`.env` is intentionally not committed to Git. `.env.example` is committed as a public template, and real API keys should only be stored in local or deployment-specific environment variables. Docker Compose can use a different `DB_PATH` so the container database is stored under `/app/data`.
 
 ## Local Setup
 
@@ -110,6 +120,9 @@ Requirements:
 Install dependencies:
 
 ```bash
+git clone https://github.com/jinghaodao-tech/my-search_public.git
+cd my-search_public
+cp .env.example .env
 npm ci
 ```
 
@@ -118,6 +131,7 @@ Run checks:
 ```bash
 npm run typecheck
 npm test
+npm audit --audit-level=high
 ```
 
 Start the app:
@@ -180,22 +194,24 @@ http://localhost:3000
 ## Technical Outcomes
 
 - Migrated persistence from JSON file storage to SQLite
-- Implemented BM25 search over card title, body, and tags
+- Implemented BM25-based search for keyword retrieval over card title, body, and tags
 - Improved search performance by persisting token data and document length at save time
 - Added Zod validation to reject invalid request bodies before business logic runs
-- Added rate limits to AI summary and import APIs, where cost and load risks are higher
+- Added rate limits to expensive or abuse-prone endpoints such as AI summary and import APIs
+- Added Helmet and configurable CORS for basic Web security hardening
+- Added Docker support to make the runtime environment reproducible
 - Separated Express `app` export from server `listen` to make API tests easier
 - Added `DB_PATH` so local and Docker environments can use different SQLite paths
 - Automated type checks, API tests, and high-severity dependency audit in GitHub Actions
 
-## Roadmap
+## Future Improvements
 
-- Split API routes and service logic into smaller modules
+- Add validation to remaining collect / scheduler / run APIs
+- Improve database write operations from full rewrite patterns to more granular SQL updates
+- Add authentication and authorization for multi-user usage
+- Add more API tests for edge cases and error handling
+- Improve logging for production-like operation
 - Add OpenAPI documentation or a lightweight API specification
-- Add authentication and authorization
-- Extend Zod validation to GET query parameters
-- Add preview or dry-run support for import operations
-- Improve search result highlighting and ranking explanations
 - Add a CI job that verifies Docker build
 
 ## Notes on Native Dependencies

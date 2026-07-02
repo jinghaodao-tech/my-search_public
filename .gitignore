@@ -5,4 +5,3 @@ data/
 *.db-shm
 *.db-wal
 dist/
-.env.example
