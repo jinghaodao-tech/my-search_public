@@ -99,6 +99,18 @@ AI
 3. `start.bat` をダブルクリック → ブラウザが自動で開く
 </details>
 
+## Security and API Quality
+
+This app is designed as a backend portfolio project, so the API layer includes basic production-oriented safeguards rather than relying only on happy-path UI input.
+
+- **Input validation with Zod**: Card creation/update, bulk operations, imports, links, AI summary, and KJ group APIs validate request bodies before touching application logic. This prevents empty titles, oversized bodies/import payloads, malformed URLs, invalid tag arrays, unexpected fields, and invalid ID lists from entering the system.
+- **Consistent validation errors**: Invalid requests return `400` with `{ "error": "Invalid request", "details": ... }`, making API failures easier to handle from the frontend and easier to test.
+- **Security headers with Helmet**: Express uses Helmet to add common HTTP security headers. Content Security Policy is disabled for compatibility with the existing static UI, while the rest of Helmet's default protections remain enabled.
+- **Environment-controlled CORS**: CORS is restricted by `CORS_ORIGIN`, defaulting to `http://localhost:3000` for local development. This avoids shipping a permanently open `cors()` configuration.
+- **Rate limits for costly endpoints**: AI summary, bulk AI summary, CSV/JSON import, and collect APIs are rate-limited to reduce accidental load, abuse risk, and external API cost exposure. Limits can be tuned through environment variables such as `AI_RATE_LIMIT` and `IMPORT_RATE_LIMIT`.
+- **Automated API quality checks**: GitHub Actions runs both `npm run typecheck` and `npm test`. Vitest + Supertest cover successful card creation, validation failures, missing resources, invalid imports, self-link rejection, and limiter behavior.
+- **Docker-friendly SQLite path**: The database path is read from `DB_PATH`, defaulting to `data/cards.db`. Docker Compose sets `DB_PATH=/app/data/cards.db` and mounts `./data:/app/data`, so local and container environments can use different persistent storage paths without code changes.
+
 ## 使い方
 <details>
 ### 基本操作

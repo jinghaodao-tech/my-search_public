@@ -1,9 +1,15 @@
 import fs from "fs";
+import path from "path";
 import Database from "better-sqlite3";
 
-fs.mkdirSync("data", { recursive: true });
+const dbPath = process.env.DB_PATH ?? "data/cards.db";
+const dbDir = path.dirname(dbPath);
 
-export const db = new Database("data/cards.db");
+if (dbDir && dbDir !== ".") {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+export const db = new Database(dbPath);
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS cards (

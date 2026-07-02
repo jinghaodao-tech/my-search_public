@@ -7,8 +7,11 @@ import fs                from 'fs';
 import dotenv            from 'dotenv';
 import express           from 'express';
 import cors              from 'cors';
+import helmet            from 'helmet';
+import rateLimit         from 'express-rate-limit';
 import path              from 'path';
 import { fileURLToPath } from 'url';
+import { z, type ZodError, type ZodType } from 'zod';
 import { runPipeline, MODES } from './bm25_engine.js';
 import {
   collectAll, startScheduler, saveArticles, loadArticles, ensureArticleTokens,
@@ -293,7 +296,32 @@ if (!MOCK_AI_SUMMARY && AI_PROVIDER === 'gemini' && !getGeminiApiKey()) {
 }
 
 const app = express();
-app.use(cors());
+export { app };
+
+const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: Number(process.env.API_RATE_LIMIT ?? 60),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: Number(process.env.AI_RATE_LIMIT ?? 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const importLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: Number(process.env.IMPORT_RATE_LIMIT ?? 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (_req, res) =>
@@ -309,6 +337,87 @@ let schedulerStop: (() => void) | null = null;
 //  既存 BM25 / Collect API
 // ════════════════════════════════════════════════════
 
+const idSchema = z.string().trim().min(1).max(200);
+const urlSchema = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(value => value === '' || z.string().url().safeParse(value).success, {
+    message: 'Invalid url',
+  })
+  .optional();
+const tagsSchema = z.array(z.string().trim().min(1).max(50)).max(30).optional();
+const cardFieldsSchema = {
+  title: z.string().trim().min(1).max(200),
+  body: z.string().max(20000).default(''),
+  url: urlSchema,
+  tags: tagsSchema.default([]),
+  type: z.enum(['article', 'memo', 'csv']).optional(),
+  color: z.string().trim().max(50).optional(),
+  kjGroupId: z.string().trim().max(200).nullable().optional(),
+  summary: z.string().max(20000).optional(),
+};
+const createCardSchema = z.object(cardFieldsSchema).strict();
+const updateCardSchema = z.object({
+  ...cardFieldsSchema,
+  title: cardFieldsSchema.title.optional(),
+  body: z.string().max(20000).optional(),
+  tags: tagsSchema,
+  archived: z.boolean().optional(),
+  archivedAt: z.string().datetime().optional(),
+  note: z.string().max(20000).optional(),
+}).strict();
+const idsBodySchema = z.object({
+  ids: z.array(idSchema).min(1).max(500),
+}).strict();
+const linkBodySchema = z.object({
+  targetId: idSchema,
+}).strict();
+const csvImportSchema = z.object({
+  csv: z.string().trim().min(1).max(1_000_000),
+}).strict();
+const jsonImportSchema = z.object({
+  json: z.string().trim().min(1).max(1_000_000),
+}).strict();
+const kjGroupCreateSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  description: z.string().max(1000).optional(),
+  color: z.string().trim().min(1).max(50),
+}).strict();
+const kjGroupUpdateSchema = kjGroupCreateSchema.partial().strict();
+const kjAssignSchema = z.object({
+  cardId: idSchema,
+}).strict();
+
+function validationDetails(error: ZodError) {
+  return error.issues.map(issue => ({
+    path: issue.path.join('.'),
+    message: issue.message,
+  }));
+}
+
+function invalidRequest(res: express.Response, details: unknown) {
+  res.status(400).json({ error: 'Invalid request', details });
+}
+
+function parseBody<T>(schema: ZodType<T>, req: express.Request, res: express.Response): T | null {
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    invalidRequest(res, validationDetails(parsed.error));
+    return null;
+  }
+  return parsed.data;
+}
+
+function normalizeCardInput<T extends { url?: string | null; kjGroupId?: string | null; note?: unknown }>(body: T) {
+  const { note: _note, ...rest } = body;
+  return {
+    ...rest,
+    url: body.url || undefined,
+    kjGroupId: body.kjGroupId ?? undefined,
+  };
+}
+
 app.get('/api/modes', (_req, res) => res.json(MODES));
 
 app.get('/api/articles', (_req, res) => {
@@ -319,7 +428,7 @@ app.get('/api/articles', (_req, res) => {
   res.json(cachedArticles);
 });
 
-app.post('/api/collect', async (req, res) => {
+app.post('/api/collect', apiLimiter, async (req, res) => {
   try {
     const config: CollectorConfig = req.body?.config ?? collectorConfig;
     collectorConfig = config;
@@ -431,8 +540,10 @@ app.get('/api/cards', (req, res) => {
 
 /** カード作成（メモ新規） */
 app.post('/api/cards', async (req, res) => {
+  const body = parseBody(createCardSchema, req, res);
+  if (!body) return;
   try {
-    const card = await createCard({ type: 'memo', ...req.body });
+    const card = await createCard({ type: 'memo', ...normalizeCardInput(body) });
     res.status(201).json(card);
   } catch (err) {
     res.status(400).json({ error: String(err) });
@@ -449,7 +560,9 @@ app.get('/api/cards/:id', (req, res) => {
 
 /** カード更新 */
 app.put('/api/cards/:id', async (req, res) => {
-  const card = await updateCard(req.params.id, req.body);
+  const body = parseBody(updateCardSchema, req, res);
+  if (!body) return;
+  const card = await updateCard(req.params.id, normalizeCardInput(body));
   if (!card) { res.status(404).json({ error: 'Not found' }); return; }
   res.json(card);
 });
@@ -479,14 +592,11 @@ app.post('/api/cards/:id/restore', async (req, res) => {
 });
 
 app.post('/api/cards/archive-bulk', async (req, res) => {
-  const { ids } = req.body as { ids?: string[] };
-  if (!Array.isArray(ids) || !ids.length) {
-    res.status(400).json({ error: 'ids is required' });
-    return;
-  }
+  const body = parseBody(idsBodySchema, req, res);
+  if (!body) return;
   const now = new Date().toISOString();
   const updated: string[] = [];
-  for (const id of ids) {
+  for (const id of body.ids) {
     const card = await updateCard(id, { archived: true, archivedAt: now });
     if (card) updated.push(id);
   }
@@ -494,32 +604,23 @@ app.post('/api/cards/archive-bulk', async (req, res) => {
 });
 
 app.post('/api/cards/bulk-archive', (req, res) => {
-  const { ids } = req.body as { ids?: string[] };
-  if (!Array.isArray(ids) || !ids.length) {
-    res.status(400).json({ error: 'ids is required' });
-    return;
-  }
-  const updated = bulkArchiveCards(ids);
+  const body = parseBody(idsBodySchema, req, res);
+  if (!body) return;
+  const updated = bulkArchiveCards(body.ids);
   res.json({ ok: true, updated });
 });
 
 app.post('/api/cards/bulk-restore', (req, res) => {
-  const { ids } = req.body as { ids?: string[] };
-  if (!Array.isArray(ids) || !ids.length) {
-    res.status(400).json({ error: 'ids is required' });
-    return;
-  }
-  const updated = bulkRestoreCards(ids);
+  const body = parseBody(idsBodySchema, req, res);
+  if (!body) return;
+  const updated = bulkRestoreCards(body.ids);
   res.json({ ok: true, updated });
 });
 
 app.post('/api/cards/bulk-delete', (req, res) => {
-  const { ids } = req.body as { ids?: string[] };
-  if (!Array.isArray(ids) || !ids.length) {
-    res.status(400).json({ error: 'ids is required' });
-    return;
-  }
-  const deleted = bulkDeleteCards(ids);
+  const body = parseBody(idsBodySchema, req, res);
+  if (!body) return;
+  const deleted = bulkDeleteCards(body.ids);
   res.json({ ok: true, deleted });
 });
 
@@ -527,8 +628,9 @@ app.post('/api/cards/bulk-delete', (req, res) => {
 //  § B. AI要約 API
 // ════════════════════════════════════════════════════
 
-app.post('/api/cards/:id/summarize', async (req, res) => {
-  const card = getCard(req.params.id);
+app.post('/api/cards/:id/summarize', aiLimiter, async (req, res) => {
+  const cardId = String(req.params.id);
+  const card = getCard(cardId);
   if (!card) { res.status(404).json({ error: 'Not found' }); return; }
 
   try {
@@ -549,12 +651,9 @@ app.post('/api/cards/:id/summarize', async (req, res) => {
 });
 
 /** 複数カードを一括要約（バックグラウンド） */
-app.post('/api/cards/summarize-bulk', async (req, res) => {
-  const { ids }: { ids: string[] } = req.body;
-  if (!Array.isArray(ids) || !ids.length) {
-    res.status(400).json({ error: 'ids is required', code: 'invalid_request' });
-    return;
-  }
+app.post('/api/cards/summarize-bulk', aiLimiter, async (req, res) => {
+  const body = parseBody(idsBodySchema, req, res);
+  if (!body) return;
   if (!hasConfiguredProviderKey()) {
     const keyName = AI_PROVIDER === 'gemini' ? 'GEMINI_API_KEY' : 'ANTHROPIC_API_KEY';
     console.error('[AI SUMMARY]');
@@ -565,11 +664,11 @@ app.post('/api/cards/summarize-bulk', async (req, res) => {
     });
     return;
   }
-  res.json({ ok: true, message: `${ids.length}件の要約を開始しました` });
+  res.json({ ok: true, message: `${body.ids.length}件の要約を開始しました` });
 
   // バックグラウンド処理
   (async () => {
-    for (const id of ids) {
+    for (const id of body.ids) {
       const card = getCard(id);
       if (!card || card.summary) continue;
       try {
@@ -588,8 +687,17 @@ app.post('/api/cards/summarize-bulk', async (req, res) => {
 // ════════════════════════════════════════════════════
 
 app.post('/api/cards/:id/links', (req, res) => {
-  const { targetId } = req.body as { targetId: string };
-  linkCards(req.params.id, targetId);
+  const body = parseBody(linkBodySchema, req, res);
+  if (!body) return;
+  if (req.params.id === body.targetId) {
+    invalidRequest(res, [{ path: 'targetId', message: 'Cannot link a card to itself' }]);
+    return;
+  }
+  if (!getCard(req.params.id) || !getCard(body.targetId)) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+  linkCards(req.params.id, body.targetId);
   res.json({ ok: true });
 });
 
@@ -643,13 +751,17 @@ app.get('/api/kj/groups', (_req, res) => {
 });
 
 app.post('/api/kj/groups', (req, res) => {
-  const { name, description, color } = req.body as KJGroup;
+  const body = parseBody(kjGroupCreateSchema, req, res);
+  if (!body) return;
+  const { name, description, color } = body;
   const group = createKJGroup(name, description, color);
   res.status(201).json(group);
 });
 
 app.put('/api/kj/groups/:id', (req, res) => {
-  const group = updateKJGroup(req.params.id, req.body);
+  const body = parseBody(kjGroupUpdateSchema, req, res);
+  if (!body) return;
+  const group = updateKJGroup(req.params.id, body);
   if (!group) { res.status(404).json({ error: 'Not found' }); return; }
   res.json(group);
 });
@@ -661,8 +773,9 @@ app.delete('/api/kj/groups/:id', (req, res) => {
 
 /** カードをグループへ割り当て */
 app.post('/api/kj/groups/:id/cards', async (req, res) => {
-  const { cardId } = req.body as { cardId: string };
-  await assignKJGroup(cardId, req.params.id);
+  const body = parseBody(kjAssignSchema, req, res);
+  if (!body) return;
+  await assignKJGroup(body.cardId, req.params.id);
   res.json({ ok: true });
 });
 
@@ -682,26 +795,34 @@ app.get('/api/tags', (_req, res) => res.json(getAllTags()));
 //  § F. CSV インポート API
 // ════════════════════════════════════════════════════
 
-app.post('/api/cards/import-csv', (req, res) => {
+app.post('/api/cards/import-csv', importLimiter, (req, res) => {
+  const body = parseBody(csvImportSchema, req, res);
+  if (!body) return;
   try {
-    const { csv } = req.body as { csv: string };
-    if (!csv) { res.status(400).json({ error: 'csv フィールドが必要です' }); return; }
-    const imported = parseAndImportCSV(csv);
+    const imported = parseAndImportCSV(body.csv);
+    if (!imported.length) {
+      invalidRequest(res, [{ path: 'csv', message: 'CSV must include a header and at least one valid row' }]);
+      return;
+    }
     res.json({ ok: true, count: imported.length, cards: imported });
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    invalidRequest(res, String(err));
   }
 });
 
 /** JSON取り込み */
-app.post('/api/cards/import-json', (req, res) => {
+app.post('/api/cards/import-json', importLimiter, (req, res) => {
+  const body = parseBody(jsonImportSchema, req, res);
+  if (!body) return;
   try {
-    const { json } = req.body as { json: string };
-    if (!json) { res.status(400).json({ error: 'json フィールドが必要です' }); return; }
-    const result = parseAndImportJSON(json);
+    const result = parseAndImportJSON(body.json);
+    if (!result.cards.length) {
+      invalidRequest(res, [{ path: 'json', message: 'JSON must contain at least one importable card' }]);
+      return;
+    }
     res.json({ ok: true, count: result.cards.length, warnings: result.warnings, cards: result.cards });
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    invalidRequest(res, String(err));
   }
 });
 
@@ -734,14 +855,18 @@ app.post('/api/cards/import-articles', async (req, res) => {
 // ════════════════════════════════════════════════════
 //  起動
 // ════════════════════════════════════════════════════
-await backfillCardTokens();
-if (cachedArticles) {
-  cachedArticles = await ensureArticleTokens(cachedArticles);
-  saveArticles(cachedArticles);
+if (process.env.NODE_ENV !== 'test') {
+  await backfillCardTokens();
+  if (cachedArticles) {
+    cachedArticles = await ensureArticleTokens(cachedArticles);
+    saveArticles(cachedArticles);
+  }
 }
 
 const PORT = Number(process.env.PORT ?? 3000);
-app.listen(PORT, () => {
-  console.log(`\n  ✓ カード管理サーバー  http://localhost:${PORT}`);
-  console.log(`  ✓ GUI                http://localhost:${PORT}/\n`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`\n  ✓ カード管理サーバー  http://localhost:${PORT}`);
+    console.log(`  ✓ GUI                http://localhost:${PORT}/\n`);
+  });
+}
