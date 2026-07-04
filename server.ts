@@ -429,9 +429,7 @@ let schedulerCronExpr: string | null = null;
 let collectRunning = false;
 
 function isCollectorConfig(value: unknown): value is CollectorConfig {
-  if (!value || typeof value !== 'object') return false;
-  const config = value as Partial<CollectorConfig>;
-  return Array.isArray(config.rss) && Array.isArray(config.arxiv) && Array.isArray(config.github);
+  return collectorConfigSchema.safeParse(value).success;
 }
 
 function resolveCollectorConfig(value: unknown): CollectorConfig {
@@ -443,6 +441,66 @@ function resolveCollectorConfig(value: unknown): CollectorConfig {
 // ════════════════════════════════════════════════════
 //  既存 BM25 / Collect API
 // ════════════════════════════════════════════════════
+
+const authoritySchema = z.number().min(0).max(1);
+const collectorConfigSchema = z.object({
+  rss: z.array(z.object({
+    url: z.string().trim().url().max(2048),
+    label: z.string().trim().min(1).max(120),
+    authority: authoritySchema,
+  }).strict()).max(100),
+  arxiv: z.array(z.object({
+    query: z.string().trim().min(1).max(200),
+    maxResults: z.number().int().min(1).max(100),
+    authority: authoritySchema,
+  }).strict()).max(100),
+  github: z.array(z.object({
+    language: z.string().trim().min(1).max(80),
+    since: z.enum(['daily', 'weekly', 'monthly']),
+    authority: authoritySchema,
+  }).strict()).max(100),
+}).strict();
+const collectBodySchema = z.object({
+  background: z.boolean().optional(),
+  config: collectorConfigSchema.optional(),
+}).strict();
+const schedulerStartSchema = z.object({
+  cronExpr: z.string().trim().min(1).max(120).optional(),
+}).strict();
+const bm25KeywordSchema = z.object({
+  term: z.string().trim().min(1).max(100),
+  weight: z.number().min(0).max(20),
+  synonyms: z.array(z.string().trim().min(1).max(100)).max(100).optional(),
+}).passthrough();
+const runConfigSchema = z.object({
+  label: z.string().max(120).default('Custom'),
+  description: z.string().max(1000).default(''),
+  k1: z.number(),
+  b: z.number(),
+  lambda: z.number(),
+  contextBonus: z.number(),
+  keywords: z.array(bm25KeywordSchema).max(200),
+}).passthrough();
+const runArticleSchema = z.object({
+  id: z.string().trim().min(1).max(300),
+  title: z.string().max(500),
+  body: z.string().max(50000).default(''),
+  publishedAt: z.union([z.string(), z.date()]),
+  sourceAuthority: z.number().min(0).max(1).optional(),
+  url: z.string().max(2048).optional(),
+}).passthrough();
+const runOptionsSchema = z.object({
+  dedupThreshold: z.number().optional(),
+  archiveScoreThreshold: z.number().optional(),
+  resultLimit: z.number().optional(),
+  noViewDays: z.number().optional(),
+}).passthrough();
+const runBodySchema = z.object({
+  modeId: z.string().trim().min(1).max(100).optional(),
+  config: runConfigSchema,
+  articles: z.array(runArticleSchema).max(10000).optional(),
+  options: runOptionsSchema.optional(),
+}).strict();
 
 const idSchema = z.string().trim().min(1).max(200);
 const urlSchema = z
@@ -541,10 +599,12 @@ app.get('/api/articles', (_req, res) => {
 });
 
 app.post(['/api/collect', '/api/articles/refresh'], apiLimiter, async (req, res) => {
+  const body = parseBody(collectBodySchema, req, res);
+  if (!body) return;
   try {
-    const config = resolveCollectorConfig(req.body?.config);
+    const config = resolveCollectorConfig(body.config);
     collectorConfig = config;
-    if (req.body?.background) {
+    if (body.background) {
       if (collectRunning) {
         res.json({ ok: false, running: true, message: 'collect already running' });
         return;
@@ -567,13 +627,17 @@ app.post(['/api/collect', '/api/articles/refresh'], apiLimiter, async (req, res)
 
 app.get('/api/collect/config',  (_req, res) => res.json(collectorConfig));
 app.post('/api/collect/config', (req, res) => {
-  collectorConfig = req.body as CollectorConfig;
+  const body = parseBody(collectorConfigSchema, req, res);
+  if (!body) return;
+  collectorConfig = body;
   res.json({ ok: true });
 });
 
 app.post('/api/scheduler/start', (req, res) => {
+  const body = parseBody(schedulerStartSchema, req, res);
+  if (!body) return;
   if (schedulerStop) { res.json({ ok: false, message: '既に起動中' }); return; }
-  const expr = (req.body?.cronExpr as string) ?? '*/30 * * * *';
+  const expr = body.cronExpr ?? '*/30 * * * *';
   schedulerCronExpr = expr;
   schedulerStop = startScheduler({
     cronExpr: expr, config: collectorConfig,
@@ -597,9 +661,10 @@ app.get('/api/scheduler/status', (_req, res) => res.json({
 }));
 
 app.post('/api/run', async (req, res) => {
+  const body = parseBody(runBodySchema, req, res);
+  if (!body) return;
   try {
-    const { modeId, config, articles: reqArticles, options } = req.body;
-    if (!config) { res.status(400).json({ error: 'config は必須です' }); return; }
+    const { modeId, config, articles: reqArticles, options } = body;
     const rawArticles = reqArticles ?? cachedArticles?.articles ?? [];
     if (!rawArticles.length) {
       res.status(400).json({ error: '記事がありません。先に /api/collect を実行してください' });
