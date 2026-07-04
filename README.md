@@ -196,6 +196,7 @@ http://localhost:3000
 - Migrated persistence from JSON file storage to SQLite
 - Implemented BM25-based search for keyword retrieval over card title, body, and tags
 - Improved search performance by persisting token data and document length at save time
+- Replaced full card-table rewrites with targeted SQLite writes for common card CRUD, bulk, link, and KJ assignment operations
 - Added Zod validation to reject invalid request bodies before business logic runs
 - Added rate limits to expensive or abuse-prone endpoints such as AI summary and import APIs
 - Added Helmet and configurable CORS for basic Web security hardening
@@ -207,7 +208,7 @@ http://localhost:3000
 ## Future Improvements
 
 - Add validation to remaining collect / scheduler / run APIs
-- Improve database write operations from full rewrite patterns to more granular SQL updates
+- Move remaining JSON-backed KJ group storage to SQLite if stronger concurrency guarantees become necessary
 - Add authentication and authorization for multi-user usage
 - Add more API tests for edge cases and error handling
 - Improve logging for production-like operation
