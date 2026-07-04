@@ -189,6 +189,9 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 .breakdown-pill.highlight{background:rgba(108,138,255,.15);color:var(--accent)}
 .matched-terms{display:flex;flex-wrap:wrap;gap:4px}
 .matched-term{font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(108,138,255,.1);color:var(--accent2);border:1px solid rgba(108,138,255,.2)}
+.search-mark{background:rgba(245,158,11,.28);color:var(--text);border-radius:3px;padding:0 2px}
+.match-explain{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-bottom:8px}
+.match-pill{padding:2px 7px;border-radius:8px;background:var(--surface2);border:1px solid var(--border)}
 .score-actions{display:flex;gap:6px;margin-top:8px}
 .score-bar{height:3px;border-radius:3px;background:var(--border);margin-bottom:8px;overflow:hidden}
 .score-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .4s}
@@ -981,6 +984,35 @@ async function deleteSelected() {
 
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
+function escapeRegExp(s){return String(s??'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+
+function resultKeywords(item) {
+  const fromMeta = item?.matchedKeywords || [];
+  const fromBreakdown = item?.breakdown?.matchedTerms?.map(t=>t.term) || [];
+  const seen = new Set();
+  return [...fromMeta, ...fromBreakdown]
+    .map(k=>String(k??'').trim())
+    .filter(k=>{
+      const key = k.toLocaleLowerCase();
+      if(!k || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a,b)=>b.length-a.length)
+    .slice(0,10);
+}
+
+function highlightSearchText(text, keywords) {
+  const source = String(text??'');
+  const terms = (keywords||[]).filter(Boolean);
+  if(!terms.length) return esc(source);
+  const pattern = new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'gi');
+  return source.split(pattern).map(part=>{
+    const matched = terms.some(term=>part.toLocaleLowerCase()===term.toLocaleLowerCase());
+    return matched ? `<mark class="search-mark">${esc(part)}</mark>` : esc(part);
+  }).join('');
+}
+
 // ════════════════════════════════════════
 //  タグ・フィルター
 // ════════════════════════════════════════
@@ -1434,16 +1466,26 @@ function renderBM25Result() {
   document.getElementById('bm25-result-actions').style.display = 'flex';
 
   // 結果一覧
-  const items = showArchived ? archived.map(a=>({...a.article,_archived:true,_reason:a.reason,score:0,breakdown:null})) : active;
+  const items = showArchived ? archived.map(a=>({...a,_archived:true,_reason:a.reason,score:0,breakdown:null})) : active;
   document.getElementById('bm25-result-body').innerHTML = items.length === 0
     ? `<div class="empty-state"><div class="icon">📭</div><p>${showArchived?'アーカイブなし':'結果なし'}</p></div>`
     : items.map((item,i) => {
         const isActive = !item._archived;
         const s = isActive ? item : null;
-        const art = isActive ? item.article : item;
+        const art = item.article;
         const score = isActive ? item.score : 0;
         const bd = isActive ? item.breakdown : null;
         const pct = isActive ? Math.min(100, (score/maxScore)*100) : 0;
+        const keywords = resultKeywords(item);
+        const fieldLabels = { title:'タイトル', body:'本文', summary:'要約', tags:'タグ' };
+        const matchedFields = (item.matchedFields||[]).map(f=>fieldLabels[f]||f);
+        const matchExplainHtml = (matchedFields.length || keywords.length) ? `
+          <div class="match-explain">
+            ${matchedFields.length?`<span>一致: ${matchedFields.map(esc).join('・')}</span>`:''}
+            ${keywords.length?`<span class="match-pill">キーワード: ${keywords.map(esc).join(', ')}</span>`:''}
+          </div>` : '';
+        const snippetSource = art.summary || art.body || '';
+        const snippet = snippetSource.slice(0,180);
 
         const termsHtml = bd ? (bd.matchedTerms||[]).map(t=>
           `<span class="matched-term" title="TF:${t.tf?.toFixed(2)} IDF:${t.idf?.toFixed(2)} BM25:${t.bm25?.toFixed(2)}">${esc(t.term)} ×${t.weight?.toFixed(1)}</span>`
@@ -1463,7 +1505,7 @@ function renderBM25Result() {
         return `<div class="score-card">
           <div class="score-card-header">
             <span class="score-badge ${isActive?'':'archived'}">${isActive?`#${i+1} ${score.toFixed(2)}`:'ARCHIVED'}</span>
-            <div class="score-title">${esc(art.title)}</div>
+            <div class="score-title">${highlightSearchText(art.title, keywords)}</div>
           </div>
           ${isActive?`<div class="score-bar"><div class="score-bar-fill" style="width:${pct}%"></div></div>`:''}
           <div class="score-meta">
@@ -1471,6 +1513,9 @@ function renderBM25Result() {
             ${art.url?`<span><a href="${esc(art.url)}" target="_blank" style="color:var(--accent);text-decoration:none">🔗 リンク</a></span>`:''}
             ${item._reason?`<span style="color:var(--warning)">⚠ ${esc(item._reason)}</span>`:''}
           </div>
+          ${snippet?`<div style="font-size:12px;color:var(--text-dim);line-height:1.5;margin-bottom:8px">${highlightSearchText(snippet, keywords)}${snippetSource.length>180?'...':''}</div>`:''}
+          ${art.tags?.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${art.tags.map(t=>`<span class="card-tag">${highlightSearchText(t, keywords)}</span>`).join('')}</div>`:''}
+          ${matchExplainHtml}
           ${breakdownHtml}
           <div class="score-actions">
             <button class="btn btn-secondary btn-sm" onclick="saveOneAsCard('${esc(art.id).replace(/'/g,"\\'")}')">💾 カードに保存</button>
