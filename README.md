@@ -63,6 +63,7 @@ npm ci
 npm run typecheck
 npm test
 npm audit --audit-level=high
+docker build -t my-search-public:test .
 ```
 
 The API test suite currently covers:
@@ -202,7 +203,7 @@ http://localhost:3000
 - Added Docker support to make the runtime environment reproducible
 - Separated Express `app` export from server `listen` to make API tests easier
 - Added `DB_PATH` so local and Docker environments can use different SQLite paths
-- Automated type checks, API tests, and high-severity dependency audit in GitHub Actions
+- Automated type checks, API tests, high-severity dependency audit, and Docker image build checks in GitHub Actions
 
 ## Future Improvements
 
@@ -212,7 +213,6 @@ http://localhost:3000
 - Add more API tests for edge cases and error handling
 - Improve logging for production-like operation
 - Add OpenAPI documentation or a lightweight API specification
-- Add a CI job that verifies Docker build
 
 ## Notes on Native Dependencies
 

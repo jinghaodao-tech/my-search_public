@@ -30,3 +30,6 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
+
+      - name: Docker build
+        run: docker build -t my-search-public:test .
