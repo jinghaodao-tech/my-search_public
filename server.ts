@@ -53,6 +53,61 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
 const MOCK_AI_SUMMARY = process.env.MOCK_AI_SUMMARY?.trim().toLowerCase() === 'true';
 const AI_DEBUG = process.env.NODE_ENV !== 'production';
 
+type SearchMatchField = 'title' | 'body' | 'summary' | 'tags';
+
+function normalizeSearchText(value: unknown): string {
+  return String(value ?? '').normalize('NFKC').toLocaleLowerCase();
+}
+
+function buildSearchKeywordCandidates(config: unknown): string[] {
+  const keywords = (config as { keywords?: Array<{ term?: unknown; synonyms?: unknown[] }> })?.keywords ?? [];
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+
+  for (const keyword of keywords) {
+    for (const value of [keyword.term, ...(Array.isArray(keyword.synonyms) ? keyword.synonyms : [])]) {
+      const text = String(value ?? '').trim();
+      const key = normalizeSearchText(text);
+      if (!text || seen.has(key)) continue;
+      seen.add(key);
+      candidates.push(text);
+    }
+  }
+
+  return candidates;
+}
+
+function buildSearchMatchMeta(
+  article: { title?: unknown; body?: unknown; summary?: unknown; tags?: unknown },
+  keywords: string[],
+  matchedTerms: Array<{ term?: unknown }> = [],
+): { matchedFields: SearchMatchField[]; matchedKeywords: string[] } {
+  const fieldTexts: Record<SearchMatchField, string> = {
+    title: normalizeSearchText(article.title),
+    body: normalizeSearchText(article.body),
+    summary: normalizeSearchText(article.summary),
+    tags: Array.isArray(article.tags)
+      ? normalizeSearchText(article.tags.join(' '))
+      : normalizeSearchText(article.tags),
+  };
+
+  const matchedFields = (Object.entries(fieldTexts) as Array<[SearchMatchField, string]>)
+    .filter(([, value]) => keywords.some((keyword) => value.includes(normalizeSearchText(keyword))))
+    .map(([field]) => field);
+
+  const matchedKeywords = keywords.filter((keyword) => {
+    const normalized = normalizeSearchText(keyword);
+    return Object.values(fieldTexts).some((value) => value.includes(normalized));
+  });
+
+  if (matchedKeywords.length) {
+    return { matchedFields, matchedKeywords };
+  }
+
+  const fallbackKeywords = [...new Set(matchedTerms.map((term) => String(term.term ?? '').trim()).filter(Boolean))];
+  return { matchedFields, matchedKeywords: fallbackKeywords };
+}
+
 type AiSummaryErrorCode =
   | 'missing_api_key'
   | 'invalid_api_key'
@@ -704,14 +759,24 @@ app.post('/api/run', async (req, res) => {
     };
     const response = {
       ...result,
-      active: result.active.map((item) => ({
-        ...item,
-        article: stripSearchFields(item.article),
-      })),
-      archived: result.archived.map((item) => ({
-        ...item,
-        article: stripSearchFields(item.article),
-      })),
+      active: result.active.map((item) => {
+        const article = stripSearchFields(item.article);
+        const meta = buildSearchMatchMeta(article, buildSearchKeywordCandidates(config), item.breakdown?.matchedTerms);
+        return {
+          ...item,
+          article,
+          ...meta,
+        };
+      }),
+      archived: result.archived.map((item) => {
+        const article = stripSearchFields(item.article);
+        const meta = buildSearchMatchMeta(article, buildSearchKeywordCandidates(config));
+        return {
+          ...item,
+          article,
+          ...meta,
+        };
+      }),
     };
     console.log("results.length", response.active.length + response.archived.length);
     res.json(response);

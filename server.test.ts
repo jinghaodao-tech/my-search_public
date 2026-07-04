@@ -32,6 +32,34 @@ async function createCard(overrides: Record<string, unknown> = {}) {
   return response.body as { id: string };
 }
 
+function bm25Config(term: string) {
+  return {
+    k1: 1.5,
+    b: 0.75,
+    lambda: 0.1,
+    contextBonus: 1.5,
+    keywords: [{ term, weight: 1, synonyms: [] }],
+  };
+}
+
+async function runSearch(cardId: string, term: string) {
+  return request(app)
+    .post('/api/run')
+    .send({
+      modeId: 'custom',
+      config: bm25Config(term),
+      articles: [{
+        id: cardId,
+        title: 'fallback title',
+        body: 'fallback body',
+        publishedAt: new Date().toISOString(),
+        sourceAuthority: 0.8,
+        url: '',
+      }],
+      options: { resultLimit: 5, archiveScoreThreshold: 0 },
+    });
+}
+
 describe('cards API validation', () => {
   it('creates a card', async () => {
     const response = await request(app)
@@ -254,6 +282,39 @@ describe('cards API validation', () => {
       .send({ csv: 'title,body\nlimited,body' });
 
     expect(limited.status).toBe(429);
+  });
+});
+
+
+describe('BM25 search match metadata', () => {
+  it('returns title match fields and keywords', async () => {
+    const card = await createCard({ title: 'SQLite migration', body: 'plain body', tags: ['database'] });
+
+    const response = await runSearch(card.id, 'SQLite');
+
+    expect(response.status).toBe(200);
+    expect(response.body.active[0].matchedFields).toContain('title');
+    expect(response.body.active[0].matchedKeywords).toContain('SQLite');
+  });
+
+  it('returns body match fields and keywords', async () => {
+    const card = await createCard({ title: 'Search note', body: 'BM25 ranking details', tags: ['database'] });
+
+    const response = await runSearch(card.id, 'BM25');
+
+    expect(response.status).toBe(200);
+    expect(response.body.active[0].matchedFields).toContain('body');
+    expect(response.body.active[0].matchedKeywords).toContain('BM25');
+  });
+
+  it('returns tag match fields and keywords', async () => {
+    const card = await createCard({ title: 'Search note', body: 'plain body', tags: ['sqlite-tag'] });
+
+    const response = await runSearch(card.id, 'sqlite-tag');
+
+    expect(response.status).toBe(200);
+    expect(response.body.active[0].matchedFields).toContain('tags');
+    expect(response.body.active[0].matchedKeywords).toContain('sqlite-tag');
   });
 });
 

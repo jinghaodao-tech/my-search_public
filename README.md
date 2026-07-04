@@ -201,6 +201,7 @@ http://localhost:3000
 
 - Migrated persistence from JSON file storage to SQLite
 - Implemented BM25-based search for keyword retrieval over card title, body, and tags
+- Added search result highlighting and match explanations to show why each result matched the query
 - Improved search performance by persisting token data and document length at save time
 - Replaced full card-table rewrites with targeted SQLite writes for common card CRUD, bulk, link, and KJ assignment operations
 - Added Zod validation to reject invalid request bodies before business logic runs
