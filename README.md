@@ -41,7 +41,7 @@ The first version stored card data in a JSON file. That approach was simple, but
 
 Search is implemented with BM25. Instead of tokenizing card content on every search request, token data and document length are generated when cards are saved and then persisted in SQLite. This reduces repeated preprocessing work during search.
 
-The API has also been improved as a backend portfolio project. Card creation/update, bulk operations, imports, links, AI summary, and KJ group APIs now validate request bodies before application logic is executed. The Express app is exported separately from the server startup code so the API can be tested directly with Supertest.
+The API has also been improved as a backend portfolio project. Card creation/update, bulk operations, imports, links, AI summary, KJ group, collect, scheduler, and BM25 run APIs now validate request bodies before application logic is executed. The Express app is exported separately from the server startup code so the API can be tested directly with Supertest.
 
 ## Security and API Quality
 
@@ -79,6 +79,7 @@ The API test suite currently covers:
 - rejecting self-links
 - invalid CSV / JSON import requests
 - rate limiting on import-related APIs
+- database write paths such as card updates, bulk archive/restore/delete, and bidirectional link cleanup
 
 ## Environment Variables
 

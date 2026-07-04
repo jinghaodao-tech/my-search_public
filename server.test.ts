@@ -91,6 +91,22 @@ describe('cards API validation', () => {
     expect(missing.status).toBe(404);
   });
 
+  it('removes deleted card ids from other cards links', async () => {
+    const first = await createCard({ title: 'First' });
+    const second = await createCard({ title: 'Second' });
+
+    await request(app)
+      .post(`/api/cards/${first.id}/links`)
+      .send({ targetId: second.id });
+
+    const deleted = await request(app).delete(`/api/cards/${second.id}`);
+    const firstAfterDelete = await request(app).get(`/api/cards/${first.id}`);
+
+    expect(deleted.status).toBe(200);
+    expect(firstAfterDelete.status).toBe(200);
+    expect(firstAfterDelete.body.links).not.toContain(second.id);
+  });
+
   it('rejects bulk operations when ids is not an array', async () => {
     const response = await request(app)
       .post('/api/cards/bulk-archive')
@@ -126,6 +142,31 @@ describe('cards API validation', () => {
     expect((await request(app).get(`/api/cards/${second.id}`)).status).toBe(404);
   });
 
+  it('removes bulk-deleted card ids from remaining cards links', async () => {
+    const first = await createCard({ title: 'First' });
+    const second = await createCard({ title: 'Second' });
+    const third = await createCard({ title: 'Third' });
+
+    await request(app)
+      .post(`/api/cards/${first.id}/links`)
+      .send({ targetId: second.id });
+    await request(app)
+      .post(`/api/cards/${first.id}/links`)
+      .send({ targetId: third.id });
+
+    const deleted = await request(app)
+      .post('/api/cards/bulk-delete')
+      .send({ ids: [second.id, third.id] });
+    const firstAfterDelete = await request(app).get(`/api/cards/${first.id}`);
+
+    expect(deleted.status).toBe(200);
+    expect(deleted.body.deleted).toEqual([second.id, third.id]);
+    expect(firstAfterDelete.body.links).not.toContain(second.id);
+    expect(firstAfterDelete.body.links).not.toContain(third.id);
+    expect((await request(app).get(`/api/cards/${second.id}`)).status).toBe(404);
+    expect((await request(app).get(`/api/cards/${third.id}`)).status).toBe(404);
+  });
+
   it('rejects self links', async () => {
     const card = await createCard();
 
@@ -150,6 +191,7 @@ describe('cards API validation', () => {
     const secondAfterLink = await request(app).get(`/api/cards/${second.id}`);
     expect(firstAfterLink.body.links).toContain(second.id);
     expect(secondAfterLink.body.links).toContain(first.id);
+    expect((await request(app).get(`/api/cards/${second.id}/backlinks`)).body.map((card: { id: string }) => card.id)).toContain(first.id);
 
     const unlinked = await request(app).delete(`/api/cards/${first.id}/links/${second.id}`);
     expect(unlinked.status).toBe(200);
@@ -158,6 +200,7 @@ describe('cards API validation', () => {
     const secondAfterUnlink = await request(app).get(`/api/cards/${second.id}`);
     expect(firstAfterUnlink.body.links).not.toContain(second.id);
     expect(secondAfterUnlink.body.links).not.toContain(first.id);
+    expect((await request(app).get(`/api/cards/${second.id}/backlinks`)).body.map((card: { id: string }) => card.id)).not.toContain(first.id);
   });
 
   it('assigns and removes a card from a KJ group', async () => {
