@@ -1,6 +1,6 @@
-﻿/**
- * server.ts 窶・BM25 Web 繧ｵ繝ｼ繝舌・ + 繧ｫ繝ｼ繝臥ｮ｡逅・ｵｱ蜷育沿
- * 襍ｷ蜍・ npx tsx server.ts
+/**
+ * server.ts — BM25 Web サーバー + カード管理統合版
+ * 起動: npx tsx server.ts
  * GUI:  http://localhost:3000
  */
 import fs                from 'fs';
@@ -128,8 +128,8 @@ function buildSummaryPayload(card: Card) {
     messages: [{
       role: 'user' as const,
       content:
-        `莉･荳九・險倅ｺ九ｒ譌･譛ｬ隱槭〒3陦御ｻ･蜀・↓隕∫ｴ・＠縺ｦ縺上□縺輔＞縲よ焚蟄励・蝗ｺ譛牙錐隧槭・逵∫払縺励↑縺・〒縺上□縺輔＞縲・n\n` +
-        `繧ｿ繧､繝医Ν: ${card.title}\n譛ｬ譁・ ${card.body}`,
+        `以下の記事を日本語で3行以内に要約してください。数字・固有名詞は省略しないでください。\n\n` +
+        `タイトル: ${card.title}\n本文: ${card.body}`,
     }],
   };
 }
@@ -421,7 +421,7 @@ app.get('/', (_req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 );
 
-// 笏笏 蜿朱寔邨先棡繧ｭ繝｣繝・す繝･ 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+// ── 収集結果キャッシュ ───────────────────────────────────────────
 let cachedArticles: CollectResult | null = loadArticles();
 let collectorConfig: CollectorConfig = DEFAULT_CONFIG;
 let schedulerStop: (() => void) | null = null;
@@ -438,10 +438,9 @@ function resolveCollectorConfig(value: unknown): CollectorConfig {
   return DEFAULT_CONFIG;
 }
 
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
-//  譌｢蟄・BM25 / Collect API
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
-
+// ════════════════════════════════════════════════════
+//  既存 BM25 / Collect API
+// ════════════════════════════════════════════════════
 
 const authoritySchema = z.number().min(0).max(1);
 const collectorConfigSchema = z.object({
@@ -593,7 +592,7 @@ app.get('/api/modes', (_req, res) => res.json(MODES));
 
 app.get('/api/articles', (_req, res) => {
   if (!cachedArticles) {
-    res.json({ articles: [], stats: null, message: '譛ｪ蜿朱寔縲・api/collect 繧貞他繧薙〒縺上□縺輔＞' });
+    res.json({ articles: [], stats: null, message: '未収集。/api/collect を呼んでください' });
     return;
   }
   res.json(cachedArticles);
@@ -637,7 +636,7 @@ app.post('/api/collect/config', (req, res) => {
 app.post('/api/scheduler/start', (req, res) => {
   const body = parseBody(schedulerStartSchema, req, res);
   if (!body) return;
-  if (schedulerStop) { res.json({ ok: false, message: '譌｢縺ｫ襍ｷ蜍穂ｸｭ' }); return; }
+  if (schedulerStop) { res.json({ ok: false, message: '既に起動中' }); return; }
   const expr = body.cronExpr ?? '*/30 * * * *';
   schedulerCronExpr = expr;
   schedulerStop = startScheduler({
@@ -668,7 +667,7 @@ app.post('/api/run', async (req, res) => {
     const { modeId, config, articles: reqArticles, options } = body;
     const rawArticles = reqArticles ?? cachedArticles?.articles ?? [];
     if (!rawArticles.length) {
-      res.status(400).json({ error: '險倅ｺ九′縺ゅｊ縺ｾ縺帙ｓ縲ょ・縺ｫ /api/collect 繧貞ｮ溯｡後＠縺ｦ縺上□縺輔＞' });
+      res.status(400).json({ error: '記事がありません。先に /api/collect を実行してください' });
       return;
     }
     const cardsById = new Map(loadCards().map((card) => [card.id, card]));
@@ -721,11 +720,11 @@ app.post('/api/run', async (req, res) => {
   }
 });
 
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
-//  ﾂｧ A. 繧ｫ繝ｼ繝韻RUD API
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
+// ════════════════════════════════════════════════════
+//  § A. カードCRUD API
+// ════════════════════════════════════════════════════
 
-/** 蜈ｨ繧ｫ繝ｼ繝牙叙蠕暦ｼ医ち繧ｰ繝ｻKJ繧ｰ繝ｫ繝ｼ繝励〒繝輔ぅ繝ｫ繧ｿ蜿ｯ・・*/
+/** 全カード取得（タグ・KJグループでフィルタ可） */
 
 app.post('/api/search/expand-keywords', aiLimiter, async (req, res) => {
   const body = parseBody(keywordExpandSchema, req, res);
@@ -763,7 +762,7 @@ app.get('/api/cards', (req, res) => {
   }));
 });
 
-/** 繧ｫ繝ｼ繝我ｽ懈・・医Γ繝｢譁ｰ隕擾ｼ・*/
+/** カード作成（メモ新規） */
 app.post('/api/cards', async (req, res) => {
   const body = parseBody(createCardSchema, req, res);
   if (!body) return;
@@ -775,7 +774,7 @@ app.post('/api/cards', async (req, res) => {
   }
 });
 
-/** 繧ｫ繝ｼ繝牙叙蠕・*/
+/** カード取得 */
 app.get('/api/cards/:id', (req, res) => {
   const card = getCard(req.params.id);
   if (!card) { res.status(404).json({ error: 'Not found' }); return; }
@@ -783,7 +782,7 @@ app.get('/api/cards/:id', (req, res) => {
   res.json({ ...card, backlinks });
 });
 
-/** 繧ｫ繝ｼ繝画峩譁ｰ */
+/** カード更新 */
 app.put('/api/cards/:id', async (req, res) => {
   const body = parseBody(updateCardSchema, req, res);
   if (!body) return;
@@ -792,7 +791,7 @@ app.put('/api/cards/:id', async (req, res) => {
   res.json(card);
 });
 
-/** 繧ｫ繝ｼ繝牙炎髯､ */
+/** カード削除 */
 app.delete('/api/cards/:id', (req, res) => {
   const ok = deleteCard(req.params.id);
   res.json({ ok });
@@ -849,9 +848,9 @@ app.post('/api/cards/bulk-delete', (req, res) => {
   res.json({ ok: true, deleted });
 });
 
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
-//  ﾂｧ B. AI隕∫ｴ・API
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
+// ════════════════════════════════════════════════════
+//  § B. AI要約 API
+// ════════════════════════════════════════════════════
 
 
 app.delete('/api/cards/:id/summary', async (req, res) => {
@@ -883,7 +882,7 @@ app.post('/api/cards/:id/summarize', aiLimiter, async (req, res) => {
   }
 });
 
-/** 隍・焚繧ｫ繝ｼ繝峨ｒ荳諡ｬ隕∫ｴ・ｼ医ヰ繝・け繧ｰ繝ｩ繧ｦ繝ｳ繝会ｼ・*/
+/** 複数カードを一括要約（バックグラウンド） */
 app.post('/api/cards/summarize-bulk', aiLimiter, async (req, res) => {
   const body = parseBody(idsBodySchema, req, res);
   if (!body) return;
@@ -897,9 +896,9 @@ app.post('/api/cards/summarize-bulk', aiLimiter, async (req, res) => {
     });
     return;
   }
-  res.json({ ok: true, message: `${body.ids.length}莉ｶ縺ｮ隕∫ｴ・ｒ髢句ｧ九＠縺ｾ縺励◆` });
+  res.json({ ok: true, message: `${body.ids.length}件の要約を開始しました` });
 
-  // 繝舌ャ繧ｯ繧ｰ繝ｩ繧ｦ繝ｳ繝牙・逅・
+  // バックグラウンド処理
   (async () => {
     for (const id of body.ids) {
       const card = getCard(id);
@@ -907,7 +906,7 @@ app.post('/api/cards/summarize-bulk', aiLimiter, async (req, res) => {
       try {
         const summary = await summarizeCard(card);
         await updateCard(id, { summary });
-        await new Promise(r => setTimeout(r, 300)); // 繝ｬ繝ｼ繝亥宛髯仙ｯｾ蠢・
+        await new Promise(r => setTimeout(r, 300)); // レート制限対応
       } catch (error) {
         console.error('[AI SUMMARY] bulk summarize failed:', { id, error });
       }
@@ -915,9 +914,9 @@ app.post('/api/cards/summarize-bulk', aiLimiter, async (req, res) => {
   })();
 });
 
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
-//  ﾂｧ C. Zettelkasten 繝ｪ繝ｳ繧ｯ API
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
+// ════════════════════════════════════════════════════
+//  § C. Zettelkasten リンク API
+// ════════════════════════════════════════════════════
 
 app.post('/api/cards/:id/links', (req, res) => {
   const body = parseBody(linkBodySchema, req, res);
@@ -943,7 +942,7 @@ app.get('/api/cards/:id/backlinks', (req, res) => {
   res.json(getBacklinks(req.params.id));
 });
 
-/** Zettelkasten繧ｰ繝ｩ繝輔ョ繝ｼ繧ｿ・・is.js逕ｨ・・*/
+/** Zettelkastenグラフデータ（vis.js用） */
 app.get('/api/zettelkasten/graph', (_req, res) => {
   const cards = loadCards();
   const nodes = cards.map(c => ({
@@ -967,9 +966,9 @@ app.get('/api/zettelkasten/graph', (_req, res) => {
   res.json({ nodes, edges });
 });
 
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
-//  ﾂｧ D. KJ豕輔げ繝ｫ繝ｼ繝・API
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
+// ════════════════════════════════════════════════════
+//  § D. KJ法グループ API
+// ════════════════════════════════════════════════════
 
 app.get('/api/kj/groups', (_req, res) => {
   const groups = loadKJGroups();
@@ -978,7 +977,7 @@ app.get('/api/kj/groups', (_req, res) => {
     ...g,
     cards: cards.filter(c => c.kjGroupId === g.id),
   }));
-  // 譛ｪ繧ｰ繝ｫ繝ｼ繝励き繝ｼ繝・
+  // 未グループカード
   const ungrouped = cards.filter(c => !c.kjGroupId);
   res.json({ groups: result, ungrouped });
 });
@@ -1004,7 +1003,7 @@ app.delete('/api/kj/groups/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-/** 繧ｫ繝ｼ繝峨ｒ繧ｰ繝ｫ繝ｼ繝励∈蜑ｲ繧雁ｽ薙※ */
+/** カードをグループへ割り当て */
 app.post('/api/kj/groups/:id/cards', async (req, res) => {
   const body = parseBody(kjAssignSchema, req, res);
   if (!body) return;
@@ -1012,21 +1011,21 @@ app.post('/api/kj/groups/:id/cards', async (req, res) => {
   res.json({ ok: true });
 });
 
-/** 繧ｫ繝ｼ繝峨ｒ繧ｰ繝ｫ繝ｼ繝励°繧牙､悶☆ */
+/** カードをグループから外す */
 app.delete('/api/kj/groups/:id/cards/:cardId', async (req, res) => {
   await assignKJGroup(req.params.cardId, null);
   res.json({ ok: true });
 });
 
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
-//  ﾂｧ E. 繧ｿ繧ｰ API
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
+// ════════════════════════════════════════════════════
+//  § E. タグ API
+// ════════════════════════════════════════════════════
 
 app.get('/api/tags', (_req, res) => res.json(getAllTags()));
 
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
-//  ﾂｧ F. CSV 繧､繝ｳ繝昴・繝・API
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
+// ════════════════════════════════════════════════════
+//  § F. CSV インポート API
+// ════════════════════════════════════════════════════
 
 app.post('/api/cards/import-csv', importLimiter, (req, res) => {
   const body = parseBody(csvImportSchema, req, res);
@@ -1043,7 +1042,7 @@ app.post('/api/cards/import-csv', importLimiter, (req, res) => {
   }
 });
 
-/** JSON蜿悶ｊ霎ｼ縺ｿ */
+/** JSON取り込み */
 app.post('/api/cards/import-json', importLimiter, (req, res) => {
   const body = parseBody(jsonImportSchema, req, res);
   if (!body) return;
@@ -1085,9 +1084,9 @@ app.post('/api/cards/import-articles', async (req, res) => {
   res.json({ ok: true, count: imported.length });
 });
 
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
-//  襍ｷ蜍・
-// 笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武笊絶武
+// ════════════════════════════════════════════════════
+//  起動
+// ════════════════════════════════════════════════════
 if (process.env.NODE_ENV !== 'test') {
   await backfillCardTokens();
   if (cachedArticles) {
@@ -1099,8 +1098,7 @@ if (process.env.NODE_ENV !== 'test') {
 const PORT = Number(process.env.PORT ?? 3000);
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(`\n  笨・繧ｫ繝ｼ繝臥ｮ｡逅・し繝ｼ繝舌・  http://localhost:${PORT}`);
-    console.log(`  笨・GUI                http://localhost:${PORT}/\n`);
+    console.log(`\n  ✓ カード管理サーバー  http://localhost:${PORT}`);
+    console.log(`  ✓ GUI                http://localhost:${PORT}/\n`);
   });
 }
-
