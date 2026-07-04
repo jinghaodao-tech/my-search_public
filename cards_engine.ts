@@ -54,6 +54,141 @@ function ensureDataDir() {
 import { db } from "./db/database.js";
 import { tokenize } from "./bm25_engine.js";
 
+type CardRow = {
+  id: string;
+  title: string;
+  body: string | null;
+  summary: string | null;
+  url: string | null;
+  type: Card["type"] | null;
+  color: string | null;
+  tags_json: string | null;
+  links_json: string | null;
+  kj_group_id: string | null;
+  archived: number | null;
+  archived_at: string | null;
+  tokens_json: string | null;
+  doc_length: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function rowToCard(row: CardRow): Card {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body ?? "",
+    summary: row.summary ?? undefined,
+    url: row.url ?? undefined,
+    type: row.type ?? "memo",
+    color: row.color ?? undefined,
+    tags: JSON.parse(row.tags_json ?? "[]"),
+    links: JSON.parse(row.links_json ?? "[]"),
+    kjGroupId: row.kj_group_id ?? undefined,
+    archived: Boolean(row.archived),
+    archivedAt: row.archived_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    tokens: JSON.parse(row.tokens_json ?? "[]"),
+    docLength: row.doc_length ?? 0,
+  };
+}
+
+function cardToRow(card: Card) {
+  return {
+    id: card.id,
+    title: card.title,
+    body: card.body ?? "",
+    summary: card.summary ?? null,
+    url: card.url ?? null,
+    type: card.type ?? "memo",
+    color: card.color ?? null,
+    tags_json: JSON.stringify(card.tags ?? []),
+    links_json: JSON.stringify(card.links ?? []),
+    kj_group_id: card.kjGroupId ?? null,
+    archived: card.archived ? 1 : 0,
+    archived_at: card.archivedAt ?? null,
+    tokens_json: JSON.stringify(card.tokens ?? []),
+    doc_length: card.docLength ?? card.tokens?.length ?? 0,
+    created_at: card.createdAt,
+    updated_at: card.updatedAt,
+  };
+}
+
+const insertCardSql = `
+  INSERT INTO cards (
+    id,
+    title,
+    body,
+    summary,
+    url,
+    type,
+    color,
+    tags_json,
+    links_json,
+    kj_group_id,
+    archived,
+    archived_at,
+    tokens_json,
+    doc_length,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    @id,
+    @title,
+    @body,
+    @summary,
+    @url,
+    @type,
+    @color,
+    @tags_json,
+    @links_json,
+    @kj_group_id,
+    @archived,
+    @archived_at,
+    @tokens_json,
+    @doc_length,
+    @created_at,
+    @updated_at
+  )
+`;
+
+function insertStoredCard(card: Card): void {
+  db.prepare(insertCardSql).run(cardToRow(card));
+}
+
+function updateStoredCard(card: Card): void {
+  db.prepare(`
+    UPDATE cards
+    SET
+      title = @title,
+      body = @body,
+      summary = @summary,
+      url = @url,
+      type = @type,
+      color = @color,
+      tags_json = @tags_json,
+      links_json = @links_json,
+      kj_group_id = @kj_group_id,
+      archived = @archived,
+      archived_at = @archived_at,
+      tokens_json = @tokens_json,
+      doc_length = @doc_length,
+      created_at = @created_at,
+      updated_at = @updated_at
+    WHERE id = @id
+  `).run(cardToRow(card));
+}
+
+function updateStoredLinks(id: string, links: string[], updatedAt: string): void {
+  db.prepare(`
+    UPDATE cards
+    SET links_json = ?, updated_at = ?
+    WHERE id = ?
+  `).run(JSON.stringify(links), updatedAt, id);
+}
+
 export function loadCards(): Card[] {
   console.time("load cards");
   try {
@@ -61,24 +196,7 @@ export function loadCards(): Card[] {
       SELECT * FROM cards
     `).all();
 
-    return rows.map((row: any) => ({
-      id: row.id,
-      title: row.title,
-      body: row.body ?? "",
-      summary: row.summary ?? undefined,
-      url: row.url ?? undefined,
-      type: row.type ?? "memo",
-      color: row.color ?? undefined,
-      tags: JSON.parse(row.tags_json ?? "[]"),
-      links: JSON.parse(row.links_json ?? "[]"),
-      kjGroupId: row.kj_group_id ?? undefined,
-      archived: Boolean(row.archived),
-      archivedAt: row.archived_at ?? undefined,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      tokens: JSON.parse(row.tokens_json ?? "[]"),
-      docLength: row.doc_length ?? 0,
-    }));
+    return rows.map(row => rowToCard(row as CardRow));
   } finally {
     console.timeEnd("load cards");
   }
@@ -115,67 +233,13 @@ export function saveCards(cards: Card[]): void {
     DELETE FROM cards
   `);
 
-  const insert = db.prepare(`
-    INSERT INTO cards (
-      id,
-      title,
-      body,
-      summary,
-      url,
-      type,
-      color,
-      tags_json,
-      links_json,
-      kj_group_id,
-      archived,
-      archived_at,
-      tokens_json,
-      doc_length,
-      created_at,
-      updated_at
-    )
-    VALUES (
-      @id,
-      @title,
-      @body,
-      @summary,
-      @url,
-      @type,
-      @color,
-      @tags_json,
-      @links_json,
-      @kj_group_id,
-      @archived,
-      @archived_at,
-      @tokens_json,
-      @doc_length,
-      @created_at,
-      @updated_at
-    )
-  `);
+  const insert = db.prepare(insertCardSql);
 
   const tx = db.transaction(() => {
     clear.run();
 
     for (const card of cards) {
-      insert.run({
-        id: card.id,
-        title: card.title,
-        body: card.body ?? "",
-        summary: card.summary ?? null,
-        url: card.url ?? null,
-        type: card.type ?? "memo",
-        color: card.color ?? null,
-        tags_json: JSON.stringify(card.tags ?? []),
-        links_json: JSON.stringify(card.links ?? []),
-        kj_group_id: card.kjGroupId ?? null,
-        archived: card.archived ? 1 : 0,
-        archived_at: card.archivedAt ?? null,
-        tokens_json: JSON.stringify(card.tokens ?? []),
-        doc_length: card.docLength ?? card.tokens?.length ?? 0,
-        created_at: card.createdAt,
-        updated_at: card.updatedAt,
-      });
+      insert.run(cardToRow(card));
     }
   });
 
@@ -208,7 +272,6 @@ function newId(): string {
 export async function createCard(
   fields: Pick<Card, 'title' | 'body'> & Partial<Omit<Card, 'id' | 'createdAt' | 'updatedAt'>>
 ): Promise<Card> {
-  const cards = loadCards();
   const now   = new Date().toISOString();
   const card: Card = {
     id:        newId(),
@@ -228,46 +291,52 @@ export async function createCard(
   };
   card.tokens = await tokenize(`${card.title} ${card.body} ${(card.tags ?? []).join(" ")}`);
   card.docLength = card.tokens.length;
-  cards.push(card);
-  saveCards(cards);
+  insertStoredCard(card);
   return card;
 }
 
 export async function updateCard(id: string, updates: Partial<Card>): Promise<Card | null> {
-  const cards = loadCards();
-  const idx   = cards.findIndex(c => c.id === id);
-  if (idx === -1) return null;
-  cards[idx] = { ...cards[idx], ...updates, id, updatedAt: new Date().toISOString() };
-  cards[idx].tokens = await tokenize(
-    `${cards[idx].title} ${cards[idx].body} ${(cards[idx].tags ?? []).join(" ")}`
+  const existing = getCard(id);
+  if (!existing) return null;
+  const updated: Card = { ...existing, ...updates, id, updatedAt: new Date().toISOString() };
+  updated.tokens = await tokenize(
+    `${updated.title} ${updated.body} ${(updated.tags ?? []).join(" ")}`
   );
-  cards[idx].docLength = cards[idx].tokens.length;
-  saveCards(cards);
-  return cards[idx];
+  updated.docLength = updated.tokens.length;
+  updateStoredCard(updated);
+  return updated;
 }
 
 export function deleteCard(id: string): boolean {
-  let cards = loadCards();
-  const before = cards.length;
-  // 他カードのlinksからも削除
-  cards = cards
-    .filter(c => c.id !== id)
-    .map(c => ({ ...c, links: c.links.filter(l => l !== id) }));
-  if (cards.length === before) return false;
-  saveCards(cards);
+  const cards = loadCards();
+  if (!cards.some(card => card.id === id)) return false;
+  const now = new Date().toISOString();
+  const tx = db.transaction(() => {
+    db.prepare(`DELETE FROM cards WHERE id = ?`).run(id);
+    for (const card of cards) {
+      if (card.id === id || !card.links.includes(id)) continue;
+      updateStoredLinks(card.id, card.links.filter(linkId => linkId !== id), now);
+    }
+  });
+  tx();
   return true;
 }
 
 export function bulkArchiveCards(ids: string[]): string[] {
-  const idSet = new Set(ids);
   const now = new Date().toISOString();
   const updated: string[] = [];
-  const cards = loadCards().map(card => {
-    if (!idSet.has(card.id)) return card;
-    updated.push(card.id);
-    return { ...card, archived: true, archivedAt: now, updatedAt: now };
+  const archive = db.prepare(`
+    UPDATE cards
+    SET archived = 1, archived_at = ?, updated_at = ?
+    WHERE id = ?
+  `);
+  const tx = db.transaction(() => {
+    for (const id of ids) {
+      const result = archive.run(now, now, id);
+      if (result.changes > 0) updated.push(id);
+    }
   });
-  if (updated.length) saveCards(cards);
+  tx();
   return updated;
 }
 
@@ -276,15 +345,20 @@ export async function restoreCard(id: string): Promise<Card | null> {
 }
 
 export function bulkRestoreCards(ids: string[]): string[] {
-  const idSet = new Set(ids);
   const now = new Date().toISOString();
   const updated: string[] = [];
-  const cards = loadCards().map(card => {
-    if (!idSet.has(card.id)) return card;
-    updated.push(card.id);
-    return { ...card, archived: false, archivedAt: undefined, updatedAt: now };
+  const restore = db.prepare(`
+    UPDATE cards
+    SET archived = 0, archived_at = NULL, updated_at = ?
+    WHERE id = ?
+  `);
+  const tx = db.transaction(() => {
+    for (const id of ids) {
+      const result = restore.run(now, id);
+      if (result.changes > 0) updated.push(id);
+    }
   });
-  if (updated.length) saveCards(cards);
+  tx();
   return updated;
 }
 
@@ -294,18 +368,27 @@ export function bulkDeleteCards(ids: string[]): string[] {
   const deleted = cards.filter(card => idSet.has(card.id)).map(card => card.id);
   if (!deleted.length) return [];
 
-  const remaining = cards
-    .filter(card => !idSet.has(card.id))
-    .map(card => ({
-      ...card,
-      links: card.links.filter(linkId => !idSet.has(linkId)),
-    }));
-  saveCards(remaining);
+  const now = new Date().toISOString();
+  const deleteById = db.prepare(`DELETE FROM cards WHERE id = ?`);
+  const tx = db.transaction(() => {
+    for (const id of deleted) {
+      deleteById.run(id);
+    }
+    for (const card of cards) {
+      if (idSet.has(card.id)) continue;
+      const links = card.links.filter(linkId => !idSet.has(linkId));
+      if (links.length !== card.links.length) {
+        updateStoredLinks(card.id, links, now);
+      }
+    }
+  });
+  tx();
   return deleted;
 }
 
 export function getCard(id: string): Card | null {
-  return loadCards().find(c => c.id === id) ?? null;
+  const row = db.prepare(`SELECT * FROM cards WHERE id = ?`).get(id) as CardRow | undefined;
+  return row ? rowToCard(row) : null;
 }
 
 // ════════════════════════════════════════════════════
@@ -314,22 +397,29 @@ export function getCard(id: string): Card | null {
 
 /** 双方向リンクを貼る */
 export function linkCards(id1: string, id2: string): void {
-  const cards = loadCards();
-  for (const card of cards) {
-    if (card.id === id1 && !card.links.includes(id2)) card.links.push(id2);
-    if (card.id === id2 && !card.links.includes(id1)) card.links.push(id1);
-  }
-  saveCards(cards);
+  const card1 = getCard(id1);
+  const card2 = getCard(id2);
+  if (!card1 || !card2) return;
+  const links1 = card1.links.includes(id2) ? card1.links : [...card1.links, id2];
+  const links2 = card2.links.includes(id1) ? card2.links : [...card2.links, id1];
+  const now = new Date().toISOString();
+  const tx = db.transaction(() => {
+    updateStoredLinks(id1, links1, now);
+    updateStoredLinks(id2, links2, now);
+  });
+  tx();
 }
 
 /** 双方向リンクを外す */
 export function unlinkCards(id1: string, id2: string): void {
-  const cards = loadCards();
-  for (const card of cards) {
-    if (card.id === id1) card.links = card.links.filter(l => l !== id2);
-    if (card.id === id2) card.links = card.links.filter(l => l !== id1);
-  }
-  saveCards(cards);
+  const card1 = getCard(id1);
+  const card2 = getCard(id2);
+  const now = new Date().toISOString();
+  const tx = db.transaction(() => {
+    if (card1) updateStoredLinks(id1, card1.links.filter(linkId => linkId !== id2), now);
+    if (card2) updateStoredLinks(id2, card2.links.filter(linkId => linkId !== id1), now);
+  });
+  tx();
 }
 
 /** 指定カードのバックリンク（被リンク）を返す */
@@ -387,11 +477,11 @@ export function updateKJGroup(id: string, updates: Partial<KJGroup>): KJGroup | 
 }
 
 export function deleteKJGroup(id: string): void {
-  // グループに属していたカードのkjGroupIdをクリア
-  const cards = loadCards().map(c =>
-    c.kjGroupId === id ? { ...c, kjGroupId: undefined } : c
-  );
-  saveCards(cards);
+  db.prepare(`
+    UPDATE cards
+    SET kj_group_id = NULL, updated_at = ?
+    WHERE kj_group_id = ?
+  `).run(new Date().toISOString(), id);
   saveKJGroups(loadKJGroups().filter(g => g.id !== id));
 }
 
