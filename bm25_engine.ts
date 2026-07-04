@@ -196,20 +196,26 @@ const KEEP_POS = new Set(["名詞", "動詞", "形容詞", "感動詞"]);
 
 // kuromoji は非同期初期化が必要なためシングルトンで保持
 let _tokenizer: KuromojiTokenizer | null = null;
+let _tokenizerPromise: Promise<KuromojiTokenizer> | null = null;
 
 const DICT_PATH = path.join(__dirname, "node_modules/kuromoji/dict/");
 
 async function getTokenizer(): Promise<KuromojiTokenizer> {
   if (_tokenizer) return _tokenizer;
-  return new Promise((resolve, reject) => {
+  if (_tokenizerPromise) return _tokenizerPromise;
+  _tokenizerPromise = new Promise((resolve, reject) => {
     kuromoji
       .builder({ dicPath: DICT_PATH })
       .build((err: Error | null, tokenizer: KuromojiTokenizer) => {
-        if (err) return reject(err);
+        if (err) {
+          _tokenizerPromise = null;
+          return reject(err);
+        }
         _tokenizer = tokenizer;
         resolve(tokenizer);
       });
   });
+  return _tokenizerPromise;
 }
 
 /**
@@ -534,6 +540,7 @@ export async function runPipeline(
   options: {
     dedupThreshold?: number;
     archiveScoreThreshold?: number;
+    resultLimit?: number;
     noViewDays?: number;
     viewCounts?: Map<string, number>;
   } = {}
@@ -543,6 +550,7 @@ export async function runPipeline(
   const {
     dedupThreshold = 0.8,
     archiveScoreThreshold = 0.5,
+    resultLimit = 50,
     noViewDays = 14,
     viewCounts = new Map(),
   } = options;
@@ -599,8 +607,9 @@ export async function runPipeline(
     }
   }
 
-  const limitedActive = active.slice(0, 50);
-  const limitedArchived = archived.slice(0, Math.max(0, 50 - limitedActive.length));
+  const safeResultLimit = Math.min(Math.max(Math.floor(resultLimit), 1), 500);
+  const limitedActive = active.slice(0, safeResultLimit);
+  const limitedArchived = archived.slice(0, Math.max(0, safeResultLimit - limitedActive.length));
 
   const avgScore =
     limitedActive.length > 0
@@ -613,8 +622,8 @@ export async function runPipeline(
     stats: {
       inputCount: rawArticles.length,
       afterDedup: deduped.length,
-      activeCount: limitedActive.length,
-      archivedCount: limitedArchived.length,
+      activeCount: active.length,
+      archivedCount: archived.length,
       modeUsed: modeId,
       avgScore,
     },

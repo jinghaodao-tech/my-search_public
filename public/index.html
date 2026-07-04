@@ -36,7 +36,10 @@ body{font-family:'Segoe UI','Yu Gothic UI',sans-serif;background:var(--bg);color
 #main{display:flex;flex:1;overflow:hidden}
 
 /* ── サイドバー ── */
-#sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .2s}
+#sidebar.collapsed{width:44px}
+#sidebar-toggle{margin:8px 8px 0;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+#sidebar.collapsed #sidebar-search input,#sidebar.collapsed #sidebar-body{display:none}
 #sidebar-search{padding:12px;border-bottom:1px solid var(--border)}
 #sidebar-search input{width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none}
 #sidebar-search input:focus{border-color:var(--accent)}
@@ -132,7 +135,10 @@ body{font-family:'Segoe UI','Yu Gothic UI',sans-serif;background:var(--bg);color
 
 /* BM25 左ペイン（設定） */
 #bm25-pane{display:flex;height:100%;overflow:hidden}
-#bm25-config{width:320px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#bm25-config{width:320px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .2s}
+#bm25-config.collapsed{width:44px}
+#bm25-config.collapsed #bm25-config-body,#bm25-config.collapsed #bm25-config-header h3,#bm25-config.collapsed #bm25-run-btn{display:none}
+#bm25-config.collapsed #bm25-config-header{padding:12px 8px;justify-content:center}
 #bm25-config-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
 #bm25-config-header h3{font-size:14px;font-weight:600;flex:1}
 #bm25-config-body{flex:1;overflow-y:auto;padding:14px}
@@ -354,10 +360,18 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
 
   <!-- サイドバー（カード一覧時のみ表示） -->
   <div id="sidebar">
+    <button id="sidebar-toggle" class="btn btn-secondary btn-sm" onclick="toggleCardSidebar()" title="Toggle sidebar">☰</button>
     <div id="sidebar-search">
       <input type="text" id="search-input" placeholder="🔍 キーワード検索..." oninput="onSearch(this.value)">
     </div>
     <div id="sidebar-body">
+      <div class="sidebar-section">
+        <h3>Display</h3>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)">
+          <input type="checkbox" id="summary-toggle" onchange="toggleSummaryVisibility(this.checked)"> AI summary
+        </label>
+      </div>
+
       <div class="sidebar-section">
         <h3>表示</h3>
         <div class="type-filter">
@@ -421,6 +435,7 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
           <!-- 左：設定パネル -->
           <div id="bm25-config">
             <div id="bm25-config-header">
+              <button class="btn btn-secondary btn-sm" onclick="toggleBM25Sidebar()" title="Toggle BM25 settings">☰</button>
               <h3>🔧 BM25 設定</h3>
               <button class="btn btn-primary btn-sm" onclick="runBM25()" id="bm25-run-btn">▶ 実行</button>
             </div>
@@ -432,7 +447,12 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
                 <label><input type="radio" name="bm25src" value="articles" checked> 収集記事</label>
                 <label><input type="radio" name="bm25src" value="cards"> カード</label>
               </div>
-              <div id="bm25-source-info" style="font-size:11px;color:var(--text-dim);margin-bottom:10px"></div>
+              <div id="bm25-source-info" style="font-size:11px;color:var(--text-dim);margin-bottom:6px"></div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+                <span id="article-auto-status" style="font-size:11px;color:var(--text-dim)"></span>
+                <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="refreshInputArticlesNow()">Refresh</button>
+                <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="updateArticleAutoStatus()">Status</button>
+              </div>
 
               <!-- モード選択 -->
               <div class="section-sep" style="display:flex;align-items:center">
@@ -477,12 +497,23 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
                 <input type="range" min="0" max="2" step="0.1" id="p-arch" oninput="syncParam('arch',this.value)">
                 <span class="param-val" id="v-arch">0.5</span>
               </div>
+              <div class="param-row">
+                <label>Limit</label>
+                <input type="number" min="1" max="500" step="1" id="p-limit" value="50" oninput="syncParam('limit',this.value)">
+                <span class="param-val" id="v-limit">50</span>
+              </div>
 
               <!-- キーワード -->
               <div class="section-sep">
                 キーワード
                 <button class="btn btn-secondary btn-sm" style="float:right" onclick="addKeyword()">＋</button>
               </div>
+
+              <div class="kw-chip-tools">
+                <input class="kw-chip-input" id="kw-chip-input" placeholder="keyword" onkeydown="keywordInputKeydown(event)">
+                <button class="btn btn-secondary btn-sm" onclick="expandKeywordsWithAI()">AI類義語追加</button>
+              </div>
+              <div class="kw-chip-list" id="kw-chip-list"></div>
               <div class="kw-header"><span>キーワード</span><span>重み</span><span>同義語（カンマ区切り）</span><span></span></div>
               <div class="kw-list" id="kw-list"></div>
 
@@ -495,9 +526,6 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
               <div id="bm25-stats"></div>
               <div class="spacer"></div>
               <div id="bm25-result-actions" style="display:none;gap:6px">
-                <label style="font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:4px">
-                  上位 <input type="number" id="save-top-n" value="20" min="1" max="200" style="width:50px;padding:3px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px"> 件
-                </label>
                 <button class="btn btn-success btn-sm" onclick="saveTopAsCards()">💾 カードに保存</button>
                 <button class="btn btn-secondary btn-sm" onclick="toggleArchived()">📦 アーカイブ表示</button>
               </div>
@@ -744,12 +772,15 @@ let importTab = 'csv';
 // BM25 状態
 let bm25Modes = {};
 let bm25ActiveMode = '';
-let bm25Params = { k1:1.5, b:0.75, lambda:0.1, ctx:1.5, dedup:0.8, arch:0.5 };
+let bm25Params = { k1:1.5, b:0.75, lambda:0.1, ctx:1.5, dedup:0.8, arch:0.5, limit:50 };
 let bm25Keywords = [];
 let bm25Result = null;
 let showArchived = false;
 let selectedCards = new Set();
 let multiSelectMode = false;
+let showCardSummaries = localStorage.getItem('showCardSummaries') !== 'false';
+let cardSidebarCollapsed = localStorage.getItem('cardSidebarCollapsed') === 'true';
+let bm25SidebarCollapsed = localStorage.getItem('bm25SidebarCollapsed') === 'true';
 
 const COLORS = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#C77DFF','#FF9A3C','#00C9A7','#F72585','#94a3b8'];
 
@@ -766,9 +797,26 @@ const api = {
 // ════════════════════════════════════════
 //  初期化
 // ════════════════════════════════════════
+function applySidebarState(){
+  document.getElementById('sidebar')?.classList.toggle('collapsed', cardSidebarCollapsed);
+  document.getElementById('bm25-config')?.classList.toggle('collapsed', bm25SidebarCollapsed);
+}
+function toggleCardSidebar(){
+  cardSidebarCollapsed = !cardSidebarCollapsed;
+  localStorage.setItem('cardSidebarCollapsed', cardSidebarCollapsed ? 'true' : 'false');
+  applySidebarState();
+}
+function toggleBM25Sidebar(){
+  bm25SidebarCollapsed = !bm25SidebarCollapsed;
+  localStorage.setItem('bm25SidebarCollapsed', bm25SidebarCollapsed ? 'true' : 'false');
+  applySidebarState();
+}
+
 async function init() {
   buildColorStrips();
   await Promise.all([loadCards(), loadTags(), loadBM25Modes()]);
+  const summaryToggle = document.getElementById('summary-toggle');
+  if(summaryToggle) summaryToggle.checked = showCardSummaries;
 }
 
 async function loadCards() {
@@ -801,6 +849,8 @@ function switchView(view) {
   document.getElementById('zettel-view').classList.toggle('active', view==='zettel');
   document.getElementById('bm25-view').classList.toggle('active', view==='bm25');
   document.getElementById('sidebar').style.display = view==='cards' ? 'flex' : 'none';
+  if (view==='cards') applySidebarState();
+  if (view==='bm25') applySidebarState();
   document.getElementById('content-header').style.display = view==='bm25' ? 'none' : 'flex';
   const titles = {cards:currentFilter.archived?'アーカイブ一覧':'カード一覧',kj:'KJ法ボード',zettel:'Zettelkasten ネットワーク',bm25:'BM25スコアリング'};
   document.getElementById('view-title').textContent = titles[view];
@@ -827,7 +877,8 @@ function renderCardGrid() {
     const typeCls = `card-type-${card.type}`;
     const tagHtml = card.tags.slice(0,4).map(t=>`<span class="card-tag">${esc(t)}</span>`).join('');
     const moreTags = card.tags.length>4 ? `<span class="card-tag">+${card.tags.length-4}</span>` : '';
-    const disp = esc(card.summary||card.body).slice(0,120)+(card.body.length>120?'...':'');
+    const sourceText = showCardSummaries && card.summary ? card.summary : card.body;
+    const disp = esc(sourceText||'').slice(0,120)+((sourceText||'').length>120?'...':'');
     const date = new Date(card.createdAt).toLocaleDateString('ja-JP',{month:'short',day:'numeric'});
     const restoreButton = currentFilter.archived
       ? `<button class="btn-icon btn-sm" onclick="event.stopPropagation();restoreOne('${card.id}')" title="復元">↩</button>`
@@ -975,7 +1026,7 @@ function renderDetailPanel(card) {
     ${card.url?`<div class="detail-section detail-url"><h4>リンク</h4><a href="${esc(card.url)}" target="_blank">🔗 ${esc(card.url)}</a></div>`:''}
     <div class="detail-section">
       <h4>AI要約${card.summary?'':'<span style="color:var(--text-dim);font-weight:400"> (未生成)</span>'}</h4>
-      ${card.summary?`<div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm" onclick="summarizeOne('${card.id}')">⚡ AI要約を生成</button>`}
+      ${card.summary?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="deleteSummary('${card.id}')">Delete</button></div><div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm" onclick="summarizeOne('${card.id}')">⚡ AI要約を生成</button>`}
     </div>
     <div class="detail-section"><h4>本文</h4><div class="detail-body-text">${esc(card.body).slice(0,400)}${card.body.length>400?'...':''}</div></div>
     <div class="detail-section">
@@ -1110,6 +1161,20 @@ async function submitImport() {
 // ════════════════════════════════════════
 //  AI要約
 // ════════════════════════════════════════
+
+function toggleSummaryVisibility(checked){
+  showCardSummaries = checked;
+  localStorage.setItem('showCardSummaries', checked ? 'true' : 'false');
+  renderCardGrid();
+}
+async function deleteSummary(id){
+  if(!confirm('Delete summary?')) return;
+  await api.del(`/api/cards/${id}/summary`);
+  toast('Summary deleted');
+  await loadCards();
+  if(currentCardId===id) selectCard(id);
+}
+
 async function summarizeOne(id) {
   toast('要約中...');
   const r=await api.post(`/api/cards/${id}/summarize`,{});
@@ -1189,8 +1254,12 @@ async function deleteGroup(id){if(!confirm('グループを削除しますか？
 async function loadZettelkasten(){
   const gd=await api.get('/api/zettelkasten/graph');
   const container=document.getElementById('zettel-network');
-  const nodes=new vis.DataSet(gd.nodes.map(n=>({...n,shape:'box',font:{color:'#e2e8f0',size:12},color:{background:n.color||'#252836',border:'#6c8aff',highlight:{background:'#6c8aff33',border:'#a78bfa'}},borderWidth:1,borderWidthSelected:2})));
-  const edges=new vis.DataSet(gd.edges.map(e=>({...e,color:{color:'#2e3347',highlight:'#6c8aff'},width:1.5,smooth:{type:'continuous'}})));
+  const linkedIds = new Set();
+  (gd.edges||[]).forEach(e=>{ linkedIds.add(e.from); linkedIds.add(e.to); });
+  const visibleNodes = (gd.nodes||[]).filter(n=>linkedIds.has(n.id));
+  const visibleEdges = (gd.edges||[]).filter(e=>linkedIds.has(e.from)&&linkedIds.has(e.to));
+  const nodes=new vis.DataSet(visibleNodes.map(n=>({...n,shape:'box',font:{color:'#e2e8f0',size:12},color:{background:n.color||'#252836',border:'#6c8aff',highlight:{background:'#6c8aff33',border:'#a78bfa'}},borderWidth:1,borderWidthSelected:2})));
+  const edges=new vis.DataSet(visibleEdges.map(e=>({...e,color:{color:'#2e3347',highlight:'#6c8aff'},width:1.5,smooth:{type:'continuous'}})));
   if(zettelNetwork) zettelNetwork.destroy();
   zettelNetwork=new vis.Network(container,{nodes,edges},{physics:{solver:'forceAtlas2Based',stabilization:{iterations:80}},interaction:{hover:true,tooltipDelay:100}});
   zettelNetwork.on('selectNode',({nodes:sel})=>{if(sel.length===1){switchView('cards');selectCard(sel[0])}});
@@ -1231,8 +1300,9 @@ function selectBM25Mode(modeId) {
 }
 
 function syncParam(key, val) {
-  bm25Params[key] = parseFloat(val);
-  document.getElementById(`v-${key}`).textContent = parseFloat(val).toFixed(2);
+  const n = key === 'limit' ? parseInt(val, 10) : parseFloat(val);
+  bm25Params[key] = Number.isFinite(n) ? n : (key === 'limit' ? 50 : 0);
+  document.getElementById(`v-${key}`).textContent = key === 'limit' ? String(bm25Params[key]) : Number(bm25Params[key]).toFixed(2);
 }
 
 function renderKeywords() {
@@ -1253,6 +1323,29 @@ function updateBM25SourceInfo() {
   const src = document.querySelector('input[name="bm25src"]:checked')?.value||'articles';
   if(src==='cards') el.textContent = `カード ${allCards.length} 件を使用`;
   else el.textContent = `収集記事を使用（/api/articles）`;
+  updateArticleAutoStatus();
+}
+
+async function updateArticleAutoStatus() {
+  const el = document.getElementById('article-auto-status');
+  if(!el) return;
+  try {
+    const status = await api.get('/api/scheduler/status');
+    const fetched = status.lastFetchedAt ? new Date(status.lastFetchedAt).toLocaleString() : '-';
+    el.textContent = `${status.running ? 'Auto update: ON' : 'Auto update: OFF'}${status.collecting ? ' / updating...' : ''} / Articles: ${status.articleCount ?? '-'} / Last: ${fetched}`;
+  } catch {
+    el.textContent = 'Auto update status unavailable';
+  }
+}
+
+async function refreshInputArticlesNow() {
+  try {
+    const result = await api.post('/api/articles/refresh', { background: true });
+    toast(result.running ? 'Article refresh started' : (result.message || 'Article refresh requested'));
+    updateArticleAutoStatus();
+  } catch(e) {
+    toast('Article refresh failed: '+String(e), 'warn');
+  }
 }
 
 async function runBM25() {
@@ -1299,7 +1392,8 @@ async function runBM25() {
     const payload = { modeId: bm25ActiveMode, config, options: {
       dedupThreshold: bm25Params.dedup,
       archiveScoreThreshold: bm25Params.arch,
-    }};
+        resultLimit: bm25Params.limit,
+      }};
     if(articles) payload.articles = articles;
 
     bm25Result = await api.post('/api/run', payload);
@@ -1377,7 +1471,7 @@ function toggleArchived() { showArchived=!showArchived; renderBM25Result(); }
 
 async function saveTopAsCards() {
   if(!bm25Result) return;
-  const n = parseInt(document.getElementById('save-top-n').value)||20;
+  const n = Math.min(bm25Result.active.length, bm25Params.limit || 50);
   const top = bm25Result.active.slice(0,n);
   let saved=0;
   for(const s of top) {

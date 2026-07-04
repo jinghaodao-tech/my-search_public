@@ -1,4 +1,4 @@
-﻿/**
+/**
  * server.ts — BM25 Web サーバー + カード管理統合版
  * 起動: npx tsx server.ts
  * GUI:  http://localhost:3000
@@ -272,6 +272,99 @@ async function summarizeWithGemini(card: Card): Promise<string> {
   }
 }
 
+
+function extractJsonArray(text: string): string[] {
+  const trimmed = text.trim().replace(/^\`\`\`(?:json)?/i, '').replace(/\`\`\`$/i, '').trim();
+  const match = trimmed.match(/\[[\s\S]*\]/);
+  const raw = match ? match[0] : trimmed;
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .map((item) => String(item).trim())
+    .filter((item) => item.length > 0 && item.length <= 50)
+    .slice(0, 10);
+}
+
+function buildKeywordExpansionPrompt(keywords: string[]): string {
+  return [
+    'Generate search synonyms and related terms for BM25 search.',
+    'Return only a JSON array of strings. Do not return explanations.',
+    'Keep proper nouns as-is. Mix Japanese and English terms when useful.',
+    'Maximum 10 terms. Avoid duplicates and avoid the original input terms.',
+    `Input keywords: ${JSON.stringify(keywords)}`,
+  ].join('\n');
+}
+
+async function expandKeywordsWithAnthropic(keywords: string[]): Promise<string[]> {
+  const apiKey = getAnthropicApiKey();
+  if (!apiKey) throw new AiSummaryError(500, 'missing_api_key', 'ANTHROPIC_API_KEY is not configured');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 200,
+        messages: [{ role: 'user', content: buildKeywordExpansionPrompt(keywords) }],
+      }),
+      signal: controller.signal,
+    });
+    const responseBody = await response.text();
+    if (!response.ok) throw mapAnthropicStatus(response.status, responseBody);
+    const data = JSON.parse(responseBody) as { content?: Array<{ text?: string }> };
+    return extractJsonArray(data.content?.[0]?.text ?? '[]');
+  } catch (error) {
+    if (error instanceof AiSummaryError) throw error;
+    if (error instanceof Error && error.name === 'AbortError') throw new AiSummaryError(500, 'timeout', 'AI keyword expansion timed out');
+    throw new AiSummaryError(500, 'api_error', 'AI keyword expansion failed', String(error));
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function expandKeywordsWithGemini(keywords: string[]): Promise<string[]> {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) throw new AiSummaryError(500, 'missing_api_key', 'GEMINI_API_KEY is not configured');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}` +
+    `:generateContent?key=${encodeURIComponent(apiKey)}`;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: buildKeywordExpansionPrompt(keywords) }] }] }),
+      signal: controller.signal,
+    });
+    const responseBody = await response.text();
+    if (!response.ok) throw mapAnthropicStatus(response.status, responseBody);
+    const data = JSON.parse(responseBody) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    return extractJsonArray(data.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]');
+  } catch (error) {
+    if (error instanceof AiSummaryError) throw error;
+    if (error instanceof Error && error.name === 'AbortError') throw new AiSummaryError(500, 'timeout', 'AI keyword expansion timed out');
+    throw new AiSummaryError(500, 'api_error', 'AI keyword expansion failed', String(error));
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function expandSearchKeywords(keywords: string[]): Promise<string[]> {
+  if (MOCK_AI_SUMMARY) {
+    return ['implementation', 'development', 'code', 'repository', 'package', 'library', 'debug', 'architecture', 'API', 'module'];
+  }
+  if (AI_PROVIDER === 'gemini') return expandKeywordsWithGemini(keywords);
+  if (AI_PROVIDER === 'anthropic') return expandKeywordsWithAnthropic(keywords);
+  throw new AiSummaryError(500, 'api_error', `Unsupported AI_PROVIDER: ${AI_PROVIDER}`);
+}
+
 async function summarizeCard(card: Card): Promise<string> {
   if (MOCK_AI_SUMMARY) {
     return card.body.trim().slice(0, 120) || card.title.trim();
@@ -332,6 +425,20 @@ app.get('/', (_req, res) =>
 let cachedArticles: CollectResult | null = loadArticles();
 let collectorConfig: CollectorConfig = DEFAULT_CONFIG;
 let schedulerStop: (() => void) | null = null;
+let schedulerCronExpr: string | null = null;
+let collectRunning = false;
+
+function isCollectorConfig(value: unknown): value is CollectorConfig {
+  if (!value || typeof value !== 'object') return false;
+  const config = value as Partial<CollectorConfig>;
+  return Array.isArray(config.rss) && Array.isArray(config.arxiv) && Array.isArray(config.github);
+}
+
+function resolveCollectorConfig(value: unknown): CollectorConfig {
+  if (isCollectorConfig(value)) return value;
+  if (isCollectorConfig(collectorConfig)) return collectorConfig;
+  return DEFAULT_CONFIG;
+}
 
 // ════════════════════════════════════════════════════
 //  既存 BM25 / Collect API
@@ -379,6 +486,11 @@ const csvImportSchema = z.object({
 const jsonImportSchema = z.object({
   json: z.string().trim().min(1).max(1_000_000),
 }).strict();
+
+const keywordExpandSchema = z.object({
+  keywords: z.array(z.string().trim().min(1).max(50)).min(1).max(30),
+}).strict();
+
 const kjGroupCreateSchema = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().max(1000).optional(),
@@ -428,10 +540,23 @@ app.get('/api/articles', (_req, res) => {
   res.json(cachedArticles);
 });
 
-app.post('/api/collect', apiLimiter, async (req, res) => {
+app.post(['/api/collect', '/api/articles/refresh'], apiLimiter, async (req, res) => {
   try {
-    const config: CollectorConfig = req.body?.config ?? collectorConfig;
+    const config = resolveCollectorConfig(req.body?.config);
     collectorConfig = config;
+    if (req.body?.background) {
+      if (collectRunning) {
+        res.json({ ok: false, running: true, message: 'collect already running' });
+        return;
+      }
+      collectRunning = true;
+      res.status(202).json({ ok: true, running: true, message: 'collect started' });
+      collectAll(config)
+        .then((result) => { cachedArticles = result; })
+        .catch((err) => console.error('[COLLECT]', err))
+        .finally(() => { collectRunning = false; });
+      return;
+    }
     const result = await collectAll(config);
     cachedArticles = result;
     res.json(result);
@@ -449,6 +574,7 @@ app.post('/api/collect/config', (req, res) => {
 app.post('/api/scheduler/start', (req, res) => {
   if (schedulerStop) { res.json({ ok: false, message: '既に起動中' }); return; }
   const expr = (req.body?.cronExpr as string) ?? '*/30 * * * *';
+  schedulerCronExpr = expr;
   schedulerStop = startScheduler({
     cronExpr: expr, config: collectorConfig,
     onCollect: (r) => { cachedArticles = r; saveArticles(r); },
@@ -458,10 +584,17 @@ app.post('/api/scheduler/start', (req, res) => {
 
 app.post('/api/scheduler/stop', (_req, res) => {
   if (schedulerStop) { schedulerStop(); schedulerStop = null; }
+  schedulerCronExpr = null;
   res.json({ ok: true });
 });
 
-app.get('/api/scheduler/status', (_req, res) => res.json({ running: !!schedulerStop }));
+app.get('/api/scheduler/status', (_req, res) => res.json({
+  running: !!schedulerStop,
+  collecting: collectRunning,
+  cronExpr: schedulerCronExpr,
+  lastFetchedAt: cachedArticles?.stats?.fetchedAt ?? null,
+  articleCount: cachedArticles?.articles?.length ?? 0,
+}));
 
 app.post('/api/run', async (req, res) => {
   try {
@@ -527,6 +660,32 @@ app.post('/api/run', async (req, res) => {
 // ════════════════════════════════════════════════════
 
 /** 全カード取得（タグ・KJグループでフィルタ可） */
+
+app.post('/api/search/expand-keywords', aiLimiter, async (req, res) => {
+  const body = parseBody(keywordExpandSchema, req, res);
+  if (!body) return;
+  try {
+    const original = new Set(body.keywords.map((keyword) => keyword.toLowerCase()));
+    const seen = new Set(original);
+    const expandedKeywords = (await expandSearchKeywords(body.keywords))
+      .map((keyword) => keyword.trim())
+      .filter((keyword) => {
+        const key = keyword.toLowerCase();
+        if (!keyword || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 10);
+    res.json({ expandedKeywords });
+  } catch (err) {
+    if (err instanceof AiSummaryError) {
+      res.status(err.status).json({ error: err.message, code: err.code });
+      return;
+    }
+    res.status(500).json({ error: String(err), code: 'api_error' });
+  }
+});
+
 app.get('/api/cards', (req, res) => {
   const { tag, kjGroupId, type, q, archived } = req.query as Record<string, string>;
   res.json(getCards({
@@ -627,6 +786,14 @@ app.post('/api/cards/bulk-delete', (req, res) => {
 // ════════════════════════════════════════════════════
 //  § B. AI要約 API
 // ════════════════════════════════════════════════════
+
+
+app.delete('/api/cards/:id/summary', async (req, res) => {
+  const card = getCard(req.params.id);
+  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  const updated = await updateCard(req.params.id, { summary: undefined });
+  res.json({ ok: true, card: updated });
+});
 
 app.post('/api/cards/:id/summarize', aiLimiter, async (req, res) => {
   const cardId = String(req.params.id);
