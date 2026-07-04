@@ -158,6 +158,9 @@ body{font-family:'Segoe UI','Yu Gothic UI',sans-serif;background:var(--bg);color
 .param-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .param-row label{font-size:12px;color:var(--text-dim);width:110px;flex-shrink:0}
 .param-row input[type=number],.param-row input[type=text]{flex:1;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none}
+.mode-desc-editor{width:100%;min-height:58px;resize:vertical;padding:7px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;line-height:1.5;outline:none;margin-bottom:10px}
+.mode-desc-editor:focus{border-color:var(--accent);box-shadow:0 0 0 1px rgba(59,130,246,.2)}
+.mode-desc-editor::placeholder{color:var(--text-dim)}
 .param-row input:focus{border-color:var(--accent)}
 .param-row .param-val{font-size:12px;color:var(--accent);width:36px;text-align:right}
 input[type=range]{flex:1;accent-color:var(--accent)}
@@ -291,6 +294,12 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
   outline:none;width:100%;
 }
 .mode-edit-name:focus{border-bottom:1px solid var(--accent)}
+.mode-edit-desc{
+  grid-column:1 / -1;width:100%;min-height:46px;resize:vertical;
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-size:12px;line-height:1.45;padding:6px 8px;outline:none;
+}
+.mode-edit-desc:focus{border-color:var(--accent)}
 .mode-badge-pill{
   font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;
 }
@@ -463,7 +472,7 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
                 </div>
               </div>
               <div class="mode-tabs" id="mode-tabs"></div>
-              <div id="mode-desc" style="font-size:12px;color:var(--text-dim);margin-bottom:10px;line-height:1.5"></div>
+              <textarea id="mode-desc" class="mode-desc-editor" placeholder="選択中モードの説明を入力" oninput="updateBM25ModeDescription(this.value)"></textarea>
 
               <!-- BM25 パラメーター -->
               <div class="section-sep">パラメーター</div>
@@ -1286,7 +1295,8 @@ function selectBM25Mode(modeId) {
   const el=document.getElementById(`mtab-${modeId}`); if(el) el.classList.add('active');
   const mode = bm25Modes[modeId];
   if(!mode) return;
-  document.getElementById('mode-desc').textContent = mode.description||'';
+  const descEl = document.getElementById('mode-desc');
+  if(descEl) descEl.value = mode.description || '';
   // パラメーター同期
   bm25Params.k1 = mode.k1; bm25Params.b = mode.b; bm25Params.lambda = mode.lambda; bm25Params.ctx = mode.contextBonus;
   ['k1','b','lambda','ctx'].forEach(k=>{
@@ -1297,6 +1307,11 @@ function selectBM25Mode(modeId) {
   // キーワード同期
   bm25Keywords = (mode.keywords||[]).map(kw=>({term:kw.term,weight:kw.weight,synonyms:(kw.synonyms||[]).join(',')}));
   renderKeywords();
+}
+
+function updateBM25ModeDescription(value) {
+  if(!bm25ActiveMode || !bm25Modes[bm25ActiveMode]) return;
+  bm25Modes[bm25ActiveMode].description = value;
 }
 
 function syncParam(key, val) {
@@ -1722,6 +1737,7 @@ function renderModeManagerList(){
         <button class="btn btn-secondary btn-sm" onclick="selectBM25Mode('${id}');closeModal('mode-manager-modal')">選択</button>
         ${ids.length>1?`<button class="btn btn-danger btn-sm" onclick="deleteBM25Mode('${id}')">削除</button>`:''}
       </div>
+      <textarea class="mode-edit-desc" placeholder="説明" oninput="bm25Modes['${id}'].description=this.value;if(bm25ActiveMode==='${id}')document.getElementById('mode-desc').value=this.value">${esc(m.description||'')}</textarea>
     </div>`;
   }).join('');
 }
