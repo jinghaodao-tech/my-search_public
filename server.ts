@@ -65,13 +65,11 @@ function buildSearchKeywordCandidates(config: unknown): string[] {
   const candidates: string[] = [];
 
   for (const keyword of keywords) {
-    for (const value of [keyword.term, ...(Array.isArray(keyword.synonyms) ? keyword.synonyms : [])]) {
-      const text = String(value ?? '').trim();
-      const key = normalizeSearchText(text);
-      if (!text || seen.has(key)) continue;
-      seen.add(key);
-      candidates.push(text);
-    }
+    const text = String(keyword.term ?? '').trim();
+    const key = normalizeSearchText(text);
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    candidates.push(text);
   }
 
   return candidates;
