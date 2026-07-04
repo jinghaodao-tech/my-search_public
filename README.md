@@ -43,7 +43,7 @@ The API has also been improved as a backend portfolio project. Card creation/upd
 
 This project adds request validation, rate limiting, security headers, and CI checks around the main API paths. These measures are not meant to claim complete security coverage for every possible scenario. The goal is to show practical backend quality improvements for the most important and higher-risk endpoints.
 
-- **Zod validation**: Card creation/update, bulk operations, imports, links, AI summary, and KJ group APIs validate request bodies with Zod before executing application logic. Invalid types, empty strings, oversized input, malformed URLs, unexpected fields, and invalid ID lists are rejected at the API layer.
+- **Zod validation**: Card creation/update, bulk operations, imports, links, AI summary, KJ group, collect, scheduler, and BM25 run APIs validate request bodies with Zod before executing application logic. Invalid types, empty strings, oversized input, malformed URLs, unexpected fields, and invalid ID lists are rejected at the API layer.
 - **Helmet**: Helmet is used to set common HTTP security headers.
 - **CORS**: CORS is not hard-coded as fully open. Allowed origins can be configured with `CORS_ORIGIN`.
 - **Rate limiting**: AI summary and import-related APIs are protected with rate limits to reduce abuse, excessive load, and external API cost risks.
@@ -206,7 +206,6 @@ http://localhost:3000
 
 ## Future Improvements
 
-- Add validation to remaining collect / scheduler / run APIs
 - Improve database write operations from full rewrite patterns to more granular SQL updates
 - Add authentication and authorization for multi-user usage
 - Add more API tests for edge cases and error handling

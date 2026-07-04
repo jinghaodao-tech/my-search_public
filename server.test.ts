@@ -119,3 +119,52 @@ describe('cards API validation', () => {
     expect(limited.status).toBe(429);
   });
 });
+
+
+describe('remaining API validation', () => {
+  it('rejects an empty scheduler cron expression', async () => {
+    const response = await request(app)
+      .post('/api/scheduler/start')
+      .send({ cronExpr: '' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Invalid request');
+  });
+
+  it('rejects non-boolean collect background flag', async () => {
+    const response = await request(app)
+      .post('/api/collect')
+      .send({ background: 'true' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Invalid request');
+  });
+
+  it('rejects invalid collect config', async () => {
+    const response = await request(app)
+      .post('/api/collect/config')
+      .send({ rss: 'invalid', arxiv: [], github: [] });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Invalid request');
+  });
+
+  it('rejects an empty run mode id', async () => {
+    const response = await request(app)
+      .post('/api/run')
+      .send({
+        modeId: '',
+        config: {
+          k1: 1.5,
+          b: 0.75,
+          lambda: 0.1,
+          contextBonus: 1.5,
+          keywords: [{ term: 'api', weight: 1, synonyms: [] }],
+        },
+        articles: [],
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Invalid request');
+  });
+});
