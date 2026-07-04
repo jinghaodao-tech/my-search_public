@@ -8,6 +8,13 @@
     "dev": "npx tsx --watch server.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "seed:demo": "tsx scripts/seed_demo.ts",
+    "export:json": "tsx scripts/export_json.ts",
+    "export:sqlite": "tsx scripts/export_sqlite.ts",
+    "backup": "tsx scripts/backup.ts",
+    "restore": "tsx scripts/restore.ts",
+    "db:migrate": "tsx scripts/migrate_db.ts",
+    "benchmark": "tsx scripts/benchmark.ts",
     "migrate:tokens": "tsx scripts/regenerate_card_tokens.ts",
     "backfill:tokens": "tsx scripts/backfill_card_tokens.ts",
     "backfill:article-tokens": "tsx scripts/backfill_article_tokens.ts"

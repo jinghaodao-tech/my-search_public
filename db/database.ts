@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import Database from "better-sqlite3";
+import { runMigrations } from "./migrate.js";
 
 const dbPath = process.env.DB_PATH ?? "data/cards.db";
 const dbDir = path.dirname(dbPath);
@@ -46,3 +47,5 @@ if (!cardColumnNames.has("tokens_json")) {
 if (!cardColumnNames.has("doc_length")) {
   db.exec(`ALTER TABLE cards ADD COLUMN doc_length INTEGER NOT NULL DEFAULT 0`);
 }
+
+runMigrations(db);

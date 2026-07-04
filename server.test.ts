@@ -61,6 +61,25 @@ async function runSearch(cardId: string, term: string) {
 }
 
 describe('cards API validation', () => {
+  it('returns health status', async () => {
+    const response = await request(app).get('/healthz');
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(response.body.db).toBe('ok');
+    expect(typeof response.body.cardCount).toBe('number');
+    expect(response.headers['x-request-id']).toBeTruthy();
+  });
+
+  it('echoes X-Request-Id response header', async () => {
+    const response = await request(app)
+      .get('/healthz')
+      .set('X-Request-Id', 'test-request-id');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['x-request-id']).toBe('test-request-id');
+  });
+
   it('creates a card', async () => {
     const response = await request(app)
       .post('/api/cards')

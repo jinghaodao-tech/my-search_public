@@ -10,6 +10,7 @@ import cors              from 'cors';
 import helmet            from 'helmet';
 import rateLimit         from 'express-rate-limit';
 import path              from 'path';
+import { randomUUID }    from 'crypto';
 import { fileURLToPath } from 'url';
 import { z, type ZodError, type ZodType } from 'zod';
 import { runPipeline, MODES } from './bm25_engine.js';
@@ -32,6 +33,7 @@ import type {
   Card,
   KJGroup
 } from './cards_engine.js';
+import { db } from './db/database.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -444,6 +446,11 @@ if (!MOCK_AI_SUMMARY && AI_PROVIDER === 'gemini' && !getGeminiApiKey()) {
 const app = express();
 export { app };
 
+function logInfo(message: string, meta: Record<string, unknown> = {}) {
+  if (process.env.NODE_ENV === 'test') return;
+  console.log(JSON.stringify({ level: 'info', message, time: new Date().toISOString(), ...meta }));
+}
+
 const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -469,10 +476,53 @@ app.use(helmet({
 }));
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '10mb' }));
+app.use((req, res, next) => {
+  const started = Date.now();
+  const incomingRequestId = req.header('x-request-id')?.trim();
+  const requestId = incomingRequestId || randomUUID();
+  res.setHeader('X-Request-Id', requestId);
+  res.on('finish', () => {
+    logInfo('request', {
+      requestId,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      durationMs: Date.now() - started,
+    });
+  });
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (_req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 );
+app.get('/healthz', (_req, res) => {
+  const checkedAt = new Date().toISOString();
+  try {
+    const row = db.prepare('SELECT COUNT(*) AS count FROM cards').get() as { count: number };
+    res.json({
+      ok: true,
+      status: 'healthy',
+      db: 'ok',
+      cardCount: row.count,
+      uptimeSec: Number(process.uptime().toFixed(1)),
+      checkedAt,
+    });
+  } catch (err) {
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'healthz failed',
+      time: checkedAt,
+      error: err instanceof Error ? err.message : String(err),
+    }));
+    res.status(500).json({
+      ok: false,
+      status: 'unhealthy',
+      db: 'error',
+      checkedAt,
+    });
+  }
+});
 
 // ── 収集結果キャッシュ ───────────────────────────────────────────
 let cachedArticles: CollectResult | null = loadArticles();

@@ -1,10 +1,10 @@
-
-
-https://github.com/user-attachments/assets/be5052d8-1d60-4aaa-8f6a-565dbaa1ee4d
-
 # My Search App
 
 [![CI](https://github.com/jinghaodao-tech/my-search_public/actions/workflows/ci.yml/badge.svg)](https://github.com/jinghaodao-tech/my-search_public/actions/workflows/ci.yml)
+
+## Demo
+
+https://github.com/user-attachments/assets/be5052d8-1d60-4aaa-8f6a-565dbaa1ee4d
 
 My Search App is a personal search and knowledge-management application. It combines card-style notes, BM25 search, tags, links between cards, a KJ-style grouping board, CSV/JSON import, and AI summaries.
 
@@ -80,6 +80,22 @@ The API test suite currently covers:
 - invalid CSV / JSON import requests
 - rate limiting on import-related APIs
 - database write paths such as card updates, bulk archive/restore/delete, and bidirectional link cleanup
+
+## Operations
+
+The project includes small operational scripts for local-first development and portfolio demonstrations. CLI-based local backup and restore scripts are provided for copying and restoring the SQLite database used by the local-first app.
+
+```bash
+npm run seed:demo
+npm run export:json
+npm run export:sqlite
+npm run backup
+npm run restore -- backups/cards-YYYY-MM-DDTHH-MM-SS-000Z.db
+npm run db:migrate
+npm run benchmark
+```
+
+The server also exposes `GET /healthz` for a lightweight application and SQLite health check, and request logs are emitted as JSON with an `X-Request-Id` so they can be filtered more easily in Docker or CI logs. The project includes minimal SQLite migration tracking for local development and future schema changes.
 
 ## Environment Variables
 
