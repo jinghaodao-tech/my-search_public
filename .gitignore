@@ -6,3 +6,5 @@ backups/
 *.db-shm
 *.db-wal
 dist/
+test-results/
+playwright-report/

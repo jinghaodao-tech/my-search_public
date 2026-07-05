@@ -8,7 +8,9 @@
     "dev": "npx tsx --watch server.ts",
     "typecheck": "tsc --noEmit",
     "acceptance:test": "vitest run tests --fileParallelism=false",
-    "test": "vitest run",
+    "test": "vitest run tests server.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "seed:demo": "tsx scripts/seed_demo.ts",
     "export:json": "tsx scripts/export_json.ts",
     "export:sqlite": "tsx scripts/export_sqlite.ts",
@@ -35,6 +37,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

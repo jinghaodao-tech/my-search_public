@@ -356,6 +356,8 @@ Current indexes:
 
 For detailed request / response examples, see [docs/api.md](docs/api.md).
 
+For browser-based core flow tests, see [docs/e2e.md](docs/e2e.md).
+
 | Method | Endpoint | Purpose |
 |---|---|---|
 | `GET` | `/api/cards` | List and filter cards |
