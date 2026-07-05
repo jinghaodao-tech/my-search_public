@@ -12,7 +12,7 @@ import rateLimit         from 'express-rate-limit';
 import path              from 'path';
 import { randomUUID }    from 'crypto';
 import { fileURLToPath } from 'url';
-import { z, type ZodError, type ZodType } from 'zod';
+import { z } from 'zod';
 import { runPipeline, MODES } from './bm25_engine.js';
 import {
   collectAll, startScheduler, saveArticles, loadArticles, ensureArticleTokens,
@@ -27,16 +27,25 @@ import {
   loadKJGroups, createKJGroup, updateKJGroup, deleteKJGroup, assignKJGroup,
   parseAndImportCSV,
   parseAndImportJSON, backfillCardTokens
-} from './cards_engine.js';
-import { cardToMarkdown, markdownContentDisposition, safeMarkdownFilename } from './utils/markdown_export.js';
+} from './repositories/cards_repository.js';
+import { markdownContentDisposition } from './utils/markdown_export.js';
 import { errorMeta, logger } from './utils/logger.js';
+import { createSystemRouter } from './routes/system_routes.js';
+import { buildBulkMarkdownZip, buildCardMarkdown } from './services/markdown_export_service.js';
+import {
+  getRequestId,
+  sendError,
+  requestLogger,
+  invalidRequest,
+  parseBody,
+  notFoundHandler,
+  errorHandler,
+} from './services/http_service.js';
 
 import type {
   Card,
   KJGroup
-} from './cards_engine.js';
-import { db } from './db/database.js';
-
+} from './repositories/cards_repository.js';
 declare global {
   namespace Express {
     interface Request {
@@ -467,29 +476,6 @@ if (!MOCK_AI_SUMMARY && AI_PROVIDER === 'gemini' && !getGeminiApiKey()) {
 const app = express();
 export { app };
 
-class HttpError extends Error {
-  status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = 'HttpError';
-    this.status = status;
-  }
-}
-
-function getRequestId(req: express.Request): string {
-  return req.requestId ?? String(req.get('x-request-id') ?? '');
-}
-
-function sendError(req: express.Request, res: express.Response, status: number, error: string, details?: unknown) {
-  const payload: { error: string; requestId: string; details?: unknown } = {
-    error,
-    requestId: getRequestId(req),
-  };
-  if (details !== undefined) payload.details = details;
-  res.status(status).json(payload);
-}
-
 const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -527,56 +513,11 @@ app.use(helmet({
 }));
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '10mb' }));
-app.use((req, res, next) => {
-  const started = Date.now();
-  const incomingRequestId = req.header('x-request-id')?.trim();
-  const requestId = incomingRequestId || randomUUID();
-  req.requestId = requestId;
-  res.setHeader('X-Request-Id', requestId);
-  logger.debug({ event: 'request_start', requestId, method: req.method, path: req.path }, 'request start');
-  res.on('finish', () => {
-    const statusCode = res.statusCode;
-    const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
-    logger[level]({
-      event: 'request_end',
-      requestId,
-      method: req.method,
-      path: req.path,
-      statusCode,
-      responseTimeMs: Date.now() - started,
-    }, 'request complete');
-  });
-  next();
-});
-app.use(express.static(path.join(__dirname, 'public')));
-app.get('/', (_req, res) =>
-  res.sendFile(path.join(__dirname, 'public', 'index.html'))
-);
-app.get('/healthz', (req, res) => {
-  const checkedAt = new Date().toISOString();
-  try {
-    const row = db.prepare('SELECT COUNT(*) AS count FROM cards').get() as { count: number };
-    res.json({
-      ok: true,
-      status: 'healthy',
-      db: 'ok',
-      cardCount: row.count,
-      uptimeSec: Number(process.uptime().toFixed(1)),
-      checkedAt,
-    });
-  } catch (err) {
-    logger.error({ event: 'db_health_failure', requestId: getRequestId(req), error: errorMeta(err) }, 'healthz failed');
-    res.status(500).json({
-      ok: false,
-      status: 'unhealthy',
-      db: 'error',
-      requestId: getRequestId(req),
-      checkedAt,
-    });
-  }
-});
+app.use(requestLogger);
+const publicDir = path.join(__dirname, 'public');
+app.use(express.static(publicDir));
+app.use(createSystemRouter(publicDir));
 
-// ── 収集結果キャッシュ ───────────────────────────────────────────
 let cachedArticles: CollectResult | null = loadArticles();
 let collectorConfig: CollectorConfig = DEFAULT_CONFIG;
 let schedulerStop: (() => void) | null = null;
@@ -713,26 +654,6 @@ const kjGroupUpdateSchema = kjGroupCreateSchema.partial().strict();
 const kjAssignSchema = z.object({
   cardId: idSchema,
 }).strict();
-
-function validationDetails(error: ZodError) {
-  return error.issues.map(issue => ({
-    path: issue.path.join('.'),
-    message: issue.message,
-  }));
-}
-
-function invalidRequest(req: express.Request, res: express.Response, details: unknown) {
-  sendError(req, res, 400, 'Invalid request', details);
-}
-
-function parseBody<T>(schema: ZodType<T>, req: express.Request, res: express.Response): T | null {
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) {
-    invalidRequest(req, res, validationDetails(parsed.error));
-    return null;
-  }
-  return parsed.data;
-}
 
 function normalizeCardInput<T extends { url?: string | null; kjGroupId?: string | null; note?: unknown }>(body: T) {
   const { note: _note, ...rest } = body;
@@ -966,14 +887,29 @@ app.get('/api/cards/:id', (req, res) => {
 app.get('/api/cards/:id/export-md', (req, res) => {
   const card = getCard(req.params.id);
   if (!card) { sendError(req, res, 404, 'Not found'); return; }
-  const markdown = cardToMarkdown(card);
-  const filename = `${safeMarkdownFilename(card.title, card.id)}.md`;
+  const { markdown, filename } = buildCardMarkdown(card);
   res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
   res.setHeader('Content-Disposition', markdownContentDisposition(filename));
   res.send(markdown);
 });
 
 /** カード更新 */
+app.post('/api/cards/export-md-bulk', (req, res) => {
+  const body = parseBody(idsBodySchema, req, res);
+  if (!body) return;
+
+  const result = buildBulkMarkdownZip(body.ids);
+  if (!result) {
+    sendError(req, res, 404, 'Not found');
+    return;
+  }
+
+  const { zip, filename } = result;
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', markdownContentDisposition(filename));
+  res.send(zip);
+});
+
 app.put('/api/cards/:id', async (req, res) => {
   const body = parseBody(updateCardSchema, req, res);
   if (!body) return;
@@ -1301,24 +1237,8 @@ if (process.env.NODE_ENV === 'test') {
   });
 }
 
-app.use((req, res) => {
-  sendError(req, res, 404, 'Not found');
-});
-
-app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  const status = err instanceof HttpError ? err.status : 500;
-  const error = status === 500 ? 'Internal server error' : err instanceof Error ? err.message : 'Request failed';
-  logger.error({
-    event: 'unhandled_error',
-    requestId: getRequestId(req),
-    method: req.method,
-    path: req.path,
-    statusCode: status,
-    error: errorMeta(err),
-  }, 'request failed');
-  if (res.headersSent) return;
-  sendError(req, res, status, error);
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 // ════════════════════════════════════════════════════
 //  起動

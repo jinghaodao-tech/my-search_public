@@ -2,6 +2,15 @@ import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app, cardsEngine, resetCards } from "./helpers.js";
 
+function binaryParser(res: NodeJS.ReadableStream, callback: (error: Error | null, body?: Buffer) => void) {
+  const chunks: Buffer[] = [];
+  res.on("data", (chunk: Buffer | string) => {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  });
+  res.on("end", () => callback(null, Buffer.concat(chunks)));
+  res.on("error", callback);
+}
+
 describe("Markdown export", () => {
   beforeEach(() => {
     resetCards();
@@ -93,5 +102,44 @@ describe("Markdown export", () => {
     expect(response.text).not.toContain("- URL:");
     expect(response.text).not.toContain("## Links");
     expect(response.text).toContain("- Tags: none");
+  });
+
+  it("exports multiple cards as a zip of Markdown files", async () => {
+    const first = await cardsEngine.createCard({
+      title: "Bulk Export One",
+      body: "first markdown body",
+      tags: ["bulk"],
+    });
+    const second = await cardsEngine.createCard({
+      title: "Bulk Export Two",
+      body: "second markdown body",
+      tags: ["bulk"],
+    });
+
+    const response = await request(app)
+      .post("/api/cards/export-md-bulk")
+      .buffer(true)
+      .parse(binaryParser)
+      .send({ ids: [first.id, second.id] });
+
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toContain("application/zip");
+    expect(response.headers["content-disposition"]).toContain(".zip");
+    expect(response.body.subarray(0, 4).toString("hex")).toBe("504b0304");
+    const zipText = response.body.toString("utf8");
+    expect(zipText).toContain("Bulk Export One.md");
+    expect(zipText).toContain("# Bulk Export One");
+    expect(zipText).toContain("first markdown body");
+    expect(zipText).toContain("Bulk Export Two.md");
+    expect(zipText).toContain("# Bulk Export Two");
+    expect(zipText).toContain("second markdown body");
+  });
+
+  it("returns 404 when bulk Markdown export finds no cards", async () => {
+    const response = await request(app)
+      .post("/api/cards/export-md-bulk")
+      .send({ ids: ["missing-card"] });
+
+    expect(response.status).toBe(404);
   });
 });

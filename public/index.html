@@ -415,6 +415,7 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
         <button id="multi-select-btn" class="btn btn-secondary btn-sm" onclick="toggleMultiSelect()">選択</button>
         <button id="bulk-archive-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="archiveSelected()">一括アーカイブ</button>
         <button id="bulk-restore-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="restoreSelected()">一括復元</button>
+        <button id="bulk-export-md-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="exportSelectedMarkdown()">MD Export</button>
         <button id="bulk-delete-btn" class="btn btn-danger btn-sm" style="display:none" onclick="deleteSelected()">一括削除</button>
         <button class="btn btn-secondary btn-sm" onclick="summarizeBulk()">⚡ 一括要約</button>
       </div>
@@ -945,9 +946,11 @@ function updateSelectedUI() {
     multiSelectMode && !currentFilter.archived ? '' : 'none';
   document.getElementById('bulk-restore-btn').style.display =
     multiSelectMode && currentFilter.archived ? '' : 'none';
+  document.getElementById('bulk-export-md-btn').style.display = multiSelectMode ? '' : 'none';
   document.getElementById('bulk-delete-btn').style.display = multiSelectMode ? '' : 'none';
   document.getElementById('bulk-archive-btn').disabled = count === 0;
   document.getElementById('bulk-restore-btn').disabled = count === 0;
+  document.getElementById('bulk-export-md-btn').disabled = count === 0;
   document.getElementById('bulk-delete-btn').disabled = count === 0;
 }
 
@@ -981,6 +984,32 @@ async function deleteSelected() {
   selectedCards.clear();
   await Promise.all([loadCards(), loadTags()]);
   toast('選択したカードを削除しました');
+}
+
+async function exportSelectedMarkdown() {
+  if (!selectedCards.size) return;
+  const response = await fetch('/api/cards/export-md-bulk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids: [...selectedCards] }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Export failed' }));
+    toast(error.error || 'Export failed');
+    return;
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const filename = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
+  a.href = url;
+  a.download = filename ? decodeURIComponent(filename) : 'cards-markdown.zip';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast(`${selectedCards.size}件のMarkdownを書き出しました`);
 }
 
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
