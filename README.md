@@ -6,9 +6,9 @@
 
 https://github.com/user-attachments/assets/be5052d8-1d60-4aaa-8f6a-565dbaa1ee4d
 
-My Search App is a personal search and knowledge-management application. It combines card-style notes, BM25 search, tags, links between cards, a KJ-style grouping board, CSV/JSON import, and AI summaries.
+My Search App is a local-first knowledge management app built around BM25 search, SQLite persistence, and portfolio-grade backend quality. It supports card-style notes, tags, backlinks, KJ grouping, CSV/JSON import, and AI summaries while keeping data local by default.
 
-For portfolio purposes, the project focuses not only on application features but also on backend engineering practices. The app was migrated from JSON file storage to SQLite, search-related token data is persisted to improve search performance, and the main API paths now include request validation, security headers, CORS configuration, rate limiting, API tests, dependency audit, and CI checks.
+The project highlights practical engineering improvements: migration from JSON files to SQLite, persisted BM25 token data for faster search, API validation with Zod, endpoint tests with Vitest / Supertest, and reproducible operation through Docker and CI.
 
 ## Features
 
@@ -248,6 +248,8 @@ Current indexes:
 
 ## API Overview
 
+For detailed request / response examples, see [docs/api.md](docs/api.md).
+
 | Method | Endpoint | Purpose |
 |---|---|---|
 | `GET` | `/api/cards` | List and filter cards |
@@ -309,7 +311,7 @@ Command:
 npm run acceptance:test
 ```
 
-Result: passed 21/21
+Result: passed 22/22
 
 - BM25 search: exact and partial matches rank above unrelated cards.
 - BM25 search: empty and missing queries do not crash.
@@ -331,3 +333,4 @@ Result: passed 21/21
 - Performance: search stays under the threshold for the tested corpus size.
 - API validation: invalid IDs and empty bodies return appropriate errors.
 - DB migration: count and key fields are preserved after JSON to SQLite migration.
+- KJ group migration: schema, indexes, JSON migration, and card group references are verified.
