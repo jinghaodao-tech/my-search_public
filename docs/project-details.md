@@ -6,7 +6,7 @@ This document keeps the longer project notes out of the README so the repository
 
 The first version stored card data in JSON files. That was simple, but full-file reads and rewrites became less suitable as the data grew. The storage layer was moved to SQLite while preserving the existing card API shape.
 
-Search uses BM25. Instead of tokenizing all card content on every search, cards persist `tokens_json` and `doc_length` when saved. Search can then reuse precomputed token data.
+Search uses BM25. Instead of tokenizing all card content on every search, cards and collected articles persist `tokens_json` and `doc_length` when saved. Search can then reuse precomputed token data.
 
 ## Database Design
 
@@ -15,6 +15,7 @@ Main tables:
 | Table | Purpose |
 |---|---|
 | `cards` | Card content, archive state, KJ group assignment, and BM25 precomputed token data |
+| `articles` | Collected RSS/arXiv/GitHub articles, URL de-duplication metadata, and BM25 token cache |
 | `card_tags` | Junction table for card-tag relationships |
 | `card_links` | Junction table for directed Zettelkasten links and backlinks |
 | `kj_groups` | KJ grouping metadata |
@@ -34,6 +35,25 @@ Important indexes:
 | `idx_card_links_source` | `card_links` | Outgoing link lookup |
 | `idx_card_links_target` | `card_links` | Backlink lookup |
 | `idx_kj_groups_created_at` | `kj_groups` | Stable KJ group ordering |
+| `idx_articles_url_unique` | `articles` | Prevent duplicate collected URLs |
+| `idx_articles_published_at` | `articles` | Recency ordering for collected articles |
+| `idx_articles_source` | `articles` | Source filtering and reporting |
+| `idx_articles_doc_length` | `articles` | BM25 token cache inspection |
+| `idx_articles_content_hash` | `articles` | Reuse tokenized content when title/body are unchanged |
+
+## Collected Article Persistence
+
+Collected articles used to be stored in `data/articles.json`. They now use the same SQLite database as cards, which keeps the local-first design while making article data easier to query, deduplicate, migrate, and back up.
+
+The `articles` table stores URL uniqueness, source metadata, publish time, tags, `tokens_json`, `doc_length`, and `content_hash`. During collection, unchanged article title/body pairs reuse the existing token cache; only new or changed content is tokenized again.
+
+To migrate an existing local JSON article cache:
+
+```bash
+npm run migrate:articles
+```
+
+The migration is idempotent: missing JSON exits safely, repeated runs upsert the same articles, and duplicate URLs are skipped without corrupting existing rows.
 
 ## API Overview
 
@@ -94,6 +114,7 @@ npm run benchmark
 npm run backup
 npm run restore -- backups/cards-YYYY-MM-DDTHH-MM-SS-000Z.db
 npm run db:migrate
+npm run migrate:articles
 npm run migrate:kj-groups
 ```
 

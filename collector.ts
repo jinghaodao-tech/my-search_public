@@ -8,25 +8,18 @@
 import RSSParser from 'rss-parser';
 import cron      from 'node-cron';
 import https     from 'https';
-import fs        from 'fs';
-import path      from 'path';
-import { fileURLToPath } from 'url';
 import { tokenize, type Article } from './bm25_engine.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// ── 永続化パス ───────────────────────────────────────────────────
-// data/ ディレクトリにJSONとして保存
-const DATA_DIR      = path.join(__dirname, 'data');
-const ARTICLES_FILE = path.join(DATA_DIR, 'articles.json');
-const STATS_FILE    = path.join(DATA_DIR, 'stats.json');
+import {
+  loadArticlesFromDb,
+  loadArticleStats,
+  reuseArticleTokenCache,
+  saveArticlesToDb,
+} from './repositories/articles_repository.js';
 
 export function saveArticles(result: CollectResult): void {
   try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(ARTICLES_FILE, JSON.stringify(result.articles, null, 2), 'utf-8');
-    fs.writeFileSync(STATS_FILE,    JSON.stringify(result.stats,    null, 2), 'utf-8');
-  console.log(`  💾 保存: ${ARTICLES_FILE} (${result.articles.length}件)`);
+    const saved = saveArticlesToDb(result.articles, result.stats.fetchedAt);
+    console.log(`  saved articles to SQLite (${result.articles.length} items, inserted=${saved.inserted}, updated=${saved.updated}, skippedDuplicateUrls=${saved.skippedDuplicateUrls})`);
   } catch (e) {
     console.warn('  saveArticles failed:', (e as Error).message);
   }
@@ -34,22 +27,26 @@ export function saveArticles(result: CollectResult): void {
 
 export function loadArticles(): CollectResult | null {
   try {
-    if (!fs.existsSync(ARTICLES_FILE)) return null;
-    const articles: Article[] = JSON.parse(fs.readFileSync(ARTICLES_FILE, 'utf-8'))
-      .map((a: any) => ({ ...a, publishedAt: new Date(a.publishedAt) }));
-    const stats = fs.existsSync(STATS_FILE)
-      ? JSON.parse(fs.readFileSync(STATS_FILE, 'utf-8'))
-      : null;
-    console.log(`  📂 読み込み: ${articles.length}件 (${stats?.fetchedAt ?? '不明'})`);
+    const articles = loadArticlesFromDb();
+    if (!articles.length) return null;
+    const stats = loadArticleStats() ?? {
+      rss: 0,
+      arxiv: 0,
+      github: 0,
+      total: articles.length,
+      fetchedAt: new Date(0).toISOString(),
+    };
+    console.log(`  loaded articles from SQLite: ${articles.length} items (${stats.fetchedAt})`);
     return { articles, errors: [], stats };
   } catch (e) {
-    console.warn('  ⚠ 読み込み失敗:', (e as Error).message);
+    console.warn('  loadArticles failed:', (e as Error).message);
     return null;
   }
 }
 
 export async function ensureArticleTokens(result: CollectResult): Promise<CollectResult> {
-  const articles = await Promise.all(result.articles.map(async (article) => {
+  const cachedArticles = reuseArticleTokenCache(result.articles);
+  const articles = await Promise.all(cachedArticles.map(async (article) => {
     if (Array.isArray(article.tokens) && article.tokens.length > 0) {
       return {
         ...article,
@@ -186,6 +183,7 @@ export async function collectRSS(
           publishedAt:     item.pubDate ? new Date(item.pubDate) : new Date(),
           sourceAuthority: src.authority,
           url:             item.link ?? src.url,
+          source:          `rss:${src.label}`,
         });
       }
       console.log(`  [RSS] ${src.label}: ${feed.items?.length ?? 0} 件`);
@@ -232,6 +230,7 @@ export async function collectArxiv(
           publishedAt:     pubRaw ? new Date(pubRaw) : new Date(),
           sourceAuthority: src.authority,
           url:             link,
+          source:          `arxiv:${src.query}`,
         });
       }
       console.log(`  [arXiv] "${src.query}": ${entries.length} 件`);
@@ -288,6 +287,7 @@ export async function collectGitHub(
           publishedAt:     new Date(repo.created_at),
           sourceAuthority: src.authority,
           url:             repo.html_url,
+          source:          `github:${src.language}`,
         });
       }
       console.log(`  [GitHub] ${src.language}/${src.since}: ${data.items?.length ?? 0} 件`);

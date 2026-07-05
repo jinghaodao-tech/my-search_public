@@ -47,6 +47,7 @@ export interface Article {
   publishedAt: Date;
   sourceAuthority: number; // 0–1 : ソースの信頼度
   url: string;
+  source?: string | null;
   tokens?: string[];
   docLength?: number;
   summary?: string;

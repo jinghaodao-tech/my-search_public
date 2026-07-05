@@ -1,6 +1,7 @@
 {
   "name": "digital-commons-bm25",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "デジタル・コモンズ BM25スコアリングエンジン",
   "type": "module",
   "scripts": {
@@ -18,6 +19,7 @@
     "restore": "tsx scripts/restore.ts",
     "db:migrate": "tsx scripts/migrate_db.ts",
     "migrate:kj-groups": "tsx scripts/migrate_kj_groups_json_to_sqlite.ts",
+    "migrate:articles": "tsx scripts/migrate_articles_json_to_sqlite.ts",
     "benchmark": "tsx scripts/benchmark.ts",
     "migrate:tokens": "tsx scripts/regenerate_card_tokens.ts",
     "backfill:tokens": "tsx scripts/backfill_card_tokens.ts",

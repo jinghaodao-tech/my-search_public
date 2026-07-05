@@ -15,6 +15,7 @@ Details:
 - [E2E tests](docs/e2e.md)
 - [Full test coverage](docs/test-coverage.md)
 - [Project details, setup, DB design, and operations](docs/project-details.md)
+- [License](LICENSE): MIT
 
 ## デモ
 
@@ -24,6 +25,7 @@ https://github.com/user-attachments/assets/be5052d8-1d60-4aaa-8f6a-565dbaa1ee4d
 
 - BM25 search over card title, body, summary, tags, and related metadata
 - SQLite persistence with normalized `card_tags` and `card_links` junction tables
+- Collected articles are persisted in SQLite with URL de-duplication and token caches
 - Card CRUD, archive/restore, bulk archive/delete, and Markdown export
 - Zettelkasten-style links, backlinks, and graph view
 - KJ group organization backed by SQLite

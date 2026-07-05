@@ -69,6 +69,30 @@ CREATE TABLE IF NOT EXISTS kj_groups (
 );
 
 CREATE INDEX IF NOT EXISTS idx_kj_groups_created_at ON kj_groups(created_at);
+
+CREATE TABLE IF NOT EXISTS articles (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  url TEXT NOT NULL,
+  source TEXT,
+  source_authority REAL NOT NULL DEFAULT 0,
+  published_at TEXT,
+  summary TEXT,
+  tags_json TEXT NOT NULL DEFAULT '[]',
+  tokens_json TEXT,
+  doc_length INTEGER NOT NULL DEFAULT 0,
+  content_hash TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  last_fetched_at TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_url_unique ON articles(url);
+CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at);
+CREATE INDEX IF NOT EXISTS idx_articles_source ON articles(source);
+CREATE INDEX IF NOT EXISTS idx_articles_doc_length ON articles(doc_length);
+CREATE INDEX IF NOT EXISTS idx_articles_content_hash ON articles(content_hash);
 `);
 
 const cardColumns = db.prepare(`PRAGMA table_info(cards)`).all() as Array<{ name: string }>;

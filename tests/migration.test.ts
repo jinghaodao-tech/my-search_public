@@ -185,4 +185,115 @@ describe("DB migration", () => {
       db.close();
     }
   });
+
+  it("migrates collected articles from JSON into SQLite idempotently", () => {
+    const migrationDir = path.join(testDir, "articles-migration");
+    fs.rmSync(migrationDir, { recursive: true, force: true });
+    fs.mkdirSync(migrationDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(migrationDir, "articles.json"),
+      JSON.stringify([
+        {
+          id: "article-1",
+          title: "SQLite article",
+          body: "Article body",
+          url: "https://example.test/article-1",
+          source: "rss:Example",
+          sourceAuthority: 0.8,
+          publishedAt: "2026-01-06T00:00:00.000Z",
+          summary: "Article summary",
+          tags: ["sqlite", "article"],
+          tokens: ["sqlite", "article"],
+          docLength: 2,
+        },
+        {
+          id: "article-duplicate-url",
+          title: "Duplicate article",
+          body: "Duplicate body",
+          url: "https://example.test/article-1",
+          source: "rss:Example",
+          sourceAuthority: 0.8,
+          publishedAt: "2026-01-06T00:00:00.000Z",
+        },
+      ]),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(migrationDir, "stats.json"),
+      JSON.stringify({ fetchedAt: "2026-01-07T00:00:00.000Z" }),
+      "utf8",
+    );
+
+    const dbPath = path.join(migrationDir, "cards.db");
+    const env = {
+      ...process.env,
+      DATA_DIR: migrationDir,
+      DB_PATH: dbPath,
+    };
+
+    const first = runTsx("scripts/migrate_articles_json_to_sqlite.ts", env);
+    expect(first.status, first.error?.message || first.stderr || first.stdout).toBe(0);
+    expect(first.stdout).toContain("duplicateUrls=1");
+
+    const second = runTsx("scripts/migrate_articles_json_to_sqlite.ts", env);
+    expect(second.status, second.error?.message || second.stderr || second.stdout).toBe(0);
+
+    const db = new Database(dbPath);
+    try {
+      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{ name: string }>;
+      expect(tables.map((table) => table.name)).toContain("articles");
+
+      const columns = db.prepare("PRAGMA table_info(articles)").all() as Array<{ name: string }>;
+      expect(columns.map((column) => column.name)).toEqual(
+        expect.arrayContaining([
+          "id",
+          "title",
+          "body",
+          "url",
+          "source",
+          "source_authority",
+          "published_at",
+          "summary",
+          "tags_json",
+          "tokens_json",
+          "doc_length",
+          "content_hash",
+          "created_at",
+          "updated_at",
+          "last_fetched_at",
+        ]),
+      );
+
+      const indexes = db.prepare("PRAGMA index_list(articles)").all() as Array<{ name: string }>;
+      expect(indexes.map((index) => index.name)).toEqual(
+        expect.arrayContaining([
+          "idx_articles_url_unique",
+          "idx_articles_published_at",
+          "idx_articles_source",
+          "idx_articles_doc_length",
+          "idx_articles_content_hash",
+        ]),
+      );
+
+      const rows = db.prepare("SELECT * FROM articles").all() as any[];
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        id: "article-1",
+        title: "SQLite article",
+        body: "Article body",
+        url: "https://example.test/article-1",
+        source: "rss:Example",
+        source_authority: 0.8,
+        published_at: "2026-01-06T00:00:00.000Z",
+        summary: "Article summary",
+        doc_length: 2,
+        last_fetched_at: "2026-01-07T00:00:00.000Z",
+      });
+      expect(JSON.parse(rows[0].tags_json)).toEqual(["sqlite", "article"]);
+      expect(JSON.parse(rows[0].tokens_json)).toEqual(["sqlite", "article"]);
+      expect(rows[0].content_hash).toEqual(expect.any(String));
+    } finally {
+      db.close();
+    }
+  });
 });
