@@ -18,6 +18,7 @@ The project highlights practical engineering improvements: migration from JSON f
 - Connect related cards with bidirectional links and backlinks
 - Group cards on a KJ-style board
 - Import cards from CSV and JSON
+- Export individual cards as Markdown files for portability and backup
 - Generate AI summaries with Anthropic or Gemini
 - Run locally or with Docker Compose
 - Run type checks, API tests, and high-severity dependency audit in GitHub Actions
@@ -380,6 +381,7 @@ For detailed request / response examples, see [docs/api.md](docs/api.md).
 - Improved search performance by persisting token data and document length at save time
 - Replaced full card-table rewrites with targeted SQLite writes for common card CRUD, bulk, link, and KJ assignment operations
 - Moved KJ group persistence from JSON file storage to SQLite so cards and groups share the same persistence layer
+- Added single-card Markdown export to improve portability and backup workflows
 - Added Zod validation to reject invalid request bodies before business logic runs
 - Added rate limits to expensive or abuse-prone endpoints such as AI summary and import APIs
 - Added Helmet and configurable CORS for basic Web security hardening
@@ -410,7 +412,7 @@ Command:
 npm run acceptance:test
 ```
 
-Result: passed 22/22
+Result: passed 28/28
 
 - BM25 search: exact and partial matches rank above unrelated cards.
 - BM25 search: empty and missing queries do not crash.
@@ -433,3 +435,9 @@ Result: passed 22/22
 - API validation: invalid IDs and empty bodies return appropriate errors.
 - DB migration: count and key fields are preserved after JSON to SQLite migration.
 - KJ group migration: schema, indexes, JSON migration, and card group references are verified.
+- Markdown export: individual cards can be downloaded as `.md` files.
+- Markdown export: download headers use Markdown content type and attachment filename.
+- Markdown export: summary, metadata, tags, URL, and links are included.
+- Markdown export: missing cards return 404.
+- Markdown export: dangerous title characters are removed from filenames.
+- Markdown export: optional empty sections are omitted cleanly.

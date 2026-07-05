@@ -558,6 +558,7 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
   <div id="detail-panel" class="hidden">
     <div id="detail-header">
       <h3 id="detail-title">カード詳細</h3>
+      <button class="btn-icon" onclick="exportMarkdown(currentCardId)" title="Export Markdown">MD</button>
       <button class="btn-icon" onclick="openEditModal(currentCardId)" title="編集">✏️</button>
       <button class="btn-icon" onclick="closeDetail()" title="閉じる">✕</button>
     </div>
@@ -1052,6 +1053,10 @@ function closeDetail() {
   currentCardId=null;
   document.getElementById('detail-panel').classList.add('hidden');
   document.querySelectorAll('.card').forEach(c=>c.classList.remove('selected'));
+}
+function exportMarkdown(id) {
+  if(!id) return;
+  window.open(`/api/cards/${encodeURIComponent(id)}/export-md`, '_blank');
 }
 function renderDetailPanel(card) {
   document.getElementById('detail-title').textContent = card.title;

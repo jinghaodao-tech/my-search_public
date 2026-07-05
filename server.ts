@@ -28,6 +28,7 @@ import {
   parseAndImportCSV,
   parseAndImportJSON, backfillCardTokens
 } from './cards_engine.js';
+import { cardToMarkdown, safeMarkdownFilename } from './utils/markdown_export.js';
 
 import type {
   Card,
@@ -893,6 +894,16 @@ app.get('/api/cards/:id', (req, res) => {
   if (!card) { res.status(404).json({ error: 'Not found' }); return; }
   const backlinks = getBacklinks(req.params.id);
   res.json({ ...card, backlinks });
+});
+
+app.get('/api/cards/:id/export-md', (req, res) => {
+  const card = getCard(req.params.id);
+  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  const markdown = cardToMarkdown(card);
+  const filename = `${safeMarkdownFilename(card.title, card.id)}.md`;
+  res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(markdown);
 });
 
 /** カード更新 */
