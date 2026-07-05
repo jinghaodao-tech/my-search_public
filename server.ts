@@ -29,12 +29,21 @@ import {
   parseAndImportJSON, backfillCardTokens
 } from './cards_engine.js';
 import { cardToMarkdown, markdownContentDisposition, safeMarkdownFilename } from './utils/markdown_export.js';
+import { errorMeta, logger } from './utils/logger.js';
 
 import type {
   Card,
   KJGroup
 } from './cards_engine.js';
 import { db } from './db/database.js';
+
+declare global {
+  namespace Express {
+    interface Request {
+      requestId?: string;
+    }
+  }
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -146,8 +155,7 @@ function getGeminiApiKey(): string | null {
 }
 
 function logMissingApiKey() {
-  console.error('[AI SUMMARY]');
-  console.error('ANTHROPIC_API_KEY is not configured');
+  logger.error({ event: 'ai_missing_api_key', provider: 'anthropic' }, '[AI SUMMARY] ANTHROPIC_API_KEY is not configured');
 }
 
 function buildMissingApiKeyResponse() {
@@ -199,7 +207,7 @@ async function summarizeWithAnthropic(card: Card): Promise<string> {
 
   const payload = buildSummaryPayload(card);
   if (AI_DEBUG) {
-    console.log('[AI SUMMARY] request payload:', payload);
+    logger.debug({ event: 'ai_request', provider: 'anthropic', model: MODEL }, '[AI SUMMARY] request prepared');
   }
 
   const controller = new AbortController();
@@ -219,15 +227,22 @@ async function summarizeWithAnthropic(card: Card): Promise<string> {
 
     const responseBody = await response.text();
     if (AI_DEBUG) {
-      console.log('[AI SUMMARY] response body:', responseBody);
+      logger.debug({
+        event: 'ai_response',
+        provider: 'anthropic',
+        status: response.status,
+        statusText: response.statusText,
+      }, '[AI SUMMARY] response received');
     }
 
     if (!response.ok) {
-      console.error('[AI SUMMARY]', {
+      logger.error({
+        event: 'ai_provider_error',
+        provider: 'anthropic',
         status: response.status,
         statusText: response.statusText,
         body: responseBody,
-      });
+      }, '[AI SUMMARY] Anthropic error');
       throw mapAnthropicStatus(response.status, responseBody);
     }
 
@@ -260,8 +275,7 @@ async function summarizeWithAnthropic(card: Card): Promise<string> {
 async function summarizeWithGemini(card: Card): Promise<string> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
-    console.error('[AI SUMMARY]');
-    console.error('GEMINI_API_KEY is not configured');
+    logger.error({ event: 'ai_missing_api_key', provider: 'gemini' }, '[AI SUMMARY] GEMINI_API_KEY is not configured');
     throw new AiSummaryError(500, 'missing_api_key', 'GEMINI_API_KEY is not configured');
   }
 
@@ -273,7 +287,7 @@ async function summarizeWithGemini(card: Card): Promise<string> {
     }],
   };
   if (AI_DEBUG) {
-    console.log('[AI SUMMARY] Gemini request payload:', payload);
+    logger.debug({ event: 'ai_request', provider: 'gemini', model: GEMINI_MODEL }, '[AI SUMMARY] Gemini request prepared');
   }
 
   const controller = new AbortController();
@@ -292,14 +306,21 @@ async function summarizeWithGemini(card: Card): Promise<string> {
     const responseBody = await response.text();
 
     if (AI_DEBUG) {
-      console.log('[AI SUMMARY] Gemini response body:', responseBody);
+      logger.debug({
+        event: 'ai_response',
+        provider: 'gemini',
+        status: response.status,
+        statusText: response.statusText,
+      }, '[AI SUMMARY] Gemini response received');
     }
     if (!response.ok) {
-      console.error('[AI SUMMARY] Gemini Error:', {
+      logger.error({
+        event: 'ai_provider_error',
+        provider: 'gemini',
         status: response.status,
         statusText: response.statusText,
         body: responseBody,
-      });
+      }, '[AI SUMMARY] Gemini error');
       throw mapAnthropicStatus(response.status, responseBody);
     }
 
@@ -438,8 +459,7 @@ function hasConfiguredProviderKey(): boolean {
 }
 
 if (!MOCK_AI_SUMMARY && AI_PROVIDER === 'gemini' && !getGeminiApiKey()) {
-  console.error('[AI SUMMARY]');
-  console.error('GEMINI_API_KEY is not configured');
+  logger.error({ event: 'ai_missing_api_key', provider: 'gemini' }, '[AI SUMMARY] GEMINI_API_KEY is not configured');
 } else if (!MOCK_AI_SUMMARY && AI_PROVIDER === 'anthropic' && !getAnthropicApiKey()) {
   logMissingApiKey();
 }
@@ -447,9 +467,27 @@ if (!MOCK_AI_SUMMARY && AI_PROVIDER === 'gemini' && !getGeminiApiKey()) {
 const app = express();
 export { app };
 
-function logInfo(message: string, meta: Record<string, unknown> = {}) {
-  if (process.env.NODE_ENV === 'test') return;
-  console.log(JSON.stringify({ level: 'info', message, time: new Date().toISOString(), ...meta }));
+class HttpError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
+  }
+}
+
+function getRequestId(req: express.Request): string {
+  return req.requestId ?? String(req.get('x-request-id') ?? '');
+}
+
+function sendError(req: express.Request, res: express.Response, status: number, error: string, details?: unknown) {
+  const payload: { error: string; requestId: string; details?: unknown } = {
+    error,
+    requestId: getRequestId(req),
+  };
+  if (details !== undefined) payload.details = details;
+  res.status(status).json(payload);
 }
 
 const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
@@ -458,18 +496,30 @@ const apiLimiter = rateLimit({
   limit: Number(process.env.API_RATE_LIMIT ?? 60),
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    logger.warn({ event: 'rate_limit', requestId: getRequestId(req), method: req.method, path: req.path }, 'rate limit exceeded');
+    sendError(req, res, 429, 'Rate limit exceeded');
+  },
 });
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: Number(process.env.AI_RATE_LIMIT ?? 10),
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    logger.warn({ event: 'rate_limit', requestId: getRequestId(req), method: req.method, path: req.path, bucket: 'ai' }, 'rate limit exceeded');
+    sendError(req, res, 429, 'Rate limit exceeded');
+  },
 });
 const importLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: Number(process.env.IMPORT_RATE_LIMIT ?? 10),
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    logger.warn({ event: 'rate_limit', requestId: getRequestId(req), method: req.method, path: req.path, bucket: 'import' }, 'rate limit exceeded');
+    sendError(req, res, 429, 'Rate limit exceeded');
+  },
 });
 
 app.use(helmet({
@@ -481,15 +531,20 @@ app.use((req, res, next) => {
   const started = Date.now();
   const incomingRequestId = req.header('x-request-id')?.trim();
   const requestId = incomingRequestId || randomUUID();
+  req.requestId = requestId;
   res.setHeader('X-Request-Id', requestId);
+  logger.debug({ event: 'request_start', requestId, method: req.method, path: req.path }, 'request start');
   res.on('finish', () => {
-    logInfo('request', {
+    const statusCode = res.statusCode;
+    const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
+    logger[level]({
+      event: 'request_end',
       requestId,
       method: req.method,
       path: req.path,
-      status: res.statusCode,
-      durationMs: Date.now() - started,
-    });
+      statusCode,
+      responseTimeMs: Date.now() - started,
+    }, 'request complete');
   });
   next();
 });
@@ -497,7 +552,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (_req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 );
-app.get('/healthz', (_req, res) => {
+app.get('/healthz', (req, res) => {
   const checkedAt = new Date().toISOString();
   try {
     const row = db.prepare('SELECT COUNT(*) AS count FROM cards').get() as { count: number };
@@ -510,16 +565,12 @@ app.get('/healthz', (_req, res) => {
       checkedAt,
     });
   } catch (err) {
-    console.error(JSON.stringify({
-      level: 'error',
-      message: 'healthz failed',
-      time: checkedAt,
-      error: err instanceof Error ? err.message : String(err),
-    }));
+    logger.error({ event: 'db_health_failure', requestId: getRequestId(req), error: errorMeta(err) }, 'healthz failed');
     res.status(500).json({
       ok: false,
       status: 'unhealthy',
       db: 'error',
+      requestId: getRequestId(req),
       checkedAt,
     });
   }
@@ -670,14 +721,14 @@ function validationDetails(error: ZodError) {
   }));
 }
 
-function invalidRequest(res: express.Response, details: unknown) {
-  res.status(400).json({ error: 'Invalid request', details });
+function invalidRequest(req: express.Request, res: express.Response, details: unknown) {
+  sendError(req, res, 400, 'Invalid request', details);
 }
 
 function parseBody<T>(schema: ZodType<T>, req: express.Request, res: express.Response): T | null {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
-    invalidRequest(res, validationDetails(parsed.error));
+    invalidRequest(req, res, validationDetails(parsed.error));
     return null;
   }
   return parsed.data;
@@ -717,7 +768,7 @@ app.post(['/api/collect', '/api/articles/refresh'], apiLimiter, async (req, res)
       res.status(202).json({ ok: true, running: true, message: 'collect started' });
       collectAll(config)
         .then((result) => { cachedArticles = result; })
-        .catch((err) => console.error('[COLLECT]', err))
+        .catch((err) => logger.error({ event: 'collect_error', requestId: getRequestId(req), error: errorMeta(err) }, 'collect failed'))
         .finally(() => { collectRunning = false; });
       return;
     }
@@ -725,7 +776,8 @@ app.post(['/api/collect', '/api/articles/refresh'], apiLimiter, async (req, res)
     cachedArticles = result;
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    logger.error({ event: 'collect_error', requestId: getRequestId(req), error: errorMeta(err) }, 'collect failed');
+    sendError(req, res, 500, 'Internal server error');
   }
 });
 
@@ -771,7 +823,7 @@ app.post('/api/run', async (req, res) => {
     const { modeId, config, articles: reqArticles, options } = body;
     const rawArticles = reqArticles ?? cachedArticles?.articles ?? [];
     if (!rawArticles.length) {
-      res.status(400).json({ error: '記事がありません。先に /api/collect を実行してください' });
+      res.status(400).json({ error: '記事がありません。先に /api/collect を実行してください', requestId: getRequestId(req) });
       return;
     }
     const cardsById = new Map(loadCards().map((card) => [card.id, card]));
@@ -827,10 +879,15 @@ app.post('/api/run', async (req, res) => {
         };
       }),
     };
-    console.log("results.length", response.active.length + response.archived.length);
+    logger.debug({
+      event: 'search_results',
+      requestId: getRequestId(req),
+      resultCount: response.active.length + response.archived.length,
+    }, 'BM25 search results prepared');
     res.json(response);
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    logger.error({ event: 'search_error', requestId: getRequestId(req), error: errorMeta(err) }, 'BM25 search failed');
+    sendError(req, res, 500, 'Internal server error');
   }
 });
 
@@ -858,10 +915,19 @@ app.post('/api/search/expand-keywords', aiLimiter, async (req, res) => {
     res.json({ expandedKeywords });
   } catch (err) {
     if (err instanceof AiSummaryError) {
-      res.status(err.status).json({ error: err.message, code: err.code });
+      logger.warn({
+        event: 'ai_keyword_expand_error',
+        requestId: getRequestId(req),
+        code: err.code,
+        statusCode: err.status,
+        provider: AI_PROVIDER,
+        error: errorMeta(err),
+      }, 'keyword expansion provider error');
+      res.status(err.status).json({ error: err.message, code: err.code, requestId: getRequestId(req) });
       return;
     }
-    res.status(500).json({ error: String(err), code: 'api_error' });
+    logger.error({ event: 'ai_keyword_expand_error', requestId: getRequestId(req), error: errorMeta(err) }, 'keyword expansion failed');
+    sendError(req, res, 500, 'Internal server error', [{ code: 'api_error' }]);
   }
 });
 
@@ -884,21 +950,22 @@ app.post('/api/cards', async (req, res) => {
     const card = await createCard({ type: 'memo', ...normalizeCardInput(body) });
     res.status(201).json(card);
   } catch (err) {
-    res.status(400).json({ error: String(err) });
+    logger.warn({ event: 'card_create_error', requestId: getRequestId(req), error: errorMeta(err) }, 'card create failed');
+    sendError(req, res, 400, 'Invalid request');
   }
 });
 
 /** カード取得 */
 app.get('/api/cards/:id', (req, res) => {
   const card = getCard(req.params.id);
-  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!card) { sendError(req, res, 404, 'Not found'); return; }
   const backlinks = getBacklinks(req.params.id);
   res.json({ ...card, backlinks });
 });
 
 app.get('/api/cards/:id/export-md', (req, res) => {
   const card = getCard(req.params.id);
-  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!card) { sendError(req, res, 404, 'Not found'); return; }
   const markdown = cardToMarkdown(card);
   const filename = `${safeMarkdownFilename(card.title, card.id)}.md`;
   res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
@@ -911,7 +978,7 @@ app.put('/api/cards/:id', async (req, res) => {
   const body = parseBody(updateCardSchema, req, res);
   if (!body) return;
   const card = await updateCard(req.params.id, normalizeCardInput(body));
-  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!card) { sendError(req, res, 404, 'Not found'); return; }
   res.json(card);
 });
 
@@ -923,19 +990,19 @@ app.delete('/api/cards/:id', (req, res) => {
 
 app.put('/api/cards/:id/archive', async (req, res) => {
   const card = await updateCard(req.params.id, { archived: true, archivedAt: new Date().toISOString() });
-  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!card) { sendError(req, res, 404, 'Not found'); return; }
   res.json(card);
 });
 
 app.put('/api/cards/:id/unarchive', async (req, res) => {
   const card = await restoreCard(req.params.id);
-  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!card) { sendError(req, res, 404, 'Not found'); return; }
   res.json(card);
 });
 
 app.post('/api/cards/:id/restore', async (req, res) => {
   const card = await restoreCard(req.params.id);
-  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!card) { sendError(req, res, 404, 'Not found'); return; }
   res.json(card);
 });
 
@@ -979,7 +1046,7 @@ app.post('/api/cards/bulk-delete', (req, res) => {
 
 app.delete('/api/cards/:id/summary', async (req, res) => {
   const card = getCard(req.params.id);
-  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!card) { sendError(req, res, 404, 'Not found'); return; }
   const updated = await updateCard(req.params.id, { summary: undefined });
   res.json({ ok: true, card: updated });
 });
@@ -987,7 +1054,7 @@ app.delete('/api/cards/:id/summary', async (req, res) => {
 app.post('/api/cards/:id/summarize', aiLimiter, async (req, res) => {
   const cardId = String(req.params.id);
   const card = getCard(cardId);
-  if (!card) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!card) { sendError(req, res, 404, 'Not found'); return; }
 
   try {
     const summary = await summarizeCard(card);
@@ -995,14 +1062,23 @@ app.post('/api/cards/:id/summarize', aiLimiter, async (req, res) => {
     res.json({ summary, card: updated });
   } catch (err) {
     if (err instanceof AiSummaryError) {
+      logger.warn({
+        event: 'ai_provider_error',
+        requestId: getRequestId(req),
+        code: err.code,
+        statusCode: err.status,
+        provider: AI_PROVIDER,
+        error: errorMeta(err),
+      }, 'AI summary provider error');
       res.status(err.status).json({
         error: err.message,
         code: err.code,
-        details: AI_DEBUG ? err.details : undefined,
+        requestId: getRequestId(req),
       });
       return;
     }
-    res.status(500).json({ error: '\u0041\u006e\u0074\u0068\u0072\u006f\u0070\u0069\u0063 API\u3067\u30a8\u30e9\u30fc\u304c\u767a\u751f\u3057\u307e\u3057\u305f', code: 'api_error' });
+    logger.error({ event: 'ai_summary_error', requestId: getRequestId(req), error: errorMeta(err) }, 'AI summary failed');
+    sendError(req, res, 500, '\u0041\u006e\u0074\u0068\u0072\u006f\u0070\u0069\u0063 API\u3067\u30a8\u30e9\u30fc\u304c\u767a\u751f\u3057\u307e\u3057\u305f', [{ code: 'api_error' }]);
   }
 });
 
@@ -1012,11 +1088,11 @@ app.post('/api/cards/summarize-bulk', aiLimiter, async (req, res) => {
   if (!body) return;
   if (!hasConfiguredProviderKey()) {
     const keyName = AI_PROVIDER === 'gemini' ? 'GEMINI_API_KEY' : 'ANTHROPIC_API_KEY';
-    console.error('[AI SUMMARY]');
-    console.error(`${keyName} is not configured`);
+    logger.error({ event: 'ai_missing_api_key', requestId: getRequestId(req), provider: AI_PROVIDER }, `[AI SUMMARY] ${keyName} is not configured`);
     res.status(500).json({
       error: `${keyName} is not configured`,
       code: 'missing_api_key',
+      requestId: getRequestId(req),
     });
     return;
   }
@@ -1032,7 +1108,7 @@ app.post('/api/cards/summarize-bulk', aiLimiter, async (req, res) => {
         await updateCard(id, { summary });
         await new Promise(r => setTimeout(r, 300)); // レート制限対応
       } catch (error) {
-        console.error('[AI SUMMARY] bulk summarize failed:', { id, error });
+        logger.error({ event: 'ai_bulk_summary_error', id, error: errorMeta(error) }, '[AI SUMMARY] bulk summarize failed');
       }
     }
   })();
@@ -1046,11 +1122,11 @@ app.post('/api/cards/:id/links', (req, res) => {
   const body = parseBody(linkBodySchema, req, res);
   if (!body) return;
   if (req.params.id === body.targetId) {
-    invalidRequest(res, [{ path: 'targetId', message: 'Cannot link a card to itself' }]);
+    invalidRequest(req, res, [{ path: 'targetId', message: 'Cannot link a card to itself' }]);
     return;
   }
   if (!getCard(req.params.id) || !getCard(body.targetId)) {
-    res.status(404).json({ error: 'Not found' });
+    sendError(req, res, 404, 'Not found');
     return;
   }
   linkCards(req.params.id, body.targetId);
@@ -1127,7 +1203,7 @@ app.put('/api/kj/groups/:id', (req, res) => {
   const body = parseBody(kjGroupUpdateSchema, req, res);
   if (!body) return;
   const group = updateKJGroup(req.params.id, body);
-  if (!group) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!group) { sendError(req, res, 404, 'Not found'); return; }
   res.json(group);
 });
 
@@ -1166,12 +1242,13 @@ app.post('/api/cards/import-csv', importLimiter, (req, res) => {
   try {
     const imported = parseAndImportCSV(body.csv);
     if (!imported.length) {
-      invalidRequest(res, [{ path: 'csv', message: 'CSV must include a header and at least one valid row' }]);
+      invalidRequest(req, res, [{ path: 'csv', message: 'CSV must include a header and at least one valid row' }]);
       return;
     }
     res.json({ ok: true, count: imported.length, cards: imported });
   } catch (err) {
-    invalidRequest(res, String(err));
+    logger.warn({ event: 'import_error', requestId: getRequestId(req), importer: 'csv', error: errorMeta(err) }, 'CSV import failed');
+    invalidRequest(req, res, 'Import failed');
   }
 });
 
@@ -1182,12 +1259,13 @@ app.post('/api/cards/import-json', importLimiter, (req, res) => {
   try {
     const result = parseAndImportJSON(body.json);
     if (!result.cards.length) {
-      invalidRequest(res, [{ path: 'json', message: 'JSON must contain at least one importable card' }]);
+      invalidRequest(req, res, [{ path: 'json', message: 'JSON must contain at least one importable card' }]);
       return;
     }
     res.json({ ok: true, count: result.cards.length, warnings: result.warnings, cards: result.cards });
   } catch (err) {
-    invalidRequest(res, String(err));
+    logger.warn({ event: 'import_error', requestId: getRequestId(req), importer: 'json', error: errorMeta(err) }, 'JSON import failed');
+    invalidRequest(req, res, 'Import failed');
   }
 });
 
@@ -1217,6 +1295,31 @@ app.post('/api/cards/import-articles', async (req, res) => {
   res.json({ ok: true, count: imported.length });
 });
 
+if (process.env.NODE_ENV === 'test') {
+  app.get('/api/test/error', () => {
+    throw new Error('synthetic test failure');
+  });
+}
+
+app.use((req, res) => {
+  sendError(req, res, 404, 'Not found');
+});
+
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const status = err instanceof HttpError ? err.status : 500;
+  const error = status === 500 ? 'Internal server error' : err instanceof Error ? err.message : 'Request failed';
+  logger.error({
+    event: 'unhandled_error',
+    requestId: getRequestId(req),
+    method: req.method,
+    path: req.path,
+    statusCode: status,
+    error: errorMeta(err),
+  }, 'request failed');
+  if (res.headersSent) return;
+  sendError(req, res, status, error);
+});
+
 // ════════════════════════════════════════════════════
 //  起動
 // ════════════════════════════════════════════════════
@@ -1231,7 +1334,6 @@ if (process.env.NODE_ENV !== 'test') {
 const PORT = Number(process.env.PORT ?? 3000);
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(`\n  ✓ カード管理サーバー  http://localhost:${PORT}`);
-    console.log(`  ✓ GUI                http://localhost:${PORT}/\n`);
+    logger.info({ event: 'server_start', port: PORT, url: `http://localhost:${PORT}` }, 'server started');
   });
 }

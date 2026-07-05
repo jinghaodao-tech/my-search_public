@@ -20,6 +20,7 @@ The project highlights practical engineering improvements: migration from JSON f
 - Import cards from CSV and JSON
 - Export individual cards as Markdown files for portability and backup
 - Generate AI summaries with Anthropic or Gemini
+- Trace API requests with structured JSON logs and request IDs
 - Run locally or with Docker Compose
 - Run type checks, API tests, and high-severity dependency audit in GitHub Actions
 
@@ -355,6 +356,8 @@ Current indexes:
 ## API Overview
 
 For detailed request / response examples, see [docs/api.md](docs/api.md).
+
+For logging, request ID, and error response design, see [docs/logging.md](docs/logging.md).
 
 For browser-based core flow tests, see [docs/e2e.md](docs/e2e.md).
 
