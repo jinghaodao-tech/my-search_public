@@ -36,6 +36,10 @@ The project highlights practical engineering improvements: migration from JSON f
 | Frontend | HTML, CSS, JavaScript |
 | AI | Anthropic API, Gemini API |
 
+This app is designed as a local-first knowledge management tool.  
+Because it can handle private notes and optional AI API keys, it is not deployed as a public multi-user web service.  
+Instead, the project provides Docker Compose, `.env.example`, mock AI summary mode, CI, and a demo video so reviewers can verify the behavior reproducibly in a local environment.
+
 ## Architecture Diagrams
 
 ### System Architecture
