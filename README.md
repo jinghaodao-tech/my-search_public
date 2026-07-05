@@ -35,6 +35,105 @@ The project highlights practical engineering improvements: migration from JSON f
 | Frontend | HTML, CSS, JavaScript |
 | AI | Anthropic API, Gemini API |
 
+## Architecture Diagrams
+
+### System Architecture
+
+```mermaid
+flowchart LR
+  user["User / Browser"] --> ui["Static HTML/CSS/JS UI"]
+  ui --> api["Express API Server"]
+
+  api --> middleware["Security / Quality Middleware<br/>Helmet, CORS, rate limits, request IDs"]
+  middleware --> validation["Zod Request Validation"]
+  validation --> cardService["Card / KJ / Link Services"]
+  validation --> searchService["BM25 Search Pipeline"]
+  validation --> importService["CSV / JSON Import"]
+  validation --> aiService["AI Summary Provider Switch"]
+
+  cardService --> sqlite[("SQLite<br/>cards, kj_groups, schema_migrations")]
+  searchService --> sqlite
+  importService --> sqlite
+  aiService --> anthropic["Anthropic API"]
+  aiService --> gemini["Gemini API"]
+
+  tests["Vitest / Supertest"] --> api
+  ci["GitHub Actions<br/>typecheck, tests, audit, Docker build"] --> tests
+  docker["Docker / Docker Compose"] --> api
+```
+
+### ER Diagram
+
+```mermaid
+erDiagram
+  KJ_GROUPS ||--o{ CARDS : "groups"
+  CARDS }o--o{ CARDS : "links_json"
+  SCHEMA_MIGRATIONS ||--o{ CARDS : "tracks schema for"
+
+  CARDS {
+    TEXT id PK
+    TEXT title
+    TEXT body
+    TEXT summary
+    TEXT url
+    TEXT type
+    TEXT color
+    TEXT tags_json
+    TEXT links_json
+    TEXT kj_group_id FK
+    INTEGER archived
+    TEXT archived_at
+    TEXT tokens_json
+    INTEGER doc_length
+    TEXT created_at
+    TEXT updated_at
+  }
+
+  KJ_GROUPS {
+    TEXT id PK
+    TEXT name
+    TEXT color
+    TEXT description
+    TEXT created_at
+    TEXT updated_at
+  }
+
+  SCHEMA_MIGRATIONS {
+    TEXT id PK
+    TEXT applied_at
+  }
+```
+
+### API Flow
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant Express as Express API
+  participant Middleware as Helmet/CORS/RateLimit
+  participant Zod as Zod Validation
+  participant Service as App Services
+  participant Search as BM25 Pipeline
+  participant DB as SQLite
+
+  Browser->>Express: HTTP request
+  Express->>Middleware: security headers, CORS, rate limits, request ID
+  Middleware->>Zod: validate params/body
+  alt invalid request
+    Zod-->>Browser: 400 Invalid request
+  else valid card/import/KJ request
+    Zod->>Service: normalized input
+    Service->>DB: targeted read/write
+    DB-->>Service: rows
+    Service-->>Browser: JSON response
+  else valid search request
+    Zod->>Search: query config + resultLimit
+    Search->>DB: load cards with precomputed tokens
+    DB-->>Search: cards + tokens_json + doc_length
+    Search-->>Browser: ranked BM25 results
+  end
+```
+
 ## Project Background
 
 The first version stored card data in a JSON file. That approach was simple, but it made full-file reads and bulk updates more expensive as the data grew. The storage layer was migrated to SQLite while keeping the existing card CRUD behavior.
