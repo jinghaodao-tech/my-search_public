@@ -7,7 +7,7 @@
     "start": "npx tsx server.ts",
     "dev": "npx tsx --watch server.ts",
     "typecheck": "tsc --noEmit",
-    "acceptance:test": "tsx scripts/acceptance_tests.ts",
+    "acceptance:test": "vitest run tests --fileParallelism=false",
     "test": "vitest run",
     "seed:demo": "tsx scripts/seed_demo.ts",
     "export:json": "tsx scripts/export_json.ts",

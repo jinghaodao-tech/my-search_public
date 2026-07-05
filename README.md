@@ -251,7 +251,7 @@ Command:
 npm run acceptance:test
 ```
 
-Result: passed 17/17
+Result: passed 18/18
 
 - BM25 search: exact and partial matches rank above unrelated cards.
 - BM25 search: empty and missing queries do not crash.
