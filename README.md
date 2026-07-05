@@ -41,6 +41,19 @@ The first version stored card data in a JSON file. That approach was simple, but
 
 Search is implemented with BM25. Instead of tokenizing card content on every search request, token data and document length are generated when cards are saved and then persisted in SQLite. This reduces repeated preprocessing work during search.
 
+### BM25 Performance Before / After
+
+The search pipeline was changed from tokenizing every card during each search to precomputing `tokens_json` and `doc_length` when cards are saved. Those precomputed values are persisted in SQLite and reused by BM25 scoring.
+
+| Stage | Before | After |
+|---|---:|---:|
+| Load cards | 2.175 ms | 7.054 ms |
+| Tokenize | 4.584 s | 0.464 ms |
+| Score | 4.705 s | 40.778 ms |
+| Total BM25 | 9.705 s | 1.413 s |
+
+The largest improvement came from removing per-search morphological tokenization from the hot path. BM25 still takes 1.413 seconds overall, so database access, aggregation, and sorting are the next likely bottleneck candidates.
+
 The API has also been improved as a backend portfolio project. Card creation/update, bulk operations, imports, links, AI summary, KJ group, collect, scheduler, and BM25 run APIs now validate request bodies before application logic is executed. The Express app is exported separately from the server startup code so the API can be tested directly with Supertest.
 
 ## Security and API Quality
@@ -92,6 +105,7 @@ npm run export:sqlite
 npm run backup
 npm run restore -- backups/cards-YYYY-MM-DDTHH-MM-SS-000Z.db
 npm run db:migrate
+npm run migrate:kj-groups
 npm run benchmark
 ```
 
@@ -188,6 +202,50 @@ Open the app:
 http://localhost:3000
 ```
 
+## Database Design
+
+The main card data is stored in SQLite. `tokens_json` and `doc_length` are precomputed BM25 data generated when cards are saved, so search can skip repeated tokenization work.
+
+| Column | Purpose |
+|---|---|
+| `id` | Primary card identifier |
+| `title` | Card title |
+| `body` | Main card content |
+| `summary` | Optional AI-generated summary |
+| `url` | Optional source URL |
+| `type` | Card type such as `memo`, `csv`, or `article` |
+| `color` | Optional UI color |
+| `tags_json` | JSON-encoded tag list |
+| `links_json` | JSON-encoded Zettelkasten card links |
+| `kj_group_id` | Optional KJ group assignment |
+| `archived` | Archive flag |
+| `archived_at` | Archive timestamp |
+| `tokens_json` | JSON-encoded tokens precomputed for BM25 search |
+| `doc_length` | Precomputed token count used by BM25 scoring |
+| `created_at` | Creation timestamp |
+| `updated_at` | Last update timestamp |
+
+KJ groups are also stored in SQLite so card persistence and grouping persistence use the same storage layer.
+
+| Column | Purpose |
+|---|---|
+| `id` | Primary KJ group identifier |
+| `name` | Group name |
+| `color` | UI color |
+| `description` | Optional description |
+| `created_at` | Creation timestamp |
+| `updated_at` | Last update timestamp |
+
+Current indexes:
+
+| Index | Table | Purpose |
+|---|---|---|
+| `idx_cards_title` | `cards` | Speeds up title-oriented lookups |
+| `idx_cards_type` | `cards` | Speeds up type filtering |
+| `idx_cards_created_at` | `cards` | Supports recency ordering |
+| `idx_cards_kj_group_id` | `cards` | Speeds up KJ group assignment lookup |
+| `idx_kj_groups_created_at` | `kj_groups` | Supports stable KJ group ordering |
+
 ## API Overview
 
 | Method | Endpoint | Purpose |
@@ -220,6 +278,7 @@ http://localhost:3000
 - Added search result highlighting and match explanations to show why each result matched the query
 - Improved search performance by persisting token data and document length at save time
 - Replaced full card-table rewrites with targeted SQLite writes for common card CRUD, bulk, link, and KJ assignment operations
+- Moved KJ group persistence from JSON file storage to SQLite so cards and groups share the same persistence layer
 - Added Zod validation to reject invalid request bodies before business logic runs
 - Added rate limits to expensive or abuse-prone endpoints such as AI summary and import APIs
 - Added Helmet and configurable CORS for basic Web security hardening
@@ -230,7 +289,6 @@ http://localhost:3000
 
 ## Future Improvements
 
-- Move remaining JSON-backed KJ group storage to SQLite if stronger concurrency guarantees become necessary
 - Add authentication and authorization for multi-user usage
 - Add more API tests for edge cases and error handling
 - Improve logging for production-like operation
@@ -251,10 +309,13 @@ Command:
 npm run acceptance:test
 ```
 
-Result: passed 18/18
+Result: passed 21/21
 
 - BM25 search: exact and partial matches rank above unrelated cards.
 - BM25 search: empty and missing queries do not crash.
+- BM25 search: result count stays within `resultLimit`.
+- BM25 search: weighted keywords have stronger score impact than normal keywords.
+- BM25 search: synonyms are reflected in search results.
 - Zettelkasten graph: isolated cards are not included in nodes.
 - Card CRUD: create, read, update, and delete work correctly.
 - Archive / Restore: archived state changes correctly.

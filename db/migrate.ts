@@ -17,6 +17,22 @@ const migrations: Migration[] = [
       ALTER TABLE cards ADD COLUMN doc_length INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    id: "003_create_kj_groups",
+    sql: `
+      CREATE TABLE IF NOT EXISTS kj_groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        color TEXT,
+        description TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_cards_kj_group_id ON cards(kj_group_id);
+      CREATE INDEX IF NOT EXISTS idx_kj_groups_created_at ON kj_groups(created_at);
+    `,
+  },
 ];
 
 export function runMigrations(db: Database.Database): string[] {

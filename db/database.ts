@@ -35,6 +35,18 @@ CREATE TABLE IF NOT EXISTS cards (
 CREATE INDEX IF NOT EXISTS idx_cards_title ON cards(title);
 CREATE INDEX IF NOT EXISTS idx_cards_type ON cards(type);
 CREATE INDEX IF NOT EXISTS idx_cards_created_at ON cards(created_at);
+CREATE INDEX IF NOT EXISTS idx_cards_kj_group_id ON cards(kj_group_id);
+
+CREATE TABLE IF NOT EXISTS kj_groups (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  color TEXT,
+  description TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_kj_groups_created_at ON kj_groups(created_at);
 `);
 
 const cardColumns = db.prepare(`PRAGMA table_info(cards)`).all() as Array<{ name: string }>;

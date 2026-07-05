@@ -260,6 +260,25 @@ async function buildSynonymMap(
   return map;
 }
 
+async function buildKeywordWeightMap(
+  keywords: KeywordWeight[],
+  synonymMap: Map<string, string>
+): Promise<Map<string, number>> {
+  const weights = new Map<string, number>();
+  for (const kw of keywords) {
+    const terms = [kw.term, ...(kw.synonyms ?? [])];
+    for (const term of terms) {
+      const tokens = await tokenize(term);
+      const candidates = tokens.length ? tokens : [term.toLowerCase()];
+      for (const token of candidates) {
+        const canonical = synonymMap.get(token) ?? token;
+        weights.set(canonical, Math.max(weights.get(canonical) ?? 0, kw.weight));
+      }
+    }
+  }
+  return weights;
+}
+
 async function normalizeTokens(
   text: string,
   synonymMap: Map<string, string>
@@ -328,6 +347,7 @@ class BM25Engine {
     article: Article,
     mode: ModeConfig,
     synonymMap: Map<string, string>,
+    keywordWeights: Map<string, number>,
     queryTokens: string[]
   ): Promise<ScoredArticle> {
     // タイトルを 2 回結合して重みを 2 倍にする
@@ -340,9 +360,6 @@ class BM25Engine {
     const queryTerms = queryTokens.map(
       (token) => synonymMap.get(token) ?? token
     );
-    const defaultWeight = mode.keywords.length > 0
-      ? Math.max(...mode.keywords.map((keyword) => keyword.weight))
-      : 1;
 
     const matchedTerms: MatchedTerm[] = [];
     let bm25Sum = 0;
@@ -357,14 +374,15 @@ class BM25Engine {
       const denominator =
         f + mode.k1 * (1 - mode.b + mode.b * (docLen / this.corpus.avgDocLength));
       const bm25 = idfVal * (numerator / denominator);
-      const contribution = bm25 * defaultWeight;
+      const weight = keywordWeights.get(canonical) ?? 1;
+      const contribution = bm25 * weight;
 
       matchedTerms.push({
         term: queryTerm,
         tf: f,
         idf: idfVal,
         bm25,
-        weight: defaultWeight,
+        weight,
         contribution,
       });
       bm25Sum += contribution;
@@ -391,10 +409,11 @@ class BM25Engine {
     articles: Article[],
     mode: ModeConfig,
     synonymMap: Map<string, string>,
+    keywordWeights: Map<string, number>,
     queryTokens: string[]
   ): Promise<ScoredArticle[]> {
     const scored = await Promise.all(
-      articles.map((a) => this.score(a, mode, synonymMap, queryTokens))
+      articles.map((a) => this.score(a, mode, synonymMap, keywordWeights, queryTokens))
     );
     return scored.sort((a, b) => b.score - a.score);
   }
@@ -580,6 +599,7 @@ export async function runPipeline(
   const resolved = resolveArticleTokens(deduped);
   console.timeEnd("tokenize");
   const synonymMap = await buildSynonymMap(mode.keywords);
+  const keywordWeights = await buildKeywordWeightMap(mode.keywords, synonymMap);
   const corpus = await buildCorpusStats(resolved.articles, mode, synonymMap);
   const engine = new BM25Engine(corpus);
   console.time("score");
@@ -587,6 +607,7 @@ export async function runPipeline(
     resolved.articles,
     mode,
     synonymMap,
+    keywordWeights,
     queryTokens
   ))
     .filter((item) => item.score > 0)

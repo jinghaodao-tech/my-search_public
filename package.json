@@ -15,6 +15,7 @@
     "backup": "tsx scripts/backup.ts",
     "restore": "tsx scripts/restore.ts",
     "db:migrate": "tsx scripts/migrate_db.ts",
+    "migrate:kj-groups": "tsx scripts/migrate_kj_groups_json_to_sqlite.ts",
     "benchmark": "tsx scripts/benchmark.ts",
     "migrate:tokens": "tsx scripts/regenerate_card_tokens.ts",
     "backfill:tokens": "tsx scripts/backfill_card_tokens.ts",

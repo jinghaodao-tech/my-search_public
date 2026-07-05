@@ -66,6 +66,53 @@ describe("BM25 search", () => {
     expect(result.active[0].article.id).toBe("weighted");
   });
 
+  it("keeps result count within resultLimit", async () => {
+    const result = await bm25Engine.runPipeline(
+      Array.from({ length: 20 }, (_, index) =>
+        tokenArticle(`limit-${index}`, `limited card ${index}`, [SEARCH, IMPLEMENTATION, String(index)]),
+      ),
+      searchMode([{ term: SEARCH, weight: 1 }]),
+      "acceptance",
+      { archiveScoreThreshold: -1, dedupThreshold: 1, resultLimit: 5 },
+    );
+
+    expect(result.active.length).toBeLessThanOrEqual(5);
+  });
+
+  it("gives higher contribution to weighted keywords than normal keywords", async () => {
+    const result = await bm25Engine.runPipeline(
+      [
+        tokenArticle("weighted-term", "weighted term", [IMPORTANT]),
+        tokenArticle("normal-term", "normal term", [IMPLEMENTATION]),
+      ],
+      searchMode([
+        { term: IMPORTANT, weight: 5 },
+        { term: IMPLEMENTATION, weight: 1 },
+      ]),
+      "acceptance",
+      { archiveScoreThreshold: -1, dedupThreshold: 1, resultLimit: 10 },
+    );
+
+    const weightedScore = result.active.find((item: any) => item.article.id === "weighted-term")?.score ?? 0;
+    const normalScore = result.active.find((item: any) => item.article.id === "normal-term")?.score ?? 0;
+    expect(weightedScore).toBeGreaterThan(normalScore);
+  });
+
+  it("matches synonyms in search results", async () => {
+    const result = await bm25Engine.runPipeline(
+      [
+        tokenArticle("synonym", "synonym term", [CRITICAL]),
+        tokenArticle("unrelated", "unrelated term", [MEMO]),
+      ],
+      searchMode([{ term: IMPORTANT, weight: 2, synonyms: [CRITICAL] }]),
+      "acceptance",
+      { archiveScoreThreshold: -1, dedupThreshold: 1, resultLimit: 10 },
+    );
+
+    expect(result.active.map((item: any) => item.article.id)).toContain("synonym");
+    expect(result.active.map((item: any) => item.article.id)).not.toContain("unrelated");
+  });
+
   it("stays under the performance threshold for a moderate corpus", async () => {
     const corpus = Array.from({ length: 250 }, (_, index) =>
       tokenArticle(`perf-${index}`, `search card ${index}`, [SEARCH, IMPLEMENTATION, MEMO, String(index)]),
@@ -80,6 +127,8 @@ describe("BM25 search", () => {
     const elapsedMs = performance.now() - start;
 
     expect(result.active.length).toBeGreaterThan(0);
-    expect(elapsedMs).toBeLessThan(10_000);
+    expect(result.active.length).toBeLessThanOrEqual(200);
+    // Threshold includes CI variance while still catching a regression toward per-search tokenization.
+    expect(elapsedMs).toBeLessThan(2_000);
   });
 });
