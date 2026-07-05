@@ -48,6 +48,13 @@ describe("DB migration", () => {
     });
     expect(result.status, result.error?.message || result.stderr || result.stdout).toBe(0);
 
+    const rerun = runTsx("scripts/migrate_cards_json_to_sqlite.ts", {
+      ...process.env,
+      DATA_DIR: migrationDir,
+      DB_PATH: dbPath,
+    });
+    expect(rerun.status, rerun.error?.message || rerun.stderr || rerun.stdout).toBe(0);
+
     const db = new Database(dbPath);
     try {
       const rows = db.prepare("SELECT * FROM cards").all() as any[];

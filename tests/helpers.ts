@@ -16,6 +16,7 @@ process.env.KJ_FILE = path.join(testDir, "kj_groups.json");
 
 export const cardsEngine = await import("../cards_engine.js");
 export const bm25Engine = await import("../bm25_engine.js");
+export const database = await import("../db/database.js");
 export const { app } = await import("../server.js");
 
 export function resetCards() {
