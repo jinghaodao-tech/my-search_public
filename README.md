@@ -239,3 +239,34 @@ http://localhost:3000
 ## Notes on Native Dependencies
 
 This project uses `better-sqlite3`, which includes native bindings. If CI fails during install, likely causes include Node.js version compatibility, missing prebuilt binaries, or native build tooling. Practical mitigations are to pin a stable Node.js version, update `better-sqlite3` to a compatible version, or install the required build tools in CI.
+---
+
+## Acceptance Test Results
+
+Last verified: 2026-07-05
+
+Command:
+
+```bash
+npm run acceptance:test
+```
+
+Result: passed 17/17
+
+- BM25 search: exact and partial matches rank above unrelated cards.
+- BM25 search: empty and missing queries do not crash.
+- Zettelkasten graph: isolated cards are not included in nodes.
+- Card CRUD: create, read, update, and delete work correctly.
+- Archive / Restore: archived state changes correctly.
+- Bulk Archive: multiple cards can be archived together.
+- Bulk Delete: multiple cards can be deleted together.
+- Tag operations: tag add, remove, and search work correctly.
+- CSV Import: valid CSV can be imported.
+- JSON Import: valid JSON can be imported.
+- Import error handling: invalid input does not crash the server.
+- KJ groups: create, update, assign, and delete work correctly.
+- Backlinks: a B-side source can be read after linking A to B.
+- Search ranking: keyword weights and synonyms affect scores.
+- Performance: search stays under the threshold for the tested corpus size.
+- API validation: invalid IDs and empty bodies return appropriate errors.
+- DB migration: count and key fields are preserved after JSON to SQLite migration.

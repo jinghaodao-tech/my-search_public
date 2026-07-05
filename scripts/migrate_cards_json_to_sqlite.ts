@@ -2,9 +2,11 @@ import fs from "fs";
 import path from "path";
 import Database from "better-sqlite3";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const JSON_PATH = path.join(DATA_DIR, "cards.json");
-const DB_PATH = path.join(DATA_DIR, "cards.db");
+const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
+const JSON_PATH = process.env.CARDS_JSON_PATH ?? path.join(DATA_DIR, "cards.json");
+const DB_PATH = process.env.DB_PATH ?? path.join(DATA_DIR, "cards.db");
+
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 type Card = {
   id: string;

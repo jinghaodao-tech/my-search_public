@@ -1058,7 +1058,15 @@ app.get('/api/cards/:id/backlinks', (req, res) => {
 /** Zettelkastenグラフデータ（vis.js用） */
 app.get('/api/zettelkasten/graph', (_req, res) => {
   const cards = loadCards();
-  const nodes = cards.map(c => ({
+  const linkedIds = new Set<string>();
+  for (const card of cards) {
+    if (card.links?.length) {
+      linkedIds.add(card.id);
+      for (const linkId of card.links) linkedIds.add(linkId);
+    }
+  }
+  const visibleCards = cards.filter(c => linkedIds.has(c.id));
+  const nodes = visibleCards.map(c => ({
     id:    c.id,
     label: c.title.slice(0, 40),
     title: c.summary ?? c.body.slice(0, 100),
@@ -1067,8 +1075,9 @@ app.get('/api/zettelkasten/graph', (_req, res) => {
   }));
   const edgesSet = new Set<string>();
   const edges: { from: string; to: string }[] = [];
-  for (const card of cards) {
+  for (const card of visibleCards) {
     for (const linkId of card.links) {
+      if (!linkedIds.has(linkId)) continue;
       const key = [card.id, linkId].sort().join('--');
       if (!edgesSet.has(key)) {
         edgesSet.add(key);

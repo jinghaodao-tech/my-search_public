@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR   = path.join(__dirname, 'data');
 const CARDS_FILE = path.join(DATA_DIR, 'cards.json');
-const KJ_FILE    = path.join(DATA_DIR, 'kj_groups.json');
+const KJ_FILE    = process.env.KJ_FILE ?? path.join(DATA_DIR, 'kj_groups.json');
 
 // ════════════════════════════════════════════════════
 //  § 1. 型定義
