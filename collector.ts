@@ -22,10 +22,14 @@ const ARTICLES_FILE = path.join(DATA_DIR, 'articles.json');
 const STATS_FILE    = path.join(DATA_DIR, 'stats.json');
 
 export function saveArticles(result: CollectResult): void {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(ARTICLES_FILE, JSON.stringify(result.articles, null, 2), 'utf-8');
-  fs.writeFileSync(STATS_FILE,    JSON.stringify(result.stats,    null, 2), 'utf-8');
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(ARTICLES_FILE, JSON.stringify(result.articles, null, 2), 'utf-8');
+    fs.writeFileSync(STATS_FILE,    JSON.stringify(result.stats,    null, 2), 'utf-8');
   console.log(`  💾 保存: ${ARTICLES_FILE} (${result.articles.length}件)`);
+  } catch (e) {
+    console.warn('  saveArticles failed:', (e as Error).message);
+  }
 }
 
 export function loadArticles(): CollectResult | null {

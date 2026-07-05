@@ -97,12 +97,25 @@ interface PipelineResult {
     archivedCount: number;
     modeUsed: string;
     avgScore: number;
+    timings?: BenchmarkTimings;
   };
 }
 
 interface ArchiveDecision {
   shouldArchive: boolean;
   reason: string;
+}
+
+export interface BenchmarkTimings {
+  dbLoadMs?: number;
+  tokenPreparationMs: number;
+  scoringMs: number;
+  sortingLimitMs: number;
+  totalSearchMs: number;
+}
+
+function nowMs(): number {
+  return performance.now();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -287,6 +300,16 @@ async function normalizeTokens(
   return tokens.map((t) => synonymMap.get(t) ?? t);
 }
 
+async function buildQueryTokens(keywords: KeywordWeight[]): Promise<string[]> {
+  const queryText = keywords.map((keyword) => keyword.term).join(" ");
+  const tokens = await tokenize(queryText);
+  if (tokens.length > 0) return tokens;
+  return keywords
+    .flatMap((keyword) => [keyword.term, ...(keyword.synonyms ?? [])])
+    .map((term) => term.normalize("NFKC").toLowerCase().trim())
+    .filter(Boolean);
+}
+
 function computeTF(tokens: string[]): Map<string, number> {
   const tf = new Map<string, number>();
   for (const t of tokens) tf.set(t, (tf.get(t) ?? 0) + 1);
@@ -343,13 +366,13 @@ class BM25Engine {
     return Math.log((N - df + 0.5) / (df + 0.5) + 1);
   }
 
-  async score(
+  score(
     article: Article,
     mode: ModeConfig,
     synonymMap: Map<string, string>,
     keywordWeights: Map<string, number>,
     queryTokens: string[]
-  ): Promise<ScoredArticle> {
+  ): ScoredArticle {
     // タイトルを 2 回結合して重みを 2 倍にする
     const tokens = (article.tokens ?? []).map(
       (token) => synonymMap.get(token) ?? token
@@ -405,17 +428,14 @@ class BM25Engine {
     };
   }
 
-  async rank(
+  scoreAll(
     articles: Article[],
     mode: ModeConfig,
     synonymMap: Map<string, string>,
     keywordWeights: Map<string, number>,
     queryTokens: string[]
-  ): Promise<ScoredArticle[]> {
-    const scored = await Promise.all(
-      articles.map((a) => this.score(a, mode, synonymMap, keywordWeights, queryTokens))
-    );
-    return scored.sort((a, b) => b.score - a.score);
+  ): ScoredArticle[] {
+    return articles.map((a) => this.score(a, mode, synonymMap, keywordWeights, queryTokens));
   }
 }
 
@@ -492,6 +512,7 @@ function jaccardSimilarity(a: Set<number>, b: Set<number>): number {
 }
 
 function deduplicateArticles(articles: Article[], threshold = 0.8): Article[] {
+  if (threshold >= 1) return articles;
   const hashes = articles.map((a) =>
     shingleHash(`${a.title} ${a.body.slice(0, 500)}`)
   );
@@ -564,6 +585,13 @@ export async function runPipeline(
     viewCounts?: Map<string, number>;
   } = {}
 ): Promise<PipelineResult> {
+  const totalStart = nowMs();
+  const timings: BenchmarkTimings = {
+    tokenPreparationMs: 0,
+    scoringMs: 0,
+    sortingLimitMs: 0,
+    totalSearchMs: 0,
+  };
   console.time("bm25");
   try {
   const {
@@ -578,8 +606,7 @@ export async function runPipeline(
   const deduped = deduplicateArticles(rawArticles, dedupThreshold);
 
   // Layer 2: コーパス統計構築 → BM25 スコアリング
-  const queryText = mode.keywords.map((keyword) => keyword.term).join(" ");
-  const queryTokens = await tokenize(queryText);
+  const queryTokens = await buildQueryTokens(mode.keywords);
   if (queryTokens.length === 0) {
     return {
       active: [],
@@ -591,32 +618,37 @@ export async function runPipeline(
         archivedCount: 0,
         modeUsed: modeId,
         avgScore: 0,
+        timings: { ...timings, totalSearchMs: Number((nowMs() - totalStart).toFixed(3)) },
       },
     };
   }
 
   console.time("tokenize");
+  const prepStart = nowMs();
   const resolved = resolveArticleTokens(deduped);
-  console.timeEnd("tokenize");
   const synonymMap = await buildSynonymMap(mode.keywords);
   const keywordWeights = await buildKeywordWeightMap(mode.keywords, synonymMap);
   const corpus = await buildCorpusStats(resolved.articles, mode, synonymMap);
+  timings.tokenPreparationMs = Number((nowMs() - prepStart).toFixed(3));
+  console.timeEnd("tokenize");
   const engine = new BM25Engine(corpus);
   console.time("score");
-  const scored = (await engine.rank(
+  const scoreStart = nowMs();
+  const scored = engine.scoreAll(
     resolved.articles,
     mode,
     synonymMap,
     keywordWeights,
     queryTokens
-  ))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score);
+  ).filter((item) => item.score > 0);
+  timings.scoringMs = Number((nowMs() - scoreStart).toFixed(3));
   console.timeEnd("score");
 
   // Layer 3: 自動アーカイブ判定
   const active: ScoredArticle[] = [];
   const archived: Array<{ article: Article; reason: string }> = [];
+  const sortStart = nowMs();
+  scored.sort((a, b) => b.score - a.score);
 
   for (const s of scored) {
     const views = viewCounts.get(s.article.id) ?? 0;
@@ -631,6 +663,7 @@ export async function runPipeline(
   const safeResultLimit = Math.min(Math.max(Math.floor(resultLimit), 1), 500);
   const limitedActive = active.slice(0, safeResultLimit);
   const limitedArchived = archived.slice(0, Math.max(0, safeResultLimit - limitedActive.length));
+  timings.sortingLimitMs = Number((nowMs() - sortStart).toFixed(3));
 
   const avgScore =
     limitedActive.length > 0
@@ -647,6 +680,7 @@ export async function runPipeline(
       archivedCount: archived.length,
       modeUsed: modeId,
       avgScore,
+      timings: { ...timings, totalSearchMs: Number((nowMs() - totalStart).toFixed(3)) },
     },
   };
   } finally {

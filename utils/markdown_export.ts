@@ -19,6 +19,18 @@ export function safeMarkdownFilename(title: string, id: string): string {
   return (base || id || "card").replace(/\.+$/g, "") || "card";
 }
 
+export function markdownContentDisposition(filename: string): string {
+  const asciiFallback =
+    filename
+      .normalize("NFKD")
+      .replace(/[^\x20-\x7E]/g, "")
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "") || "card.md";
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
 export function cardToMarkdown(card: Card): string {
   const lines: string[] = [
     `# ${escapeMarkdownText(card.title)}`,

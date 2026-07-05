@@ -1,36 +1,184 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { performance } from "node:perf_hooks";
-import { getCards, loadCards } from "../cards_engine.js";
+import { fileURLToPath } from "node:url";
+import { MODES, runPipeline, type Article, type BenchmarkTimings } from "../bm25_engine.js";
 
-const iterations = Number(process.env.BENCH_ITERATIONS ?? 50);
-const query = process.env.BENCH_QUERY ?? "demo";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, "..");
+process.env.DB_PATH ??= path.join(os.tmpdir(), "my-search-benchmark.sqlite");
+const corpusSizes = [100, 1_000, 5_000, 10_000];
+const resultLimit = Number(process.env.BENCH_RESULT_LIMIT ?? 100);
+const benchmarkMode = {
+  ...MODES.impl!,
+  keywords: [
+    { term: "search", weight: 2, synonyms: ["bm25"] },
+    { term: "implementation", weight: 1.5, synonyms: ["code"] },
+    { term: "sqlite", weight: 1.2, synonyms: ["database"] },
+    { term: "performance", weight: 1.1, synonyms: ["benchmark"] },
+  ],
+};
+
 const originalConsoleTime = console.time;
 const originalConsoleTimeEnd = console.timeEnd;
 
 console.time = () => undefined;
 console.timeEnd = () => undefined;
 
-function measure(label: string, fn: () => unknown) {
-  const started = performance.now();
-  for (let i = 0; i < iterations; i += 1) {
-    fn();
-  }
-  const elapsedMs = performance.now() - started;
+function roundMs(value: number | undefined): number {
+  return Number((value ?? 0).toFixed(3));
+}
+
+function ms(value: number | undefined): string {
+  return `${roundMs(value).toLocaleString("en-US")} ms`;
+}
+
+function makeArticle(index: number): Article {
+  const group = index % 10;
+  const tokens = [
+    "search",
+    "implementation",
+    "sqlite",
+    "bm25",
+    `group-${group}`,
+    `card-${index}`,
+  ];
+  if (index % 3 === 0) tokens.push("github", "repository");
+  if (index % 5 === 0) tokens.push("performance", "benchmark");
+  if (index % 7 === 0) tokens.push("api", "validation");
+
   return {
-    label,
-    iterations,
-    totalMs: Number(elapsedMs.toFixed(2)),
-    avgMs: Number((elapsedMs / iterations).toFixed(2)),
+    id: `bench-${index}`,
+    title: `Benchmark card ${index}`,
+    body: `Benchmark body ${index} about BM25 search, SQLite, implementation, and local knowledge management.`,
+    publishedAt: new Date(Date.UTC(2026, 0, 1 + (index % 30))),
+    sourceAuthority: 1,
+    url: `https://example.com/bench-${index}`,
+    tokens,
+    docLength: tokens.length,
+    tags: ["benchmark", `group-${group}`],
+    type: "memo",
   };
 }
 
-const cardCount = loadCards().length;
-const results = [
-  measure("loadCards", () => loadCards()),
-  measure("getCards:q", () => getCards({ q: query })),
-  measure("getCards:active", () => getCards({ archived: false })),
-];
+function makeCorpus(size: number): Article[] {
+  return Array.from({ length: size }, (_, index) => makeArticle(index));
+}
 
-console.log(JSON.stringify({ ok: true, cardCount, query, results }, null, 2));
+async function benchmarkCorpus(size: number) {
+  const { loadCards } = await import("../cards_engine.js");
+  const dbStart = performance.now();
+  loadCards();
+  const dbLoadMs = performance.now() - dbStart;
+
+  const totalStart = performance.now();
+  const result = await runPipeline(makeCorpus(size), benchmarkMode, "benchmark", {
+    archiveScoreThreshold: -1,
+    dedupThreshold: 1,
+    noViewDays: 1_000_000,
+    resultLimit,
+  });
+  const totalSearchMs = performance.now() - totalStart;
+  const timings: BenchmarkTimings = {
+    dbLoadMs: roundMs(dbLoadMs),
+    tokenPreparationMs: roundMs(result.stats.timings?.tokenPreparationMs),
+    scoringMs: roundMs(result.stats.timings?.scoringMs),
+    sortingLimitMs: roundMs(result.stats.timings?.sortingLimitMs),
+    totalSearchMs: roundMs(totalSearchMs),
+  };
+
+  return {
+    corpusSize: size,
+    resultLimit,
+    activeResults: result.active.length,
+    matchedBeforeLimit: result.stats.activeCount,
+    timings,
+  };
+}
+
+async function warmUpBenchmark(): Promise<void> {
+  await runPipeline(makeCorpus(100), benchmarkMode, "benchmark-warmup", {
+    archiveScoreThreshold: -1,
+    dedupThreshold: 1,
+    noViewDays: 1_000_000,
+    resultLimit,
+  });
+}
+
+function writeMarkdown(results: Awaited<ReturnType<typeof benchmarkCorpus>>[]): void {
+  const generatedAt = new Date().toISOString();
+  const rows = results
+    .map((result) => {
+      const t = result.timings;
+      return `| ${result.corpusSize.toLocaleString("en-US")} | ${ms(t.dbLoadMs)} | ${ms(t.tokenPreparationMs)} | ${ms(t.scoringMs)} | ${ms(t.sortingLimitMs)} | ${ms(t.totalSearchMs)} | ${result.activeResults} |`;
+    })
+    .join("\n");
+
+  const markdown = `# BM25 Benchmark
+
+Generated: ${generatedAt}
+
+Command:
+
+\`\`\`bash
+npm run benchmark
+\`\`\`
+
+The benchmark uses deterministic synthetic card corpora with precomputed \`tokens\` and \`docLength\`, matching the production SQLite design where \`tokens_json\` and \`doc_length\` are generated on write instead of tokenizing every card during search.
+
+The script performs one 100-card warm-up search before recording results. This excludes first-run tokenizer initialization and JavaScript runtime warm-up from the measured rows.
+
+## Results
+
+| Corpus size | DB load | Token parse / preparation | BM25 scoring | Sorting / limiting | Total search | Returned |
+|---:|---:|---:|---:|---:|---:|---:|
+${rows}
+
+## Before / After
+
+Historical baseline before token precomputation:
+
+| Stage | Before | Current benchmark focus |
+|---|---:|---:|
+| Load cards | 2.175 ms | measured as DB load |
+| Tokenize | 4.584 s | measured as token parse / preparation |
+| Score | 4.705 s | measured as BM25 scoring |
+| Total BM25 | 9.705 s | measured as total search |
+
+## What Changed
+
+- Search uses precomputed \`tokens_json\` and \`doc_length\` instead of running morphological tokenization for every card on every query.
+- BM25 scoring avoids creating one Promise per card because scoring is CPU-bound and synchronous.
+- Benchmarks now report DB load, token preparation, scoring, sorting/limiting, and total search separately.
+- Benchmark corpora cover 100, 1,000, 5,000, and 10,000 cards.
+- A warm-up run is executed before measurement to avoid reporting one-time tokenizer startup cost as steady-state search latency.
+- Deduplication is skipped when \`dedupThreshold >= 1\`, which is the expected benchmark and acceptance-test setting for measuring ranking rather than duplicate detection.
+
+## Remaining Bottlenecks
+
+- Token arrays still need to be normalized and counted into term-frequency maps during each search.
+- Full result sorting is still used after scoring; a bounded top-K heap could reduce work for small \`resultLimit\` values.
+- DB load is measured separately here, but production searches still parse \`tokens_json\` from SQLite rows into JavaScript arrays.
+
+## Why This Matters
+
+BM25 is only useful in the GUI if search latency stays predictable as the local-first card corpus grows. Separating benchmark stages makes future regressions easier to diagnose and makes the next optimization target clear.
+`;
+
+  fs.mkdirSync(path.join(projectRoot, "docs"), { recursive: true });
+  fs.writeFileSync(path.join(projectRoot, "docs", "benchmark.md"), markdown, "utf-8");
+}
+
+await warmUpBenchmark();
+
+const results = [];
+for (const size of corpusSizes) {
+  results.push(await benchmarkCorpus(size));
+}
+
+writeMarkdown(results);
+console.log(JSON.stringify({ ok: true, resultLimit, results }, null, 2));
 
 console.time = originalConsoleTime;
 console.timeEnd = originalConsoleTimeEnd;

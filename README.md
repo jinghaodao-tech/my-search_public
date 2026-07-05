@@ -158,6 +158,8 @@ The search pipeline was changed from tokenizing every card during each search to
 
 The largest improvement came from removing per-search morphological tokenization from the hot path. BM25 still takes 1.413 seconds overall, so database access, aggregation, and sorting are the next likely bottleneck candidates.
 
+For reproducible corpus-size benchmarks and stage-by-stage timing, run `npm run benchmark` and see [docs/benchmark.md](docs/benchmark.md).
+
 The API has also been improved as a backend portfolio project. Card creation/update, bulk operations, imports, links, AI summary, KJ group, collect, scheduler, and BM25 run APIs now validate request bodies before application logic is executed. The Express app is exported separately from the server startup code so the API can be tested directly with Supertest.
 
 ## Security and API Quality

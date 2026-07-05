@@ -1,18 +1,12 @@
 @echo off
-chcp 65001 > nul
-title カード検索システム
-
-echo.
-echo  起動中...
-echo.
+cd /d "C:\Users\jingh\my-search-app_public"
+set PORT=3001
 
 if not exist "node_modules" (
-  echo  npm install を実行しています...
-  npm install
-  echo.
+  call npm.cmd install
 )
 
-start "" /min cmd /c "timeout /t 2 /nobreak > nul && start http://localhost:3000"
-npx tsx server.ts
+start "" /min cmd /c "timeout /t 2 /nobreak > nul && start http://localhost:3001"
+call npx.cmd tsx server.ts
 
 pause

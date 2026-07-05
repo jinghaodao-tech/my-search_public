@@ -66,17 +66,19 @@ describe("Markdown export", () => {
     const { card } = await createExportCard('Bad <Title>: "Slash/Back\\Pipe|Star*Q?');
     const response = await request(app).get(`/api/cards/${card.id}/export-md`);
     const disposition = response.headers["content-disposition"];
+    const fallbackName = disposition.match(/filename="([^"]+)"/)?.[1] ?? "";
 
     expect(disposition).toContain("attachment;");
     expect(disposition).toContain(".md");
-    expect(disposition).not.toContain("<");
-    expect(disposition).not.toContain(">");
-    expect(disposition).not.toContain(":");
-    expect(disposition).not.toContain("/");
-    expect(disposition).not.toContain("\\");
-    expect(disposition).not.toContain("|");
-    expect(disposition).not.toContain("*");
-    expect(disposition).not.toContain("?");
+    expect(disposition).toContain("filename*=");
+    expect(fallbackName).not.toContain("<");
+    expect(fallbackName).not.toContain(">");
+    expect(fallbackName).not.toContain(":");
+    expect(fallbackName).not.toContain("/");
+    expect(fallbackName).not.toContain("\\");
+    expect(fallbackName).not.toContain("|");
+    expect(fallbackName).not.toContain("*");
+    expect(fallbackName).not.toContain("?");
   });
 
   it("omits optional sections when summary, URL, and links are absent", async () => {
