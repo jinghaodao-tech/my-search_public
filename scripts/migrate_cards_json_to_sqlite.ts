@@ -53,6 +53,28 @@ CREATE TABLE IF NOT EXISTS cards (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS card_tags (
+  card_id TEXT NOT NULL,
+  tag TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (card_id, tag),
+  FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_tags_tag ON card_tags(tag);
+CREATE INDEX IF NOT EXISTS idx_card_tags_card_id ON card_tags(card_id);
+
+CREATE TABLE IF NOT EXISTS card_links (
+  source_card_id TEXT NOT NULL,
+  target_card_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (source_card_id, target_card_id),
+  FOREIGN KEY (source_card_id) REFERENCES cards(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_links_source ON card_links(source_card_id);
+CREATE INDEX IF NOT EXISTS idx_card_links_target ON card_links(target_card_id);
 `);
 
 const insert = db.prepare(`
@@ -91,9 +113,18 @@ VALUES (
 `);
 
 const now = new Date().toISOString();
+const insertTag = db.prepare(`
+INSERT OR IGNORE INTO card_tags (card_id, tag, created_at)
+VALUES (?, ?, ?)
+`);
+const insertLink = db.prepare(`
+INSERT OR IGNORE INTO card_links (source_card_id, target_card_id, created_at)
+VALUES (?, ?, ?)
+`);
 
 const tx = db.transaction(() => {
   for (const card of cards) {
+    const createdAt = card.createdAt ?? now;
     insert.run({
       id: card.id,
       title: card.title,
@@ -107,9 +138,15 @@ const tx = db.transaction(() => {
       kj_group_id: card.kjGroupId ?? null,
       archived: card.archived ? 1 : 0,
       archived_at: card.archivedAt ?? null,
-      created_at: card.createdAt ?? now,
+      created_at: createdAt,
       updated_at: card.updatedAt ?? now,
     });
+    for (const tag of [...new Set((card.tags ?? []).map(tag => String(tag).trim()).filter(Boolean))]) {
+      insertTag.run(card.id, tag, createdAt);
+    }
+    for (const linkId of [...new Set((card.links ?? []).map(link => String(link).trim()).filter(Boolean))]) {
+      insertLink.run(card.id, linkId, createdAt);
+    }
   }
 });
 

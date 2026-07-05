@@ -37,6 +37,28 @@ CREATE INDEX IF NOT EXISTS idx_cards_type ON cards(type);
 CREATE INDEX IF NOT EXISTS idx_cards_created_at ON cards(created_at);
 CREATE INDEX IF NOT EXISTS idx_cards_kj_group_id ON cards(kj_group_id);
 
+CREATE TABLE IF NOT EXISTS card_tags (
+  card_id TEXT NOT NULL,
+  tag TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (card_id, tag),
+  FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_tags_tag ON card_tags(tag);
+CREATE INDEX IF NOT EXISTS idx_card_tags_card_id ON card_tags(card_id);
+
+CREATE TABLE IF NOT EXISTS card_links (
+  source_card_id TEXT NOT NULL,
+  target_card_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (source_card_id, target_card_id),
+  FOREIGN KEY (source_card_id) REFERENCES cards(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_links_source ON card_links(source_card_id);
+CREATE INDEX IF NOT EXISTS idx_card_links_target ON card_links(target_card_id);
+
 CREATE TABLE IF NOT EXISTS kj_groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -61,3 +83,15 @@ if (!cardColumnNames.has("doc_length")) {
 }
 
 runMigrations(db);
+
+db.exec(`
+INSERT OR IGNORE INTO card_tags (card_id, tag, created_at)
+SELECT cards.id, json_each.value, cards.created_at
+FROM cards, json_each(COALESCE(cards.tags_json, '[]'))
+WHERE json_each.value IS NOT NULL AND TRIM(json_each.value) <> '';
+
+INSERT OR IGNORE INTO card_links (source_card_id, target_card_id, created_at)
+SELECT cards.id, json_each.value, cards.created_at
+FROM cards, json_each(COALESCE(cards.links_json, '[]'))
+WHERE json_each.value IS NOT NULL AND TRIM(json_each.value) <> '';
+`);

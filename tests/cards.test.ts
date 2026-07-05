@@ -67,6 +67,21 @@ describe("card workflows", () => {
     expect(cardsEngine.getBacklinks(second.id).some((card: any) => card.id === first.id)).toBe(true);
   });
 
+  it("persists tags and links through junction tables", async () => {
+    const first = await cardsEngine.createCard({ title: "Junction A", body: "body", tags: ["junction", "db"] });
+    const second = await cardsEngine.createCard({ title: "Junction B", body: "body" });
+    cardsEngine.linkCards(first.id, second.id);
+
+    expect(cardsEngine.getCard(first.id)?.tags).toEqual(["junction", "db"]);
+    expect(cardsEngine.getCard(first.id)?.links).toContain(second.id);
+    expect(cardsEngine.getAllTags().some(({ tag, count }) => tag === "junction" && count === 1)).toBe(true);
+
+    await cardsEngine.updateCard(first.id, { tags: ["normalized"] });
+    expect(cardsEngine.getCard(first.id)?.tags).toEqual(["normalized"]);
+    expect(cardsEngine.getCards({ tag: "junction" })).toHaveLength(0);
+    expect(cardsEngine.getCards({ tag: "normalized" })).toHaveLength(1);
+  });
+
   it("creates, updates, assigns, and deletes KJ groups", async () => {
     const card = await cardsEngine.createCard({ title: "KJ card", body: "body" });
     const group = cardsEngine.createKJGroup("Group A", "description");

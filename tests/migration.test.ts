@@ -58,6 +58,23 @@ describe("DB migration", () => {
       expect(JSON.parse(rows[0].tags_json)).toEqual(["migration", "sqlite"]);
       expect(JSON.parse(rows[0].links_json)).toEqual(["linked-card"]);
       expect(rows[0].archived).toBe(1);
+
+      const relationTables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{ name: string }>;
+      expect(relationTables.map((table) => table.name)).toEqual(expect.arrayContaining(["card_tags", "card_links"]));
+
+      const tagRows = db.prepare("SELECT card_id, tag FROM card_tags WHERE card_id = ? ORDER BY tag").all("migrate-1");
+      expect(tagRows).toEqual([
+        { card_id: "migrate-1", tag: "migration" },
+        { card_id: "migrate-1", tag: "sqlite" },
+      ]);
+
+      const linkRows = db.prepare("SELECT source_card_id, target_card_id FROM card_links WHERE source_card_id = ?").all("migrate-1");
+      expect(linkRows).toEqual([{ source_card_id: "migrate-1", target_card_id: "linked-card" }]);
+
+      const cardIndexes = db.prepare("PRAGMA index_list(card_tags)").all() as Array<{ name: string }>;
+      const linkIndexes = db.prepare("PRAGMA index_list(card_links)").all() as Array<{ name: string }>;
+      expect(cardIndexes.map((index) => index.name)).toContain("idx_card_tags_tag");
+      expect(linkIndexes.map((index) => index.name)).toContain("idx_card_links_target");
     } finally {
       db.close();
     }

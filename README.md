@@ -73,7 +73,9 @@ flowchart LR
 ```mermaid
 erDiagram
   KJ_GROUPS ||--o{ CARDS : "groups"
-  CARDS }o--o{ CARDS : "links_json"
+  CARDS ||--o{ CARD_TAGS : "has tags"
+  CARDS ||--o{ CARD_LINKS : "source"
+  CARDS ||--o{ CARD_LINKS : "target"
   SCHEMA_MIGRATIONS ||--o{ CARDS : "tracks schema for"
 
   CARDS {
@@ -93,6 +95,18 @@ erDiagram
     INTEGER doc_length
     TEXT created_at
     TEXT updated_at
+  }
+
+  CARD_TAGS {
+    TEXT card_id PK,FK
+    TEXT tag PK
+    TEXT created_at
+  }
+
+  CARD_LINKS {
+    TEXT source_card_id PK,FK
+    TEXT target_card_id PK
+    TEXT created_at
   }
 
   KJ_GROUPS {
@@ -311,7 +325,7 @@ http://localhost:3000
 
 ## Database Design
 
-The main card data is stored in SQLite. `tokens_json` and `doc_length` are precomputed BM25 data generated when cards are saved, so search can skip repeated tokenization work.
+The main card data is stored in SQLite. `tokens_json` and `doc_length` are precomputed BM25 data generated when cards are saved, so search can skip repeated tokenization work. Tags and Zettelkasten links are normalized into junction tables while `tags_json` and `links_json` remain as compatibility cache columns for older data paths.
 
 | Column | Purpose |
 |---|---|
@@ -322,8 +336,8 @@ The main card data is stored in SQLite. `tokens_json` and `doc_length` are preco
 | `url` | Optional source URL |
 | `type` | Card type such as `memo`, `csv`, or `article` |
 | `color` | Optional UI color |
-| `tags_json` | JSON-encoded tag list |
-| `links_json` | JSON-encoded Zettelkasten card links |
+| `tags_json` | Compatibility JSON cache for tags |
+| `links_json` | Compatibility JSON cache for Zettelkasten card links |
 | `kj_group_id` | Optional KJ group assignment |
 | `archived` | Archive flag |
 | `archived_at` | Archive timestamp |
@@ -331,6 +345,13 @@ The main card data is stored in SQLite. `tokens_json` and `doc_length` are preco
 | `doc_length` | Precomputed token count used by BM25 scoring |
 | `created_at` | Creation timestamp |
 | `updated_at` | Last update timestamp |
+
+Junction tables:
+
+| Table | Columns | Purpose |
+|---|---|---|
+| `card_tags` | `card_id`, `tag`, `created_at` | Normalizes the many-to-many relationship between cards and tags |
+| `card_links` | `source_card_id`, `target_card_id`, `created_at` | Normalizes directed Zettelkasten links and backlink lookups |
 
 KJ groups are also stored in SQLite so card persistence and grouping persistence use the same storage layer.
 
@@ -351,6 +372,10 @@ Current indexes:
 | `idx_cards_type` | `cards` | Speeds up type filtering |
 | `idx_cards_created_at` | `cards` | Supports recency ordering |
 | `idx_cards_kj_group_id` | `cards` | Speeds up KJ group assignment lookup |
+| `idx_card_tags_tag` | `card_tags` | Speeds up tag filtering and tag cloud aggregation |
+| `idx_card_tags_card_id` | `card_tags` | Speeds up tag lookup for a card |
+| `idx_card_links_source` | `card_links` | Speeds up outgoing link lookup |
+| `idx_card_links_target` | `card_links` | Speeds up backlink lookup |
 | `idx_kj_groups_created_at` | `kj_groups` | Supports stable KJ group ordering |
 
 ## API Overview
@@ -391,6 +416,7 @@ For browser-based core flow tests, see [docs/e2e.md](docs/e2e.md).
 - Added search result highlighting and match explanations to show why each result matched the query
 - Improved search performance by persisting token data and document length at save time
 - Replaced full card-table rewrites with targeted SQLite writes for common card CRUD, bulk, link, and KJ assignment operations
+- Normalized tags and Zettelkasten links into junction tables while keeping JSON columns as compatibility caches
 - Moved KJ group persistence from JSON file storage to SQLite so cards and groups share the same persistence layer
 - Added single-card Markdown export to improve portability and backup workflows
 - Added Zod validation to reject invalid request bodies before business logic runs

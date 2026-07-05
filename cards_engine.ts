@@ -104,6 +104,55 @@ function rowToCard(row: CardRow): Card {
   };
 }
 
+function parseJsonArray(value: string | null): string[] {
+  try {
+    const parsed = JSON.parse(value ?? "[]");
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function loadCardTagsMap(): Map<string, string[]> {
+  const rows = db.prepare(`
+    SELECT card_id, tag
+    FROM card_tags
+    ORDER BY rowid ASC
+  `).all() as Array<{ card_id: string; tag: string }>;
+  const map = new Map<string, string[]>();
+  for (const row of rows) {
+    const tags = map.get(row.card_id) ?? [];
+    tags.push(row.tag);
+    map.set(row.card_id, tags);
+  }
+  return map;
+}
+
+function loadCardLinksMap(): Map<string, string[]> {
+  const rows = db.prepare(`
+    SELECT source_card_id, target_card_id
+    FROM card_links
+    ORDER BY rowid ASC
+  `).all() as Array<{ source_card_id: string; target_card_id: string }>;
+  const map = new Map<string, string[]>();
+  for (const row of rows) {
+    const links = map.get(row.source_card_id) ?? [];
+    links.push(row.target_card_id);
+    map.set(row.source_card_id, links);
+  }
+  return map;
+}
+
+function hydrateCardRelations(card: Card, row: CardRow, tagsMap: Map<string, string[]>, linksMap: Map<string, string[]>): Card {
+  const tags = tagsMap.get(card.id);
+  const links = linksMap.get(card.id);
+  return {
+    ...card,
+    tags: tags && tags.length ? tags : parseJsonArray(row.tags_json),
+    links: links && links.length ? links : parseJsonArray(row.links_json),
+  };
+}
+
 function cardToRow(card: Card) {
   return {
     id: card.id,
@@ -166,6 +215,7 @@ const insertCardSql = `
 
 function insertStoredCard(card: Card): void {
   db.prepare(insertCardSql).run(cardToRow(card));
+  syncStoredRelations(card.id, card.tags ?? [], card.links ?? [], card.createdAt);
 }
 
 function updateStoredCard(card: Card): void {
@@ -189,6 +239,7 @@ function updateStoredCard(card: Card): void {
       updated_at = @updated_at
     WHERE id = @id
   `).run(cardToRow(card));
+  syncStoredRelations(card.id, card.tags ?? [], card.links ?? [], card.updatedAt);
 }
 
 function updateStoredLinks(id: string, links: string[], updatedAt: string): void {
@@ -197,6 +248,36 @@ function updateStoredLinks(id: string, links: string[], updatedAt: string): void
     SET links_json = ?, updated_at = ?
     WHERE id = ?
   `).run(JSON.stringify(links), updatedAt, id);
+  syncStoredLinks(id, links, updatedAt);
+}
+
+function syncStoredTags(id: string, tags: string[], createdAt: string): void {
+  const deleteTags = db.prepare(`DELETE FROM card_tags WHERE card_id = ?`);
+  const insertTag = db.prepare(`
+    INSERT OR IGNORE INTO card_tags (card_id, tag, created_at)
+    VALUES (?, ?, ?)
+  `);
+  deleteTags.run(id);
+  for (const tag of [...new Set(tags.map(tag => tag.trim()).filter(Boolean))]) {
+    insertTag.run(id, tag, createdAt);
+  }
+}
+
+function syncStoredLinks(id: string, links: string[], createdAt: string): void {
+  const deleteLinks = db.prepare(`DELETE FROM card_links WHERE source_card_id = ?`);
+  const insertLink = db.prepare(`
+    INSERT OR IGNORE INTO card_links (source_card_id, target_card_id, created_at)
+    VALUES (?, ?, ?)
+  `);
+  deleteLinks.run(id);
+  for (const linkId of [...new Set(links.map(link => link.trim()).filter(Boolean))]) {
+    insertLink.run(id, linkId, createdAt);
+  }
+}
+
+function syncStoredRelations(id: string, tags: string[], links: string[], createdAt: string): void {
+  syncStoredTags(id, tags, createdAt);
+  syncStoredLinks(id, links, createdAt);
 }
 
 function rowToKJGroup(row: KJGroupRow): KJGroup {
@@ -215,9 +296,11 @@ export function loadCards(): Card[] {
   try {
     const rows = db.prepare(`
       SELECT * FROM cards
-    `).all();
+    `).all() as CardRow[];
+    const tagsMap = loadCardTagsMap();
+    const linksMap = loadCardLinksMap();
 
-    return rows.map(row => rowToCard(row as CardRow));
+    return rows.map(row => hydrateCardRelations(rowToCard(row), row, tagsMap, linksMap));
   } finally {
     console.timeEnd("load cards");
   }
@@ -253,14 +336,19 @@ export function saveCards(cards: Card[]): void {
   const clear = db.prepare(`
     DELETE FROM cards
   `);
+  const clearTags = db.prepare(`DELETE FROM card_tags`);
+  const clearLinks = db.prepare(`DELETE FROM card_links`);
 
   const insert = db.prepare(insertCardSql);
 
   const tx = db.transaction(() => {
+    clearTags.run();
+    clearLinks.run();
     clear.run();
 
     for (const card of cards) {
       insert.run(cardToRow(card));
+      syncStoredRelations(card.id, card.tags ?? [], card.links ?? [], card.createdAt);
     }
   });
 
@@ -362,6 +450,8 @@ export function deleteCard(id: string): boolean {
   const now = new Date().toISOString();
   const tx = db.transaction(() => {
     db.prepare(`DELETE FROM cards WHERE id = ?`).run(id);
+    db.prepare(`DELETE FROM card_tags WHERE card_id = ?`).run(id);
+    db.prepare(`DELETE FROM card_links WHERE source_card_id = ? OR target_card_id = ?`).run(id, id);
     for (const card of cards) {
       if (card.id === id || !card.links.includes(id)) continue;
       updateStoredLinks(card.id, card.links.filter(linkId => linkId !== id), now);
@@ -419,9 +509,13 @@ export function bulkDeleteCards(ids: string[]): string[] {
 
   const now = new Date().toISOString();
   const deleteById = db.prepare(`DELETE FROM cards WHERE id = ?`);
+  const deleteTagsById = db.prepare(`DELETE FROM card_tags WHERE card_id = ?`);
+  const deleteLinksById = db.prepare(`DELETE FROM card_links WHERE source_card_id = ? OR target_card_id = ?`);
   const tx = db.transaction(() => {
     for (const id of deleted) {
       deleteById.run(id);
+      deleteTagsById.run(id);
+      deleteLinksById.run(id, id);
     }
     for (const card of cards) {
       if (idSet.has(card.id)) continue;
@@ -437,7 +531,8 @@ export function bulkDeleteCards(ids: string[]): string[] {
 
 export function getCard(id: string): Card | null {
   const row = db.prepare(`SELECT * FROM cards WHERE id = ?`).get(id) as CardRow | undefined;
-  return row ? rowToCard(row) : null;
+  if (!row) return null;
+  return hydrateCardRelations(rowToCard(row), row, loadCardTagsMap(), loadCardLinksMap());
 }
 
 // ════════════════════════════════════════════════════
@@ -481,16 +576,12 @@ export function getBacklinks(id: string): Card[] {
 // ════════════════════════════════════════════════════
 
 export function getAllTags(): { tag: string; count: number }[] {
-  const cards = loadCards();
-  const map   = new Map<string, number>();
-  for (const card of cards) {
-    for (const tag of card.tags) {
-      map.set(tag, (map.get(tag) ?? 0) + 1);
-    }
-  }
-  return [...map.entries()]
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => b.count - a.count);
+  return db.prepare(`
+    SELECT tag, COUNT(*) AS count
+    FROM card_tags
+    GROUP BY tag
+    ORDER BY count DESC, tag ASC
+  `).all() as { tag: string; count: number }[];
 }
 
 // ════════════════════════════════════════════════════
