@@ -81,12 +81,19 @@ function parseJsonArray(value: string | null): string[] {
   }
 }
 
-function loadCardTagsMap(): Map<string, string[]> {
+function placeholders(values: readonly unknown[]): string {
+  return values.map(() => '?').join(', ');
+}
+
+function loadCardTagsMap(cardIds?: readonly string[]): Map<string, string[]> {
+  if (cardIds && cardIds.length === 0) return new Map();
+  const where = cardIds ? `WHERE card_id IN (${placeholders(cardIds)})` : '';
   const rows = db.prepare(`
     SELECT card_id, tag
     FROM card_tags
+    ${where}
     ORDER BY rowid ASC
-  `).all() as Array<{ card_id: string; tag: string }>;
+  `).all(...(cardIds ?? [])) as Array<{ card_id: string; tag: string }>;
   const map = new Map<string, string[]>();
   for (const row of rows) {
     const tags = map.get(row.card_id) ?? [];
@@ -96,12 +103,15 @@ function loadCardTagsMap(): Map<string, string[]> {
   return map;
 }
 
-function loadCardLinksMap(): Map<string, string[]> {
+function loadCardLinksMap(cardIds?: readonly string[]): Map<string, string[]> {
+  if (cardIds && cardIds.length === 0) return new Map();
+  const where = cardIds ? `WHERE source_card_id IN (${placeholders(cardIds)})` : '';
   const rows = db.prepare(`
     SELECT source_card_id, target_card_id
     FROM card_links
+    ${where}
     ORDER BY rowid ASC
-  `).all() as Array<{ source_card_id: string; target_card_id: string }>;
+  `).all(...(cardIds ?? [])) as Array<{ source_card_id: string; target_card_id: string }>;
   const map = new Map<string, string[]>();
   for (const row of rows) {
     const links = map.get(row.source_card_id) ?? [];
@@ -264,30 +274,144 @@ export function loadCards(): Card[] {
   }
 }
 
-export function getCards(filters: {
+export type CardListSort = 'created_at_desc' | 'created_at_asc';
+
+export type CardListFilters = {
   archived?: boolean;
   tag?: string;
   type?: string;
   q?: string;
   kjGroupId?: string;
-} = {}): Card[] {
-  let cards = loadCards();
+  limit?: number;
+  offset?: number;
+  sort?: CardListSort;
+};
+
+export type CardListPage = {
+  items: Card[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+type SqlParam = string | number;
+
+function normalizeCardLimit(value?: number, defaultLimit?: number, maxLimit = 100): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return defaultLimit;
+  const limit = Math.floor(value);
+  if (limit <= 0) return defaultLimit;
+  return Math.min(limit, maxLimit);
+}
+
+function normalizeCardOffset(value?: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  const offset = Math.floor(value);
+  return offset >= 0 ? offset : 0;
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\%_]/g, (match) => `\${match}`);
+}
+
+function buildCardListWhere(filters: CardListFilters): { whereSql: string; params: SqlParam[] } {
+  const where: string[] = [];
+  const params: SqlParam[] = [];
+
   if (typeof filters.archived === 'boolean') {
-    cards = cards.filter(card => Boolean(card.archived) === filters.archived);
+    where.push('cards.archived = ?');
+    params.push(filters.archived ? 1 : 0);
   }
-  if (filters.tag) cards = cards.filter(card => card.tags.includes(filters.tag!));
-  if (filters.type) cards = cards.filter(card => card.type === filters.type);
-  if (filters.kjGroupId) cards = cards.filter(card => card.kjGroupId === filters.kjGroupId);
-  if (filters.q) {
-    const keyword = filters.q.toLowerCase();
-    cards = cards.filter(card =>
-      card.title.toLowerCase().includes(keyword) ||
-      card.body.toLowerCase().includes(keyword) ||
-      (card.summary ?? '').toLowerCase().includes(keyword) ||
-      card.tags.some(tag => tag.toLowerCase().includes(keyword))
-    );
+  if (filters.type) {
+    where.push('cards.type = ?');
+    params.push(filters.type);
   }
-  return cards.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (filters.kjGroupId) {
+    where.push('cards.kj_group_id = ?');
+    params.push(filters.kjGroupId);
+  }
+  if (filters.tag) {
+    where.push('EXISTS (SELECT 1 FROM card_tags WHERE card_tags.card_id = cards.id AND card_tags.tag = ?)');
+    params.push(filters.tag);
+  }
+  const keyword = filters.q?.trim();
+  if (keyword) {
+    const like = `%${escapeLike(keyword.toLowerCase())}%`;
+    where.push(`(
+      LOWER(cards.title) LIKE ? ESCAPE '~'
+      OR LOWER(COALESCE(cards.body, '')) LIKE ? ESCAPE '~'
+      OR LOWER(COALESCE(cards.summary, '')) LIKE ? ESCAPE '~'
+      OR EXISTS (
+        SELECT 1 FROM card_tags q_tags
+        WHERE q_tags.card_id = cards.id
+          AND LOWER(q_tags.tag) LIKE ? ESCAPE '~'
+      )
+    )`);
+    params.push(like, like, like, like);
+  }
+
+  return {
+    whereSql: where.length > 0 ? `WHERE ${where.join(' AND ')}` : '',
+    params,
+  };
+}
+
+function cardListOrderBy(sort: CardListSort | undefined): string {
+  return sort === 'created_at_asc' ? 'cards.created_at ASC' : 'cards.created_at DESC';
+}
+
+function hydrateRows(rows: CardRow[]): Card[] {
+  const ids = rows.map(row => row.id);
+  const tagsMap = loadCardTagsMap(ids);
+  const linksMap = loadCardLinksMap(ids);
+  return rows.map(row => hydrateCardRelations(rowToCard(row), row, tagsMap, linksMap));
+}
+
+export function getCards(filters: CardListFilters = {}): Card[] {
+  const { whereSql, params } = buildCardListWhere(filters);
+  const orderBy = cardListOrderBy(filters.sort);
+  const limit = normalizeCardLimit(filters.limit, undefined, 500);
+  const offset = normalizeCardOffset(filters.offset);
+  let sql = `SELECT cards.* FROM cards ${whereSql} ORDER BY ${orderBy}`;
+  const queryParams = [...params];
+
+  if (typeof limit === 'number') {
+    sql += ' LIMIT ? OFFSET ?';
+    queryParams.push(limit, offset);
+  } else if (offset > 0) {
+    sql += ' LIMIT -1 OFFSET ?';
+    queryParams.push(offset);
+  }
+
+  const rows = db.prepare(sql).all(...queryParams) as CardRow[];
+  return hydrateRows(rows);
+}
+
+export function getCardsPage(filters: CardListFilters = {}): CardListPage {
+  const { whereSql, params } = buildCardListWhere(filters);
+  const orderBy = cardListOrderBy(filters.sort);
+  const limit = normalizeCardLimit(filters.limit, 20, 100) ?? 20;
+  const offset = normalizeCardOffset(filters.offset);
+
+  const totalRow = db.prepare(`
+    SELECT COUNT(*) as total
+    FROM cards
+    ${whereSql}
+  `).get(...params) as { total: number };
+
+  const rows = db.prepare(`
+    SELECT cards.*
+    FROM cards
+    ${whereSql}
+    ORDER BY ${orderBy}
+    LIMIT ? OFFSET ?
+  `).all(...params, limit, offset) as CardRow[];
+
+  return {
+    items: hydrateRows(rows),
+    total: totalRow.total,
+    limit,
+    offset,
+  };
 }
 
 export function saveCards(cards: Card[]): void {

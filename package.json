@@ -1,8 +1,8 @@
 {
-  "name": "digital-commons-bm25",
+  "name": "my-search-app",
   "version": "1.0.0",
   "license": "MIT",
-  "description": "デジタル・コモンズ BM25スコアリングエンジン",
+  "description": "Local-first knowledge management app with BM25 search and SQLite persistence",
   "type": "module",
   "scripts": {
     "start": "npx tsx server.ts",
@@ -22,7 +22,11 @@
     "migrate:articles": "tsx scripts/migrate_articles_json_to_sqlite.ts",
     "benchmark": "tsx scripts/benchmark.ts",
     "backfill:card-tokens": "tsx scripts/backfill_card_tokens.ts",
-    "backfill:article-tokens": "tsx scripts/backfill_article_tokens.ts"
+    "backfill:article-tokens": "tsx scripts/backfill_article_tokens.ts",
+    "git:safe-push": "powershell -ExecutionPolicy Bypass -File scripts/safe-push.ps1",
+    "evaluate:search": "tsx scripts/evaluate_search_quality.ts",
+    "check:encoding": "tsx scripts/check_encoding.ts",
+    "verify":"npm run typecheck && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark && npm run evaluate:search && npm run check:encoding && npm audit --audit-level=high && docker build -t my-search-public:test ."
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",

@@ -593,8 +593,6 @@ export async function runPipeline(
     sortingLimitMs: 0,
     totalSearchMs: 0,
   };
-  console.time("bm25");
-  try {
   const {
     dedupThreshold = 0.8,
     archiveScoreThreshold = 0.5,
@@ -623,17 +621,13 @@ export async function runPipeline(
       },
     };
   }
-
-  console.time("tokenize");
   const prepStart = nowMs();
   const resolved = resolveArticleTokens(deduped);
   const synonymMap = await buildSynonymMap(mode.keywords);
   const keywordWeights = await buildKeywordWeightMap(mode.keywords, synonymMap);
   const corpus = await buildCorpusStats(resolved.articles, mode, synonymMap);
   timings.tokenPreparationMs = Number((nowMs() - prepStart).toFixed(3));
-  console.timeEnd("tokenize");
   const engine = new BM25Engine(corpus);
-  console.time("score");
   const scoreStart = nowMs();
   const scored = engine.scoreAll(
     resolved.articles,
@@ -643,7 +637,6 @@ export async function runPipeline(
     queryTokens
   ).filter((item) => item.score > 0);
   timings.scoringMs = Number((nowMs() - scoreStart).toFixed(3));
-  console.timeEnd("score");
 
   // Layer 3: 自動アーカイブ判定
   const active: ScoredArticle[] = [];
@@ -684,113 +677,4 @@ export async function runPipeline(
       timings: { ...timings, totalSearchMs: Number((nowMs() - totalStart).toFixed(3)) },
     },
   };
-  } finally {
-    console.timeEnd("bm25");
-  }
 }
-
-// ═══════════════════════════════════════════════════════════════════
-//  § 8. デモ実行
-// ═══════════════════════════════════════════════════════════════════
-
-const days = (n: number) => new Date(Date.now() - n * 86_400_000);
-
-const SAMPLE_ARTICLES: Article[] = [
-  {
-    id: "a1",
-    title: "React 19 の新機能と実装例",
-    body: "React 19 がリリースされた。新しいコンパイラの実装により、パフォーマンスが大幅に向上した。GitHub で公開されているサンプルコードを参考に、実際のプロジェクトへの組み込み方を解説する。バグ修正も多数含まれる。",
-    publishedAt: days(2),
-    sourceAuthority: 0.9,
-    url: "https://example.com/react19",
-  },
-  {
-    id: "a2",
-    title: "Transformer の注意機構の数学的証明",
-    body: "Scaled Dot-Product Attention の定理と証明を示す。arxiv の論文に基づき、補題から始めて命題を導出する。引用文献は参考文献リストを参照。数式の展開においては行列演算の性質を利用する。",
-    publishedAt: days(30),
-    sourceAuthority: 0.95,
-    url: "https://example.com/transformer-proof",
-  },
-  {
-    id: "a3",
-    title: "OpenAI が新プロダクトをリリース・資金調達も発表",
-    body: "OpenAI は本日、新しいサービスの発表を行った。市場への影響は大きく、業界全体が注目している。資金調達ラウンドも同時に公開され、プロダクトの将来性を示した。",
-    publishedAt: days(1),
-    sourceAuthority: 0.8,
-    url: "https://example.com/openai-news",
-  },
-  {
-    id: "a4",
-    title: "npm パッケージの脆弱性とエラー対応",
-    body: "人気の npm パッケージにバグが発見された。エラーが発生する条件と修正方法を解説する。ライブラリのバージョンを固定するか、パッチを適用することで対応できる。GitHub の issue にも詳細が記載されている。",
-    publishedAt: days(5),
-    sourceAuthority: 0.75,
-    url: "https://example.com/npm-bug",
-  },
-  {
-    id: "a5",
-    title: "React 19 安定版リリースのお知らせ（重複記事）",
-    body: "React 19 がリリースされた。新しいコンパイラの実装により、パフォーマンスが大幅に向上した。GitHub のサンプルを参考に実装できる。バグ修正も多数含まれる最新バージョンだ。",
-    publishedAt: days(2),
-    sourceAuthority: 0.6,
-    url: "https://example.com/react19-dup",
-  },
-  {
-    id: "a6",
-    title: "古い記事：2年前の JavaScript Tips",
-    body: "JavaScript のちょっとしたコツを紹介する記事。実装時に役立つかもしれない。",
-    publishedAt: days(730),
-    sourceAuthority: 0.5,
-    url: "https://example.com/old-js",
-  },
-];
-
-async function main(): Promise<void> {
-  console.log("kuromoji 辞書を読み込み中...");
-  await getTokenizer(); // 事前ウォームアップ
-  console.log("完了\n");
-
-  for (const [modeId, mode] of Object.entries(MODES)) {
-    console.log("═".repeat(62));
-    console.log(`  モード: ${mode.label}  (${modeId})`);
-    console.log(`  ${mode.description}`);
-    console.log("═".repeat(62));
-
-    const result = await runPipeline(SAMPLE_ARTICLES, mode, modeId, {
-      archiveScoreThreshold: 0.3,
-    });
-
-    const s = result.stats;
-    console.log(`\n  📊  入力 ${s.inputCount} → 重複排除後 ${s.afterDedup} → アクティブ ${s.activeCount} / アーカイブ ${s.archivedCount}  平均スコア: ${s.avgScore.toFixed(3)}\n`);
-
-    if (result.active.length > 0) {
-      console.log("  🏆 アクティブ（スコア順）");
-      for (const a of result.active) {
-        const top = a.breakdown.matchedTerms
-          .sort((x, y) => y.contribution - x.contribution)
-          .slice(0, 3)
-          .map((m) => `${m.term}(${m.contribution.toFixed(2)})`)
-          .join(", ");
-        console.log(`    [${a.score.toFixed(3)}] ${a.article.title}`);
-        console.log(`           BM25=${a.breakdown.bm25Raw.toFixed(3)}  ctx=${a.breakdown.contextBonus.toFixed(2)}  decay=${a.breakdown.timeDecay.toFixed(3)}  → ${top || "—"}`);
-      }
-    }
-
-    if (result.archived.length > 0) {
-      console.log("\n  📦 アーカイブ");
-      for (const a of result.archived) {
-        console.log(`    - ${a.article.title}`);
-        console.log(`      理由: ${a.reason}`);
-      }
-    }
-
-    console.log();
-  }
-}
-
-// スタンドアロン実行時のみ main() を呼ぶ
-const isMain = process.argv[1] &&
-  (import.meta.url === 'file://' + process.argv[1].replace(/\\/g, '/') ||
-   import.meta.url.endsWith(process.argv[1]));
-if (isMain) { main().catch(console.error); }

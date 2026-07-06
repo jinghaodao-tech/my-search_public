@@ -1,6 +1,6 @@
 # Test Coverage
 
-Last verified: 2026-07-05
+Last verified: 2026-07-06
 
 ## Commands
 
@@ -8,6 +8,11 @@ Last verified: 2026-07-05
 npm run typecheck
 npm test
 npm run acceptance:test
+npm run test:e2e
+npm run benchmark
+npm run evaluate:search
+npm run check:encoding
+npm run verify
 ```
 
 ## Latest Results
@@ -15,8 +20,13 @@ npm run acceptance:test
 | Command | Result |
 |---|---:|
 | `npm run typecheck` | passed |
-| `npm test` | passed 71/71 |
-| `npm run acceptance:test` | passed 46/46 |
+| `npm test` | passed 83/83 |
+| `npm run acceptance:test` | passed 49/49 |
+| `npm run test:e2e` | passed 5/5 |
+| `npm run benchmark` | passed |
+| `npm run evaluate:search` | passed, meanPrecisionAt1 1.0, MRR 1.0 |
+| `npm run check:encoding` | passed |
+| `npm run verify` | passed |
 
 ## API / Server Tests
 
@@ -37,6 +47,11 @@ npm run acceptance:test
 | Link validation | rejects self links |
 | Links / Backlinks | creates and removes bidirectional links |
 | KJ groups | assigns and removes a card from a KJ group |
+| Card list filters | filters card lists by archived state |
+| Card list filters | filters card lists by type |
+| Card list filters | filters card lists by tag |
+| Card list filters | filters card lists by KJ group id |
+| Card list ordering | applies limit and offset after sorting by createdAt |
 | CSV import validation | rejects invalid CSV imports |
 | JSON import validation | rejects invalid JSON imports |
 | Rate limiting | applies rate limiting to import APIs |
@@ -100,6 +115,8 @@ npm run acceptance:test
 | 500 response safety | does not expose stack traces in 500 responses |
 | Sensitive logging | does not log sensitive request headers or private card body content |
 | Zettelkasten graph | excludes isolated cards from nodes |
+| UTF-8 Japanese text | preserves Japanese text across API create/read, tag filter, KJ groups, and Markdown export |
+| UTF-8 Japanese imports | preserves Japanese text through CSV and JSON imports |
 
 ## Junction Table Coverage
 

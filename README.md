@@ -14,6 +14,7 @@ Details:
 - [E2E tests](docs/e2e.md)
 - [Full test coverage](docs/test-coverage.md)
 - [Project details, setup, DB design, and operations](docs/project-details.md)
+- [Design decisions](docs/design-decisions.md)
 - [License](LICENSE): MIT
 
 ## デモ
@@ -130,6 +131,8 @@ There are two benchmark scopes:
 | Isolated BM25 benchmark | 10,000 synthetic cards | 120.708 ms |
 
 For reproducible corpus-size benchmarks, see [docs/benchmark.md](docs/benchmark.md).
+
+For search quality evaluation, see [docs/search-quality.md](docs/search-quality.md).
 
 ## Technology Stack
 

@@ -271,6 +271,143 @@ describe('cards API validation', () => {
     await request(app).delete(`/api/kj/groups/${group.body.id}`);
   });
 
+  it('filters card lists by archived state', async () => {
+    const active = await createCard({ title: 'Active list card' });
+    const archived = await createCard({ title: 'Archived list card' });
+
+    const archiveResponse = await request(app).put(`/api/cards/${archived.id}/archive`);
+    expect(archiveResponse.status).toBe(200);
+
+    const activeList = await request(app).get('/api/cards?archived=false');
+    const archivedList = await request(app).get('/api/cards?archived=true');
+
+    expect(activeList.status).toBe(200);
+    expect(archivedList.status).toBe(200);
+    expect(activeList.body.map((card: { id: string }) => card.id)).toContain(active.id);
+    expect(activeList.body.map((card: { id: string }) => card.id)).not.toContain(archived.id);
+    expect(archivedList.body.map((card: { id: string }) => card.id)).toEqual([archived.id]);
+  });
+
+  it('filters card lists by type', async () => {
+    const memo = await createCard({ title: 'Memo card', type: 'memo' });
+    const article = await createCard({ title: 'Article card', type: 'article' });
+
+    const response = await request(app).get('/api/cards?type=memo');
+
+    expect(response.status).toBe(200);
+    const ids = response.body.map((card: { id: string }) => card.id);
+    expect(ids).toContain(memo.id);
+    expect(ids).not.toContain(article.id);
+  });
+
+  it('filters card lists by tag', async () => {
+    const tagged = await createCard({ title: 'Tagged card', tags: ['sql-filter', 'api'] });
+    const other = await createCard({ title: 'Other card', tags: ['other'] });
+
+    const response = await request(app).get('/api/cards?tag=sql-filter');
+
+    expect(response.status).toBe(200);
+    const ids = response.body.map((card: { id: string }) => card.id);
+    expect(ids).toContain(tagged.id);
+    expect(ids).not.toContain(other.id);
+  });
+
+  it('filters card lists by KJ group id', async () => {
+    const grouped = await createCard({ title: 'Grouped card' });
+    const ungrouped = await createCard({ title: 'Ungrouped card' });
+    const group = await request(app)
+      .post('/api/kj/groups')
+      .send({ name: `Filter Group ${Date.now()}`, color: '#4D96FF' });
+
+    expect(group.status).toBe(201);
+    const assigned = await request(app)
+      .post(`/api/kj/groups/${group.body.id}/cards`)
+      .send({ cardId: grouped.id });
+    expect(assigned.status).toBe(200);
+
+    const response = await request(app).get(`/api/cards?kjGroupId=${group.body.id}`);
+
+    expect(response.status).toBe(200);
+    const ids = response.body.map((card: { id: string }) => card.id);
+    expect(ids).toContain(grouped.id);
+    expect(ids).not.toContain(ungrouped.id);
+  });
+
+  it('keeps GET /api/cards backward compatible as an array without pagination params', async () => {
+    await createCard({ title: 'Array response card' });
+
+    const response = await request(app).get('/api/cards');
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body[0]).toHaveProperty('tags');
+    expect(response.body[0]).toHaveProperty('links');
+  });
+
+  it('applies paged limit and offset after sorting by createdAt', async () => {
+    const oldest = await createCard({ title: 'Oldest card', tags: ['paging'] });
+    const middle = await createCard({ title: 'Middle card', tags: ['paging'] });
+    const newest = await createCard({ title: 'Newest card', tags: ['paging'] });
+    db.prepare('UPDATE cards SET created_at = ? WHERE id = ?').run('2026-01-01T00:00:00.000Z', oldest.id);
+    db.prepare('UPDATE cards SET created_at = ? WHERE id = ?').run('2026-01-02T00:00:00.000Z', middle.id);
+    db.prepare('UPDATE cards SET created_at = ? WHERE id = ?').run('2026-01-03T00:00:00.000Z', newest.id);
+
+    const response = await request(app).get('/api/cards?limit=1&offset=1');
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(3);
+    expect(response.body.limit).toBe(1);
+    expect(response.body.offset).toBe(1);
+    expect(response.body.items.map((card: { id: string }) => card.id)).toEqual([middle.id]);
+    expect(response.body.items[0].tags).toEqual(['paging']);
+    expect(response.body.items[0].links).toEqual([]);
+  });
+
+  it('uses SQL-backed q filtering across title, body, summary, and tags', async () => {
+    const titleMatch = await createCard({ title: 'Needle title', body: 'plain', tags: ['alpha'] });
+    const bodyMatch = await createCard({ title: 'Plain title', body: 'body needle', tags: ['beta'] });
+    const summaryMatch = await createCard({ title: 'Summary card', body: 'plain', summary: 'summary needle', tags: ['gamma'] });
+    const tagMatch = await createCard({ title: 'Tag card', body: 'plain', tags: ['needle-tag'] });
+    const other = await createCard({ title: 'Other card', body: 'plain', tags: ['other'] });
+
+    const response = await request(app).get('/api/cards?q=needle&limit=20');
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(4);
+    const ids = response.body.items.map((card: { id: string }) => card.id);
+    expect(ids).toEqual(expect.arrayContaining([titleMatch.id, bodyMatch.id, summaryMatch.id, tagMatch.id]));
+    expect(ids).not.toContain(other.id);
+  });
+
+  it('caps oversized limits and safely handles invalid offsets', async () => {
+    for (let i = 0; i < 105; i += 1) {
+      await createCard({ title: `Bulk page card ${i}`, tags: ['bulk-page'] });
+    }
+
+    const response = await request(app).get('/api/cards?tag=bulk-page&limit=999&offset=-10');
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(105);
+    expect(response.body.limit).toBe(100);
+    expect(response.body.offset).toBe(0);
+    expect(response.body.items).toHaveLength(100);
+  });
+
+  it('pages over more than 100 cards with limit and offset', async () => {
+    for (let i = 0; i < 105; i += 1) {
+      const card = await createCard({ title: `Window card ${i.toString().padStart(3, '0')}`, tags: ['window-page'] });
+      db.prepare('UPDATE cards SET created_at = ? WHERE id = ?').run(new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString(), card.id);
+    }
+
+    const response = await request(app).get('/api/cards?tag=window-page&limit=20&offset=40');
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(105);
+    expect(response.body.items).toHaveLength(20);
+    expect(response.body.items[0].title).toBe('Window card 064');
+    expect(response.body.items[19].title).toBe('Window card 045');
+  });
+
   it('rejects invalid CSV imports', async () => {
     const response = await request(app)
       .post('/api/cards/import-csv')

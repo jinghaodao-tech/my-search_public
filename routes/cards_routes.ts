@@ -6,18 +6,45 @@ import { buildBulkMarkdownZip, buildCardMarkdown } from '../services/export_serv
 import { getRequestId, invalidRequest, parseBody, sendError } from '../services/http_service.js';
 import type { Card } from '../domain/card.js';
 
+function parseQueryNumber(value: unknown, min: number, max: number): number | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (typeof raw !== 'string' || raw.trim() === '') return undefined;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < min) return undefined;
+  return Math.min(parsed, max);
+}
+
+function parseCardSort(value: unknown): 'created_at_asc' | 'created_at_desc' | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === 'created_at_asc' || raw === 'created_at_desc') return raw;
+  if (raw === 'createdAtAsc') return 'created_at_asc';
+  if (raw === 'createdAtDesc') return 'created_at_desc';
+  return undefined;
+}
+
+
 export function createCardsRouter(ctx: RouteContext) {
   const router = express.Router();
 
   router.get('/cards', (req, res) => {
-    const { tag, kjGroupId, type, q, archived } = req.query as Record<string, string>;
-    res.json(ctx.getCards({
+    const { tag, kjGroupId, type, q, archived, limit, offset, sort } = req.query as Record<string, string | undefined>;
+    const filters = {
       tag,
       kjGroupId,
       type,
       q,
       archived: archived === 'true' ? true : archived === 'false' ? false : undefined,
-    }));
+      limit: parseQueryNumber(limit, 1, 100),
+      offset: parseQueryNumber(offset, 0, Number.MAX_SAFE_INTEGER),
+      sort: parseCardSort(sort),
+    };
+
+    if (typeof limit !== 'undefined' || typeof offset !== 'undefined') {
+      res.json(ctx.getCardsPage(filters));
+      return;
+    }
+
+    res.json(ctx.getCards(filters));
   });
 
   router.post('/cards', async (req, res) => {

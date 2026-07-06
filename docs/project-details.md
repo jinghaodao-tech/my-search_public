@@ -23,14 +23,17 @@ Main tables:
 
 `tags_json` and `links_json` remain on `cards` as compatibility cache columns for older data paths, but normalized reads/writes use `card_tags` and `card_links`.
 
-### `loadCards()` と `getCards()` の設計方針
+### BM25 Engine and Demo Separation
 
-* **現在設計 (In-Memory Processing)**:
-  現在、`loadCards()` は SQLite データベースから全カードレコード、および関連するジャンクションテーブル（タグ・リンク）を一度に全てオンメモリにロードし、オブジェクトの構築（ハイドレーション）を行っています。`getCards()` におけるフィルタリングやソート、検索キーワードのマッチング処理は、このロードされた全カード一覧に対してメモリ上で実行されます。これは JSON ファイルストレージ時代の API 設計を引き継いでおり、小規模データセットにおいてはシンプルに動作します。
+The BM25 engine file is kept focused on reusable search logic. Manual sample data and demonstration output live in `scripts/demo_bm25.ts`, so production imports do not carry demo fixtures or direct console output.
 
-* **将来の改善方針 (Database-Level Processing)**:
-  カード件数や関連数が増大した際、全件のオンメモリ読み込みとハイドレーションはメモリおよびCPUのボトルネックとなります。将来の最適化として、ソート、フィルタリング（WHERE条件）、および件数制限（LIMIT/OFFSET によるページネーション）を SQL クエリレベルに押し下げます。さらに、ページ表示対象のカードのみタグ・リンク情報を遅延ロード（Lazy Load）または部分ハイドレーションすることで、データ読み込みオーバーヘッドを削減します。
+### `loadCards()` and `getCards()` Design
 
+Earlier versions loaded all cards, hydrated every tag/link relation, and then filtered and sorted in JavaScript. Card listing now pushes `archived`, `type`, `kjGroupId`, `tag`, simple `q`, recency ordering, `limit`, and `offset` into SQLite. Tag filtering uses the `card_tags` junction table, and `q` is a simple SQL `LIKE` filter over title, body, summary, and tags.
+
+When `GET /api/cards` receives `limit` or `offset`, it returns a paged object with `items`, `total`, `limit`, and `offset`. Without those parameters it keeps the legacy array response for existing UI compatibility. The paged path hydrates tags and links only for the selected card rows, reducing unnecessary relation loading during list views.
+
+This list filter is separate from the BM25 ranking pipeline. BM25 search remains handled by the existing search endpoints; `q` is only a lightweight card-list narrowing tool. Future improvements could compare this simple `LIKE` path with SQLite FTS5 for larger local corpora.
 
 Important indexes:
 

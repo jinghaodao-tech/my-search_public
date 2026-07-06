@@ -137,8 +137,8 @@ function buildSummaryPayload(card: Card) {
     messages: [{
       role: 'user' as const,
       content:
-        `莉･荳九・險倅ｺ九ｒ譌･譛ｬ隱槭〒3陦御ｻ･蜀・↓隕∫ｴ・＠縺ｦ縺上□縺輔＞縲よ焚蟄励・蝗ｺ譛牙錐隧槭・逵∫払縺励↑縺・〒縺上□縺輔＞縲・n\n` +
-        `繧ｿ繧､繝医Ν: ${card.title}\n譛ｬ譁・ ${card.body}`,
+        `\u4ee5\u4e0b\u306e\u8a18\u4e8b\u3092\u65e5\u672c\u8a9e\u30673\u884c\u4ee5\u5185\u306b\u8981\u7d04\u3057\u3066\u304f\u3060\u3055\u3044\u3002\u6570\u5b57\u3084\u56fa\u6709\u540d\u8a5e\u306f\u7701\u7565\u3057\u306a\u3044\u3067\u304f\u3060\u3055\u3044\u3002\n\n` +
+        `\u30bf\u30a4\u30c8\u30eb: ${card.title}\n\u672c\u6587: ${card.body}`,
     }],
   };
 }
