@@ -1,3 +1,4 @@
+import type express from 'express';
 import { MODES, runPipeline } from './search_service.js';
 import {
   collectAll,
@@ -41,6 +42,7 @@ import {
   collectBodySchema,
   collectorConfigSchema,
   createCardSchema,
+  systemCreateCardSchema,
   csvImportSchema,
   idsBodySchema,
   jsonImportSchema,
@@ -75,9 +77,9 @@ function normalizeCardInput<T extends { url?: string | null; kjGroupId?: string 
 }
 
 export function createRouteContext(limiters: {
-  apiLimiter: unknown;
-  aiLimiter: unknown;
-  importLimiter: unknown;
+  apiLimiter: express.RequestHandler;
+  aiLimiter: express.RequestHandler;
+  importLimiter: express.RequestHandler;
 }) {
   let cachedArticles: CollectResult | null = loadArticles();
   let collectorConfig: CollectorConfig = DEFAULT_CONFIG;
@@ -138,6 +140,7 @@ export function createRouteContext(limiters: {
     schedulerStartSchema,
     runBodySchema,
     createCardSchema,
+    systemCreateCardSchema,
     updateCardSchema,
     idsBodySchema,
     linkBodySchema,
@@ -167,3 +170,8 @@ export function createRouteContext(limiters: {
     },
   };
 }
+
+
+export type RouteContext = ReturnType<typeof createRouteContext>;
+
+

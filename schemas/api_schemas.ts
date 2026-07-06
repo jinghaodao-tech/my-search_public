@@ -94,6 +94,14 @@ const cardFieldsSchema = {
 
 export const createCardSchema = z.object(cardFieldsSchema).strict();
 
+/**
+ * @internal システム内部用途（インポートや移行）に限定したID付与用のスキーマ。
+ * 外部APIからは利用されません。
+ */
+export const systemCreateCardSchema = createCardSchema.extend({
+  id: idSchema.optional(),
+});
+
 export const updateCardSchema = z.object({
   ...cardFieldsSchema,
   title: cardFieldsSchema.title.optional(),

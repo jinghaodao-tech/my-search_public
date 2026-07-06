@@ -1,8 +1,9 @@
 import express from 'express';
+import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
 
-export function createAiRouter(ctx: any) {
+export function createAiRouter(ctx: RouteContext) {
   const router = express.Router();
 
   router.delete('/cards/:id/summary', async (req, res) => {
@@ -45,7 +46,7 @@ export function createAiRouter(ctx: any) {
   });
 
   router.post('/cards/summarize-bulk', ctx.aiLimiter, async (req, res) => {
-    const body = parseBody(ctx.idsBodySchema, req, res) as any;
+    const body = parseBody(ctx.idsBodySchema, req, res);
     if (!body) return;
     if (!ctx.hasConfiguredProviderKey()) {
       const keyName = ctx.AI_PROVIDER === 'gemini' ? 'GEMINI_API_KEY' : 'ANTHROPIC_API_KEY';
@@ -76,3 +77,4 @@ export function createAiRouter(ctx: any) {
 
   return router;
 }
+

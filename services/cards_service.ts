@@ -17,3 +17,4 @@ export {
 } from '../repositories/cards_repository.js';
 
 export type { Card } from '../domain/card.js';
+export type { SystemCreateCardFields } from '../repositories/cards_repository.js';

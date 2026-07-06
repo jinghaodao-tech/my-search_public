@@ -1,12 +1,15 @@
-﻿import express from 'express';
+import express from 'express';
+import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, invalidRequest, parseBody } from '../services/http_service.js';
+import type { Article } from '../bm25_engine.js';
+import type { Card } from '../domain/card.js';
 
-export function createArticlesRouter(ctx: any) {
+export function createArticlesRouter(ctx: RouteContext) {
   const router = express.Router();
 
   router.post('/cards/import-csv', ctx.importLimiter, async (req, res) => {
-    const body = parseBody(ctx.csvImportSchema, req, res) as any;
+    const body = parseBody(ctx.csvImportSchema, req, res);
     if (!body) return;
     try {
       const imported = await ctx.parseAndImportCSV(body.csv);
@@ -22,7 +25,7 @@ export function createArticlesRouter(ctx: any) {
   });
 
   router.post('/cards/import-json', ctx.importLimiter, async (req, res) => {
-    const body = parseBody(ctx.jsonImportSchema, req, res) as any;
+    const body = parseBody(ctx.jsonImportSchema, req, res);
     if (!body) return;
     try {
       const result = await ctx.parseAndImportJSON(body.json);
@@ -41,11 +44,11 @@ export function createArticlesRouter(ctx: any) {
     const { articleIds }: { articleIds?: string[] } = req.body;
     const articles = ctx.getCachedArticles()?.articles ?? [];
     const targets = articleIds
-      ? articles.filter((article: any) => articleIds.includes(article.id))
+      ? articles.filter((article: Article) => articleIds.includes(article.id))
       : articles;
 
-    const existing = new Set(ctx.loadCards().map((card: any) => card.id));
-    const imported: any[] = [];
+    const existing = new Set(ctx.loadCards().map((card: Card) => card.id));
+    const imported: Card[] = [];
 
     for (const article of targets) {
       if (existing.has(`card_from_${article.id}`)) continue;
@@ -64,3 +67,4 @@ export function createArticlesRouter(ctx: any) {
 
   return router;
 }
+

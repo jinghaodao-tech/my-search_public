@@ -1,21 +1,23 @@
 import express from 'express';
+import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
+import type { CollectResult } from '../collector.js';
 
-export function createCollectRouter(ctx: any) {
+export function createCollectRouter(ctx: RouteContext) {
   const router = express.Router();
 
   router.get('/articles', (_req, res) => {
     const cachedArticles = ctx.getCachedArticles();
     if (!cachedArticles) {
-      res.json({ articles: [], stats: null, message: '未収集。/api/collect を呼んでください' });
+      res.json({ articles: [], stats: null, message: '譛ｪ蜿朱寔縲・api/collect 繧貞他繧薙〒縺上□縺輔＞' });
       return;
     }
     res.json(cachedArticles);
   });
 
   router.post(['/collect', '/articles/refresh'], ctx.apiLimiter, async (req, res) => {
-    const body = parseBody(ctx.collectBodySchema, req, res) as any;
+    const body = parseBody(ctx.collectBodySchema, req, res);
     if (!body) return;
     try {
       const config = ctx.resolveCollectorConfig(body.config);
@@ -28,7 +30,7 @@ export function createCollectRouter(ctx: any) {
         ctx.setCollectRunning(true);
         res.status(202).json({ ok: true, running: true, message: 'collect started' });
         ctx.collectAll(config)
-          .then((result: any) => { ctx.setCachedArticles(result); })
+          .then((result: CollectResult) => { ctx.setCachedArticles(result); })
           .catch((err: unknown) => logger.error({ event: 'collect_error', requestId: getRequestId(req), error: errorMeta(err) }, 'collect failed'))
           .finally(() => { ctx.setCollectRunning(false); });
         return;
@@ -45,17 +47,17 @@ export function createCollectRouter(ctx: any) {
   router.get('/collect/config', (_req, res) => res.json(ctx.getCollectorConfig()));
 
   router.post('/collect/config', (req, res) => {
-    const body = parseBody(ctx.collectorConfigSchema, req, res) as any;
+    const body = parseBody(ctx.collectorConfigSchema, req, res);
     if (!body) return;
     ctx.setCollectorConfig(body);
     res.json({ ok: true });
   });
 
   router.post('/scheduler/start', (req, res) => {
-    const body = parseBody(ctx.schedulerStartSchema, req, res) as any;
+    const body = parseBody(ctx.schedulerStartSchema, req, res);
     if (!body) return;
     if (ctx.getSchedulerStop()) {
-      res.json({ ok: false, message: '既に起動中' });
+      res.json({ ok: false, message: '譌｢縺ｫ襍ｷ蜍穂ｸｭ' });
       return;
     }
     const expr = body.cronExpr ?? '*/30 * * * *';
@@ -63,7 +65,7 @@ export function createCollectRouter(ctx: any) {
     const stop = ctx.startScheduler({
       cronExpr: expr,
       config: ctx.getCollectorConfig(),
-      onCollect: (result: any) => {
+      onCollect: (result: CollectResult) => {
         ctx.setCachedArticles(result);
         ctx.saveArticles(result);
       },
@@ -95,3 +97,4 @@ export function createCollectRouter(ctx: any) {
 
   return router;
 }
+
