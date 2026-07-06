@@ -1,6 +1,6 @@
 # BM25 Benchmark
 
-Generated: 2026-07-05T07:04:40.910Z
+Generated: 2026-07-06T01:46:27.511Z
 
 Command:
 
@@ -16,10 +16,10 @@ The script performs one 100-card warm-up search before recording results. This e
 
 | Corpus size | DB load | Token parse / preparation | BM25 scoring | Sorting / limiting | Total search | Returned |
 |---:|---:|---:|---:|---:|---:|---:|
-| 100 | 0.283 ms | 1.136 ms | 0.977 ms | 0.128 ms | 2.937 ms | 100 |
-| 1,000 | 0.305 ms | 2.282 ms | 7.93 ms | 1.246 ms | 13.288 ms | 100 |
-| 5,000 | 0.39 ms | 7.969 ms | 37.333 ms | 4.442 ms | 52.965 ms | 100 |
-| 10,000 | 0.433 ms | 13.913 ms | 52.929 ms | 7.418 ms | 79.817 ms | 100 |
+| 100 | 0.711 ms | 1.688 ms | 1.631 ms | 0.164 ms | 4.776 ms | 100 |
+| 1,000 | 0.777 ms | 4.104 ms | 8.782 ms | 1.951 ms | 16.936 ms | 100 |
+| 5,000 | 0.911 ms | 11.505 ms | 48.089 ms | 7.169 ms | 72.701 ms | 100 |
+| 10,000 | 0.78 ms | 17.021 ms | 87.36 ms | 8.987 ms | 120.708 ms | 100 |
 
 ## Before / After
 

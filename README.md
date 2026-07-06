@@ -1,9 +1,8 @@
-# My Search App
+﻿# My Search App
 
 [![CI](https://github.com/jinghaodao-tech/my-search_public/actions/workflows/ci.yml/badge.svg)](https://github.com/jinghaodao-tech/my-search_public/actions/workflows/ci.yml)
 
 ## 概要
-
 My Search App is a local-first knowledge management app built around BM25 search, SQLite persistence, normalized card relations, and backend quality practices.
 
 It supports card-style notes, tags, backlinks, KJ grouping, CSV/JSON import, Markdown export, and AI summaries while keeping data local by default.
@@ -120,9 +119,19 @@ The BM25 pipeline was improved by moving tokenization out of the search hot path
 
 The largest gain came from removing per-search morphological tokenization. Remaining bottlenecks are likely DB access, aggregation, and sorting.
 
+There are two benchmark scopes:
+
+- End-to-end local app measurement: measures the actual application path and includes additional application overhead.
+- Isolated BM25 benchmark: measures the benchmark script path with deterministic synthetic corpora and precomputed token data.
+
+| Measurement | Scope | Result |
+|---|---|---:|
+| End-to-end local app path | Actual app path | 1.413 s |
+| Isolated BM25 benchmark | 10,000 synthetic cards | 120.708 ms |
+
 For reproducible corpus-size benchmarks, see [docs/benchmark.md](docs/benchmark.md).
 
-## 技術スタック
+## Technology Stack
 
 | Area | Technologies |
 |---|---|

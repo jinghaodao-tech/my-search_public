@@ -1,15 +1,15 @@
-import express from 'express';
+﻿import express from 'express';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, invalidRequest, parseBody } from '../services/http_service.js';
 
 export function createArticlesRouter(ctx: any) {
   const router = express.Router();
 
-  router.post('/cards/import-csv', ctx.importLimiter, (req, res) => {
+  router.post('/cards/import-csv', ctx.importLimiter, async (req, res) => {
     const body = parseBody(ctx.csvImportSchema, req, res) as any;
     if (!body) return;
     try {
-      const imported = ctx.parseAndImportCSV(body.csv);
+      const imported = await ctx.parseAndImportCSV(body.csv);
       if (!imported.length) {
         invalidRequest(req, res, [{ path: 'csv', message: 'CSV must include a header and at least one valid row' }]);
         return;
@@ -21,11 +21,11 @@ export function createArticlesRouter(ctx: any) {
     }
   });
 
-  router.post('/cards/import-json', ctx.importLimiter, (req, res) => {
+  router.post('/cards/import-json', ctx.importLimiter, async (req, res) => {
     const body = parseBody(ctx.jsonImportSchema, req, res) as any;
     if (!body) return;
     try {
-      const result = ctx.parseAndImportJSON(body.json);
+      const result = await ctx.parseAndImportJSON(body.json);
       if (!result.cards.length) {
         invalidRequest(req, res, [{ path: 'json', message: 'JSON must contain at least one importable card' }]);
         return;

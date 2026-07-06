@@ -1,4 +1,4 @@
-{
+﻿{
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
@@ -21,7 +21,7 @@
   },
 
   "include": [
-    "*.ts"
+    "**/*.ts"
   ],
 
   "exclude": [

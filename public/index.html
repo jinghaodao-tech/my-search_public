@@ -3,32 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>繧ｫ繝ｼ繝臥ｴ｢蠑輔す繧ｹ繝・Β</title>
+<title>カード検索システム</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<!-- 笏笏 繝医ャ繝励ヰ繝ｼ 笏笏 -->
+<!-- トップバー -->
 <div id="topbar">
-  <h1>島 繧ｫ繝ｼ繝臥ｴ｢蠑・/h1>
+  <h1>カード検索</h1>
   <div class="tab-group">
-    <button class="tab active" onclick="switchView('cards')">繧ｫ繝ｼ繝我ｸ隕ｧ</button>
-    <button class="tab" onclick="switchView('kj')">繧ｰ繝ｫ繝ｼ繝斐Φ繧ｰ繝懊・繝・/button>
+    <button class="tab active" onclick="switchView('cards')">カード一覧</button>
+    <button class="tab" onclick="switchView('kj')">グルーピングボード</button>
     <button class="tab" onclick="switchView('zettel')">Zettelkasten</button>
-    <button class="tab" onclick="switchView('bm25')">笞・BM25繧ｹ繧ｳ繧｢繝ｪ繝ｳ繧ｰ</button>
+    <button class="tab" onclick="switchView('bm25')">BM25スコアリング</button>
   </div>
   <div class="spacer"></div>
-  <button class="btn btn-secondary btn-sm" onclick="openSourceModal()">倹 繧ｽ繝ｼ繧ｹ邂｡逅・/button>
-  <button class="btn btn-secondary btn-sm" onclick="openCSVModal()">唐 繝・・繧ｿ蜿悶ｊ霎ｼ縺ｿ</button>
+  <button class="btn btn-secondary btn-sm" onclick="openSourceModal()">ソース管理</button>
+  <button class="btn btn-secondary btn-sm" onclick="openCSVModal()">データ取り込み</button>
 </div>
 
-<!-- 笏笏 繝｡繧､繝ｳ 笏笏 -->
+<!-- メイン -->
 <div id="main">
 
-  <!-- 繧ｵ繧､繝峨ヰ繝ｼ・医き繝ｼ繝我ｸ隕ｧ譎ゅ・縺ｿ陦ｨ遉ｺ・・-->
+  <!-- サイドバー（カード一覧時のみ表示） -->
   <div id="sidebar">
-    <button id="sidebar-toggle" class="btn btn-secondary btn-sm" onclick="toggleCardSidebar()" title="Toggle sidebar">笘ｰ</button>
+    <button id="sidebar-toggle" class="btn btn-secondary btn-sm" onclick="toggleCardSidebar()" title="Toggle sidebar">=</button>
     <div id="sidebar-body">
       <div class="sidebar-section">
         <h3>Display</h3>
@@ -38,55 +38,55 @@
       </div>
 
       <div class="sidebar-section">
-        <h3>陦ｨ遉ｺ</h3>
+        <h3>表示</h3>
         <div class="type-filter">
-          <button id="normal-filter-btn" class="type-btn active" onclick="filterArchived(false)">騾壼ｸｸ</button>
-          <button id="archive-filter-btn" class="type-btn" onclick="filterArchived(true)">繧｢繝ｼ繧ｫ繧､繝・/button>
+          <button id="normal-filter-btn" class="type-btn active" onclick="filterArchived(false)">通常</button>
+          <button id="archive-filter-btn" class="type-btn" onclick="filterArchived(true)">アーカイブ</button>
         </div>
       </div>
       <div class="sidebar-section">
-        <h3>繝輔ぅ繝ｫ繧ｿ繝ｼ</h3>
+        <h3>フィルター</h3>
         <div class="type-filter" id="card-type-filter">
-          <button class="type-btn active" onclick="filterType(null,this)">縺吶∋縺ｦ</button>
-          <button class="type-btn" onclick="filterType('memo',this)">統 繝｡繝｢</button>
-          <button class="type-btn" onclick="filterType('csv',this)">投 CSV</button>
-          <button class="type-btn" onclick="filterType('article',this)">堂 險倅ｺ・/button>
+          <button class="type-btn active" onclick="filterType(null,this)">すべて</button>
+          <button class="type-btn" onclick="filterType('memo',this)">メモ</button>
+          <button class="type-btn" onclick="filterType('csv',this)">CSV</button>
+          <button class="type-btn" onclick="filterType('article',this)">記事</button>
         </div>
       </div>
       <div class="sidebar-section">
-        <h3>繧ｿ繧ｰ <span id="tag-count" style="font-size:10px;font-weight:400"></span></h3>
+        <h3>タグ <span id="tag-count" style="font-size:10px;font-weight:400"></span></h3>
         <div class="tag-cloud" id="tag-cloud"></div>
       </div>
     </div>
   </div>
 
-  <!-- 繧ｳ繝ｳ繝・Φ繝・-->
+  <!-- コンテンツ -->
   <div id="content">
     <div id="content-header">
-      <h2 id="view-title">繧ｫ繝ｼ繝我ｸ隕ｧ</h2>
-      <span id="count-badge">0莉ｶ</span>
+      <h2 id="view-title">カード一覧</h2>
+      <span id="count-badge">0件</span>
       <div class="spacer"></div>
       <div id="header-actions">
-        <input type="text" id="search-input" placeholder="剥 繧ｭ繝ｼ繝ｯ繝ｼ繝画､懃ｴ｢..." oninput="onSearch(this.value)">
-        <button class="btn btn-primary btn-sm" onclick="openNewCardModal()">・・繝｡繝｢菴懈・</button>
-        <button id="multi-select-btn" class="btn btn-secondary btn-sm" onclick="toggleMultiSelect()">驕ｸ謚・/button>
-        <button id="bulk-archive-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="archiveSelected()">荳諡ｬ繧｢繝ｼ繧ｫ繧､繝・/button>
-        <button id="bulk-restore-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="restoreSelected()">荳諡ｬ蠕ｩ蜈・/button>
+        <input type="text" id="search-input" placeholder="キーワード検索..." oninput="onSearch(this.value)">
+        <button class="btn btn-primary btn-sm" onclick="openNewCardModal()">メモ作成</button>
+        <button id="multi-select-btn" class="btn btn-secondary btn-sm" onclick="toggleMultiSelect()">選択</button>
+        <button id="bulk-archive-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="archiveSelected()">一括アーカイブ</button>
+        <button id="bulk-restore-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="restoreSelected()">一括復元</button>
         <button id="bulk-export-md-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="exportSelectedMarkdown()">MD Export</button>
-        <button id="bulk-delete-btn" class="btn btn-danger btn-sm" style="display:none" onclick="deleteSelected()">荳諡ｬ蜑企勁</button>
-        <button class="btn btn-secondary btn-sm" onclick="summarizeBulk()">笞｡ 荳諡ｬ隕∫ｴ・/button>
+        <button id="bulk-delete-btn" class="btn btn-danger btn-sm" style="display:none" onclick="deleteSelected()">一括削除</button>
+        <button class="btn btn-secondary btn-sm" onclick="summarizeBulk()">一括要約</button>
       </div>
     </div>
     <div id="content-body">
 
-      <!-- 繧ｫ繝ｼ繝峨げ繝ｪ繝・ラ -->
+      <!-- カードグリッド -->
       <div id="card-grid"></div>
 
-      <!-- KJ繝懊・繝・-->
+      <!-- KJボード -->
       <div id="kj-board">
         <div id="kj-board-header">
-          <button class="btn btn-secondary btn-sm" onclick="openNewGroupModal()">・・繧ｰ繝ｫ繝ｼ繝苓ｿｽ蜉</button>
-          <span style="font-size:12px;color:var(--text-dim)">繧ｫ繝ｼ繝峨ｒ繝峨Λ繝・げ・・ラ繝ｭ繝・・縺ｧ繧ｰ繝ｫ繝ｼ繝礼ｧｻ蜍・/span>
+          <button class="btn btn-secondary btn-sm" onclick="openNewGroupModal()">グループ追加</button>
+          <span style="font-size:12px;color:var(--text-dim)">カードをドラッグ＆ドロップでグループ移動</span>
         </div>
         <div id="kj-canvas"></div>
       </div>
@@ -100,20 +100,20 @@
       <div id="bm25-view">
         <div id="bm25-pane">
 
-          <!-- 蟾ｦ・夊ｨｭ螳壹ヱ繝阪Ν -->
+          <!-- 左：設定パネル -->
           <div id="bm25-config">
             <div id="bm25-config-header">
-              <button class="btn btn-secondary btn-sm" onclick="toggleBM25Sidebar()" title="Toggle BM25 settings">笘ｰ</button>
-              <h3>肌 BM25 險ｭ螳・/h3>
-              <button class="btn btn-primary btn-sm" onclick="runBM25()" id="bm25-run-btn">笆ｶ 螳溯｡・/button>
+              <button class="btn btn-secondary btn-sm" onclick="toggleBM25Sidebar()" title="Toggle BM25 settings">=</button>
+              <h3>BM25 設定</h3>
+              <button class="btn btn-primary btn-sm" onclick="runBM25()" id="bm25-run-btn">実行</button>
             </div>
             <div id="bm25-config-body">
 
-              <!-- 繝・・繧ｿ繧ｽ繝ｼ繧ｹ -->
-              <div class="section-sep">繝・・繧ｿ繧ｽ繝ｼ繧ｹ</div>
+              <!-- データソース -->
+              <div class="section-sep">データソース</div>
               <div class="source-radio" id="bm25-source-radio">
-                <label><input type="radio" name="bm25src" value="articles" checked> 蜿朱寔險倅ｺ・/label>
-                <label><input type="radio" name="bm25src" value="cards"> 繧ｫ繝ｼ繝・/label>
+                <label><input type="radio" name="bm25src" value="articles" checked> 収集記事</label>
+                <label><input type="radio" name="bm25src" value="cards"> カード</label>
               </div>
               <div id="bm25-source-info" style="font-size:11px;color:var(--text-dim);margin-bottom:6px"></div>
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
@@ -122,46 +122,46 @@
                 <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="updateArticleAutoStatus()">Status</button>
               </div>
 
-              <!-- 繝｢繝ｼ繝蛾∈謚・-->
+              <!-- モード選択 -->
               <div class="section-sep" style="display:flex;align-items:center">
-                繝｢繝ｼ繝・
+                モード
                 <div style="margin-left:auto;display:flex;gap:4px">
-                  <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="openModeManagerModal()" title="繝｢繝ｼ繝臥ｮ｡逅・>笨・邂｡逅・/button>
-                  <button class="btn btn-primary btn-sm" style="padding:3px 8px;font-size:11px" onclick="addBM25Mode()" title="繝｢繝ｼ繝芽ｿｽ蜉">・・/button>
+                  <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="openModeManagerModal()" title="モード管理">管理</button>
+                  <button class="btn btn-primary btn-sm" style="padding:3px 8px;font-size:11px" onclick="addBM25Mode()" title="モード追加">＋</button>
                 </div>
               </div>
               <div class="mode-tabs" id="mode-tabs"></div>
-              <textarea id="mode-desc" class="mode-desc-editor" placeholder="驕ｸ謚樔ｸｭ繝｢繝ｼ繝峨・隱ｬ譏弱ｒ蜈･蜉・ oninput="updateBM25ModeDescription(this.value)"></textarea>
+              <textarea id="mode-desc" class="mode-desc-editor" placeholder="選択中モードの説明を入力" oninput="updateBM25ModeDescription(this.value)"></textarea>
 
-              <!-- BM25 繝代Λ繝｡繝ｼ繧ｿ繝ｼ -->
-              <div class="section-sep">繝代Λ繝｡繝ｼ繧ｿ繝ｼ</div>
+              <!-- BM25 パラメーター -->
+              <div class="section-sep">パラメーター</div>
               <div class="param-row">
-                <label>k1 <small style="color:var(--text-dim)">(鬟ｽ蜥碁溷ｺｦ)</small></label>
+                <label>k1 <small style="color:var(--text-dim)">(飽和速度)</small></label>
                 <input type="range" min="0.5" max="3" step="0.1" id="p-k1" oninput="syncParam('k1',this.value)">
                 <span class="param-val" id="v-k1">1.5</span>
               </div>
               <div class="param-row">
-                <label>b <small style="color:var(--text-dim)">(髟ｷ縺戊｣懈ｭ｣)</small></label>
+                <label>b <small style="color:var(--text-dim)">(長さ補正)</small></label>
                 <input type="range" min="0" max="1" step="0.05" id="p-b" oninput="syncParam('b',this.value)">
                 <span class="param-val" id="v-b">0.75</span>
               </div>
               <div class="param-row">
-                <label>ﾎｻ <small style="color:var(--text-dim)">(譎る俣貂幄｡ｰ)</small></label>
+                <label>lambda <small style="color:var(--text-dim)">(時間減衰)</small></label>
                 <input type="range" min="0" max="0.3" step="0.01" id="p-lambda" oninput="syncParam('lambda',this.value)">
                 <span class="param-val" id="v-lambda">0.1</span>
               </div>
               <div class="param-row">
-                <label>蜈ｱ襍ｷ繝懊・繝翫せ</label>
+                <label>共起ボーナス</label>
                 <input type="range" min="0" max="3" step="0.1" id="p-ctx" oninput="syncParam('ctx',this.value)">
                 <span class="param-val" id="v-ctx">1.5</span>
               </div>
               <div class="param-row">
-                <label>驥崎､・明蛟､</label>
+                <label>重複閾値</label>
                 <input type="range" min="0.5" max="1" step="0.05" id="p-dedup" oninput="syncParam('dedup',this.value)">
                 <span class="param-val" id="v-dedup">0.8</span>
               </div>
               <div class="param-row">
-                <label>繧｢繝ｼ繧ｫ繧､繝夜明蛟､</label>
+                <label>アーカイブ閾値</label>
                 <input type="range" min="0" max="2" step="0.1" id="p-arch" oninput="syncParam('arch',this.value)">
                 <span class="param-val" id="v-arch">0.5</span>
               </div>
@@ -171,37 +171,37 @@
                 <span class="param-val" id="v-limit">50</span>
               </div>
 
-              <!-- 繧ｭ繝ｼ繝ｯ繝ｼ繝・-->
+              <!-- キーワード -->
               <div class="section-sep">
-                繧ｭ繝ｼ繝ｯ繝ｼ繝・
-                <button class="btn btn-secondary btn-sm" style="float:right" onclick="addKeyword()">・・/button>
+                キーワード
+                <button class="btn btn-secondary btn-sm" style="float:right" onclick="addKeyword()">＋</button>
               </div>
 
               <div class="kw-chip-tools">
                 <input class="kw-chip-input" id="kw-chip-input" placeholder="keyword" onkeydown="keywordInputKeydown(event)">
-                <button class="btn btn-secondary btn-sm" onclick="expandKeywordsWithAI()">AI鬘樒ｾｩ隱櫁ｿｽ蜉</button>
+                <button class="btn btn-secondary btn-sm" onclick="expandKeywordsWithAI()">AI類義語追加</button>
               </div>
               <div class="kw-chip-list" id="kw-chip-list"></div>
-              <div class="kw-header"><span>繧ｭ繝ｼ繝ｯ繝ｼ繝・/span><span>驥阪∩</span><span>蜷檎ｾｩ隱橸ｼ医き繝ｳ繝槫玄蛻・ｊ・・/span><span></span></div>
+              <div class="kw-header"><span>キーワード</span><span>重み</span><span>同義語（カンマ区切り）</span><span></span></div>
               <div class="kw-list" id="kw-list"></div>
 
             </div>
           </div>
 
-          <!-- 蜿ｳ・夂ｵ先棡繝代ロ繝ｫ -->
+          <!-- 右：結果パネル -->
           <div id="bm25-result">
             <div id="bm25-result-header">
               <div id="bm25-stats"></div>
               <div class="spacer"></div>
               <div id="bm25-result-actions" style="display:none;gap:6px">
-                <button class="btn btn-success btn-sm" onclick="saveTopAsCards()">沈 繧ｫ繝ｼ繝峨↓菫晏ｭ・/button>
-                <button class="btn btn-secondary btn-sm" onclick="toggleArchived()">逃 繧｢繝ｼ繧ｫ繧､繝冶｡ｨ遉ｺ</button>
+                <button class="btn btn-success btn-sm" onclick="saveTopAsCards()">カードに保存</button>
+                <button class="btn btn-secondary btn-sm" onclick="toggleArchived()">アーカイブ表示</button>
               </div>
             </div>
             <div id="bm25-result-body">
               <div class="empty-state">
-                <div class="icon">笞・/div>
-                <p>險ｭ螳壹＠縺ｦ縲娯霧 螳溯｡後阪ｒ謚ｼ縺励※縺上□縺輔＞</p>
+                <div class="icon">BM25</div>
+                <p>設定して「実行」を押してください</p>
               </div>
             </div>
           </div>
@@ -212,103 +212,103 @@
     </div>
   </div>
 
-  <!-- 隧ｳ邏ｰ繝代ロ繝ｫ -->
+  <!-- 詳細パネル -->
   <div id="detail-panel" class="hidden">
     <div id="detail-header">
-      <h3 id="detail-title">繧ｫ繝ｼ繝芽ｩｳ邏ｰ</h3>
+      <h3 id="detail-title">カード詳細</h3>
       <button class="btn-icon" onclick="exportMarkdown(currentCardId)" title="Export Markdown">MD</button>
-      <button class="btn-icon" onclick="openEditModal(currentCardId)" title="邱ｨ髮・>笨擾ｸ・/button>
-      <button class="btn-icon" onclick="closeDetail()" title="髢峨§繧・>笨・/button>
+      <button class="btn-icon" onclick="openEditModal(currentCardId)" title="編集">編集</button>
+      <button class="btn-icon" onclick="closeDetail()" title="閉じる">×</button>
     </div>
     <div id="detail-body"></div>
   </div>
 
 </div>
 
-<!-- 笏笏 繝｢繝ｼ繝繝ｫ: 譁ｰ隕上き繝ｼ繝・笏笏 -->
+<!-- モーダル: 新規カード -->
 <div class="modal-overlay" id="modal-new">
   <div class="modal">
-    <h2>統 繝｡繝｢菴懈・</h2>
-    <div class="form-group"><label>繧ｿ繧､繝医Ν *</label><input type="text" id="new-title" placeholder="繧ｫ繝ｼ繝峨・繧ｿ繧､繝医Ν"></div>
-    <div class="form-group"><label>譛ｬ譁・/label><textarea id="new-body" placeholder="繝｡繝｢蜀・ｮｹ..."></textarea></div>
-    <div class="form-group"><label>URL・井ｻｻ諢擾ｼ・/label><input type="url" id="new-url" placeholder="https://..."></div>
-    <div class="form-group"><label>繧ｿ繧ｰ・医せ繝壹・繧ｹ蛹ｺ蛻・ｊ・・/label><input type="text" id="new-tags" placeholder="萓・ AI 讖滓｢ｰ蟄ｦ鄙・></div>
-    <div class="form-group"><label>繧ｫ繝ｼ繝峨・濶ｲ</label><div class="color-strip" id="new-color-strip"></div></div>
+    <h2>メモ作成</h2>
+    <div class="form-group"><label>タイトル *</label><input type="text" id="new-title" placeholder="カードのタイトル"></div>
+    <div class="form-group"><label>本文</label><textarea id="new-body" placeholder="メモ内容..."></textarea></div>
+    <div class="form-group"><label>URL（任意）</label><input type="url" id="new-url" placeholder="https://..."></div>
+    <div class="form-group"><label>タグ（スペース区切り）</label><input type="text" id="new-tags" placeholder="例 AI 機械学習"></div>
+    <div class="form-group"><label>カードの色</label><div class="color-strip" id="new-color-strip"></div></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-new')">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
-      <button class="btn btn-primary" onclick="submitNewCard()">菴懈・</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-new')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitNewCard()">作成</button>
     </div>
   </div>
 </div>
 
-<!-- 笏笏 繝｢繝ｼ繝繝ｫ: 邱ｨ髮・笏笏 -->
+<!-- モーダル: 編集 -->
 <div class="modal-overlay" id="modal-edit">
   <div class="modal">
-    <h2>笨擾ｸ・繧ｫ繝ｼ繝臥ｷｨ髮・/h2>
+    <h2>カード編集</h2>
     <input type="hidden" id="edit-id">
-    <div class="form-group"><label>繧ｿ繧､繝医Ν</label><input type="text" id="edit-title"></div>
-    <div class="form-group"><label>譛ｬ譁・/label><textarea id="edit-body"></textarea></div>
+    <div class="form-group"><label>タイトル</label><input type="text" id="edit-title"></div>
+    <div class="form-group"><label>本文</label><textarea id="edit-body"></textarea></div>
     <div class="form-group"><label>URL</label><input type="url" id="edit-url"></div>
-    <div class="form-group"><label>繧ｿ繧ｰ・医せ繝壹・繧ｹ蛹ｺ蛻・ｊ・・/label><input type="text" id="edit-tags"></div>
-    <div class="form-group"><label>繧ｫ繝ｼ繝峨・濶ｲ</label><div class="color-strip" id="edit-color-strip"></div></div>
+    <div class="form-group"><label>タグ（スペース区切り）</label><input type="text" id="edit-tags"></div>
+    <div class="form-group"><label>カードの色</label><div class="color-strip" id="edit-color-strip"></div></div>
     <div class="modal-footer">
-      <button class="btn btn-danger btn-sm" onclick="confirmDelete()" style="margin-right:auto">蜑企勁</button>
-      <button class="btn btn-secondary" onclick="closeModal('modal-edit')">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
-      <button class="btn btn-primary" onclick="submitEdit()">菫晏ｭ・/button>
+      <button class="btn btn-danger btn-sm" onclick="confirmDelete()" style="margin-right:auto">削除</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitEdit()">保存</button>
     </div>
   </div>
 </div>
 
-<!-- 笏笏 繝｢繝ｼ繝繝ｫ: 繝・・繧ｿ蜿悶ｊ霎ｼ縺ｿ 笏笏 -->
+<!-- モーダル: データ取り込み -->
 <div class="modal-overlay" id="modal-csv">
   <div class="modal">
-    <h2>唐 繝・・繧ｿ蜿悶ｊ霎ｼ縺ｿ</h2>
+    <h2>データ取り込み</h2>
     <div class="modal-tabs">
       <div class="modal-tab active" onclick="switchImportTab('csv',this)">CSV</div>
       <div class="modal-tab" onclick="switchImportTab('json',this)">JSON</div>
     </div>
     <div id="import-tab-csv">
-      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">蟇ｾ蠢懷・: <code>title</code>, <code>body</code>/<code>content</code>, <code>url</code>, <code>tags</code>・・陦檎岼繝倥ャ繝繝ｼ蠢・医・UTF-8謗ｨ螂ｨ・・/p>
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">対応列: <code>title</code>, <code>body</code>/<code>content</code>, <code>url</code>, <code>tags</code>（ヘッダー必須・UTF-8推奨）</p>
       <div class="csv-dropzone" id="csv-dropzone" onclick="document.getElementById('csv-file').click()" ondragover="csvDragOver(event)" ondrop="csvDrop(event,'csv')">
-        <div style="font-size:32px;margin-bottom:8px">唐</div>
-        <div>繧ｯ繝ｪ繝・け縺ｾ縺溘・繝峨Λ繝・げ・・ラ繝ｭ繝・・</div>
-        <div style="font-size:12px;margin-top:4px">CSV繝輔ぃ繧､繝ｫ・・TF-8謗ｨ螂ｨ・・/div>
+        <div style="font-size:32px;margin-bottom:8px">CSV</div>
+        <div>クリックまたはドラッグ＆ドロップ</div>
+        <div style="font-size:12px;margin-top:4px">CSVファイル（UTF-8推奨）</div>
         <input type="file" id="csv-file" accept=".csv,.tsv,.txt" style="display:none" onchange="csvFileSelect(this,'csv')">
       </div>
       <div class="csv-preview" id="csv-preview"></div>
-      <div class="form-group" style="margin-top:14px"><label>縺ｾ縺溘・繝・く繧ｹ繝郁ｲｼ繧贋ｻ倥￠</label>
-        <textarea id="csv-text" style="height:100px;font-family:monospace;font-size:12px" placeholder="title,body,url,tags&#10;險倅ｺ句錐,譛ｬ譁・https://...,AI讖滓｢ｰ蟄ｦ鄙・></textarea>
+      <div class="form-group" style="margin-top:14px"><label>またはテキスト貼り付け</label>
+        <textarea id="csv-text" style="height:100px;font-family:monospace;font-size:12px" placeholder="title,body,url,tags&#10;記事名,本文,https://...,AI 機械学習"></textarea>
       </div>
     </div>
     <div id="import-tab-json" style="display:none">
-      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">驟榊・繝ｻ繝ｩ繝・ヱ繝ｼ蠖｢蠑上・<code>cards.json</code>繝ｻ<code>articles.json</code> 繧定・蜍募愛螳壹＠縺ｾ縺・/p>
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">配列・ラッパー形式の <code>cards.json</code> / <code>articles.json</code> を自動判定します</p>
       <div class="csv-dropzone" onclick="document.getElementById('json-file').click()" ondragover="csvDragOver(event)" ondrop="csvDrop(event,'json')">
         <div style="font-size:32px;margin-bottom:8px">{ }</div>
-        <div>繧ｯ繝ｪ繝・け縺ｾ縺溘・繝峨Λ繝・げ・・ラ繝ｭ繝・・</div>
+        <div>クリックまたはドラッグ＆ドロップ</div>
         <input type="file" id="json-file" accept=".json" style="display:none" onchange="csvFileSelect(this,'json')">
       </div>
       <div class="csv-preview" id="json-preview"></div>
-      <div class="form-group" style="margin-top:14px"><label>縺ｾ縺溘・繝・く繧ｹ繝郁ｲｼ繧贋ｻ倥￠</label>
-        <textarea id="json-text" style="height:100px;font-family:monospace;font-size:12px" placeholder='[{"title":"險倅ｺ句錐","body":"譛ｬ譁・,"url":"https://...","tags":["AI"]}]'></textarea>
+      <div class="form-group" style="margin-top:14px"><label>またはテキスト貼り付け</label>
+        <textarea id="json-text" style="height:100px;font-family:monospace;font-size:12px" placeholder='[{"title":"記事名","body":"本文","url":"https://...","tags":["AI"]}]'></textarea>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-csv')">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
-      <button class="btn btn-primary" onclick="submitImport()">蜿悶ｊ霎ｼ繧</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-csv')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitImport()">取り込む</button>
     </div>
   </div>
 </div>
 
-<!-- 笏笏 繝｢繝ｼ繝繝ｫ: KJ繧ｰ繝ｫ繝ｼ繝・笏笏 -->
+<!-- モーダル: KJグループ -->
 <div class="modal-overlay" id="modal-group">
   <div class="modal" style="min-width:320px;max-width:400px">
-    <h2>繧ｰ繝ｫ繝ｼ繝嶺ｽ懈・</h2>
-    <div class="form-group"><label>繧ｰ繝ｫ繝ｼ繝怜錐 *</label><input type="text" id="group-name" placeholder="繧ｰ繝ｫ繝ｼ繝怜錐"></div>
-    <div class="form-group"><label>隱ｬ譏・/label><input type="text" id="group-desc" placeholder="莉ｻ諢・></div>
+    <h2>グループ作成</h2>
+    <div class="form-group"><label>グループ名 *</label><input type="text" id="group-name" placeholder="グループ名"></div>
+    <div class="form-group"><label>説明</label><input type="text" id="group-desc" placeholder="任意"></div>
     <div class="form-group"><label>濶ｲ</label><div class="color-strip" id="group-color-strip"></div></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-group')">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
-      <button class="btn btn-primary" onclick="submitGroup()">菴懈・</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-group')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitGroup()">作成</button>
     </div>
   </div>
 </div>
@@ -316,109 +316,109 @@
 <div id="toast" class="toast"></div>
 
 
-<!-- 笏笏 繝輔Ο繝ｼ繝・ぅ繝ｳ繧ｰ繝懊ち繝ｳ・医せ繝槭・・・笏笏 -->
+<!-- フローティングボタン（スマホ） -->
 <div id="fab">
   <div id="fab-menu">
     <div class="fab-row">
-      <span class="fab-label">CSV隱ｭ縺ｿ霎ｼ縺ｿ</span>
-      <button class="fab-btn secondary" onclick="openCSVModal();toggleFab()">唐</button>
+      <span class="fab-label">CSV読み込み</span>
+      <button class="fab-btn secondary" onclick="openCSVModal();toggleFab()">CSV</button>
     </div>
     <div class="fab-row">
-      <span class="fab-label">譁ｰ縺励＞繝｡繝｢</span>
-      <button class="fab-btn secondary" onclick="openNewCardModal();toggleFab()">統</button>
+      <span class="fab-label">新しいメモ</span>
+      <button class="fab-btn secondary" onclick="openNewCardModal();toggleFab()">メモ</button>
     </div>
   </div>
-  <button class="fab-btn" id="fab-main" onclick="toggleFab()">・・/button>
+  <button class="fab-btn" id="fab-main" onclick="toggleFab()">＋</button>
 </div>
 
-<!-- 笏笏 繝｢繝舌う繝ｫ逕ｨ繧ｫ繝ｼ繝臥ｷｨ髮・ヱ繝阪Ν 笏笏 -->
+<!-- モバイル用カード編集パネル -->
 <div id="mobile-edit-panel">
   <div id="mep-header">
-    <button class="btn btn-secondary btn-sm" onclick="closeMobileEdit()">竊・謌ｻ繧・/button>
+    <button class="btn btn-secondary btn-sm" onclick="closeMobileEdit()">戻る</button>
     <span id="mep-title" style="font-size:14px;font-weight:700;flex:1"></span>
-    <button class="btn btn-danger btn-sm" id="mep-del-btn" onclick="mepDelete()">蜑企勁</button>
+    <button class="btn btn-danger btn-sm" id="mep-del-btn" onclick="mepDelete()">削除</button>
   </div>
   <div id="mep-body">
     <div class="mep-field">
-      <div class="mep-label">繧ｿ繧､繝医Ν</div>
-      <input class="mep-input" id="mep-title-in" placeholder="繧ｿ繧､繝医Ν">
+      <div class="mep-label">タイトル</div>
+      <input class="mep-input" id="mep-title-in" placeholder="タイトル">
     </div>
     <div class="mep-field">
-      <div class="mep-label">隕∫ｴ・・譛ｬ譁・/div>
-      <textarea class="mep-ta" id="mep-body-in" placeholder="譛ｬ譁・・繝｡繝｢蜀・ｮｹ..."></textarea>
+      <div class="mep-label">要約・本文</div>
+      <textarea class="mep-ta" id="mep-body-in" placeholder="本文・メモ内容..."></textarea>
     </div>
     <div class="mep-field">
       <div class="mep-label">URL</div>
       <input class="mep-input" id="mep-url-in" placeholder="https://..." type="url">
     </div>
     <div class="mep-field">
-      <div class="mep-label">繧ｿ繧ｰ・医き繝ｳ繝槫玄蛻・ｊ・・/div>
-      <input class="mep-input" id="mep-tags-in" placeholder="萓・ AI, 隲匁枚, 繝｡繝｢">
+      <div class="mep-label">タグ（カンマ区切り）</div>
+      <input class="mep-input" id="mep-tags-in" placeholder="例: AI, 論文, メモ">
     </div>
     <div class="mep-field">
-      <div class="mep-label">繝｡繝｢</div>
-      <textarea class="mep-ta" id="mep-note-in" placeholder="蛟倶ｺｺ繝｡繝｢..."></textarea>
+      <div class="mep-label">メモ</div>
+      <textarea class="mep-ta" id="mep-note-in" placeholder="個人メモ..."></textarea>
     </div>
     <div class="mep-field">
-      <div class="mep-label">Zettelkasten繝ｪ繝ｳ繧ｯ</div>
+      <div class="mep-label">Zettelkastenリンク</div>
       <div id="mep-zk-links" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
       <div style="display:flex;gap:6px">
-        <input class="mep-input" id="mep-zk-in" placeholder="繧ｫ繝ｼ繝迂D" style="flex:1;font-family:monospace;font-size:12px">
-        <button class="btn btn-secondary btn-sm" onclick="mepAddLink()">繝ｪ繝ｳ繧ｯ</button>
+        <input class="mep-input" id="mep-zk-in" placeholder="カードID" style="flex:1;font-family:monospace;font-size:12px">
+        <button class="btn btn-secondary btn-sm" onclick="mepAddLink()">リンク</button>
       </div>
     </div>
   </div>
   <div id="mep-footer">
-    <button class="btn btn-secondary" style="flex:1" onclick="closeMobileEdit()">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
-    <button class="btn btn-primary" style="flex:2" onclick="mepSave()">菫晏ｭ・/button>
+    <button class="btn btn-secondary" style="flex:1" onclick="closeMobileEdit()">キャンセル</button>
+    <button class="btn btn-primary" style="flex:2" onclick="mepSave()">保存</button>
   </div>
 </div>
 
-<!-- 笏笏 BM25繝｢繝ｼ繝臥ｮ｡逅・Δ繝ｼ繝繝ｫ 笏笏 -->
+<!-- BM25モード管理モーダル -->
 <div class="modal-overlay" id="mode-manager-modal">
   <div class="modal" style="max-width:560px">
-    <h2>笞・BM25繝｢繝ｼ繝臥ｮ｡逅・/h2>
+    <h2>BM25モード管理</h2>
     <div id="mode-manager-list"></div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">譁ｰ縺励＞繝｢繝ｼ繝峨ｒ霑ｽ蜉</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">新しいモードを追加</div>
       <div style="display:flex;gap:8px">
-        <input class="mep-input" id="new-mode-name" placeholder="繝｢繝ｼ繝牙錐" style="flex:1">
-        <button class="btn btn-primary btn-sm" onclick="confirmAddMode()">霑ｽ蜉</button>
+        <input class="mep-input" id="new-mode-name" placeholder="モード名" style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="confirmAddMode()">追加</button>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('mode-manager-modal')">髢峨§繧・/button>
+      <button class="btn btn-secondary" onclick="closeModal('mode-manager-modal')">閉じる</button>
     </div>
   </div>
 </div>
 
-<!-- 笏笏 繧ｽ繝ｼ繧ｹURL邂｡逅・Δ繝ｼ繝繝ｫ 笏笏 -->
+<!-- ソースURL管理モーダル -->
 <div class="modal-overlay" id="source-modal">
   <div class="modal" style="max-width:640px">
-    <h2>倹 蜿朱寔繧ｽ繝ｼ繧ｹ邂｡逅・/h2>
+    <h2>収集ソース管理</h2>
     <div class="modal-tabs">
-      <div class="modal-tab active" onclick="switchSourceTab('rss',this)">RSS繝輔ぅ繝ｼ繝・/div>
+      <div class="modal-tab active" onclick="switchSourceTab('rss',this)">RSSフィード</div>
       <div class="modal-tab" onclick="switchSourceTab('arxiv',this)">arXiv</div>
       <div class="modal-tab" onclick="switchSourceTab('github',this)">GitHub</div>
     </div>
     <div id="source-rss-tab">
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">URL繝ｻ繝ｩ繝吶Ν繝ｻ菫｡鬆ｼ蠎ｦ(0縲・)繧定ｨｭ螳壹＠縺ｾ縺・/div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">URL・ラベル・信頼度(0-1)を設定します</div>
       <div id="src-rss-list"></div>
-      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('rss')">・・RSS繧定ｿｽ蜉</button>
+      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('rss')">RSSを追加</button>
     </div>
     <div id="source-arxiv-tab" style="display:none">
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">讀懃ｴ｢繧ｯ繧ｨ繝ｪ繝ｻ譛螟ｧ莉ｶ謨ｰ繝ｻ菫｡鬆ｼ蠎ｦ繧定ｨｭ螳壹＠縺ｾ縺・/div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">検索クエリ・最大件数・信頼度を設定します</div>
       <div id="src-arxiv-list"></div>
-      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('arxiv')">・・繧ｯ繧ｨ繝ｪ繧定ｿｽ蜉</button>
+      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('arxiv')">クエリを追加</button>
     </div>
     <div id="source-github-tab" style="display:none">
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">險隱槭・譛滄俣繝ｻ菫｡鬆ｼ蠎ｦ繧定ｨｭ螳壹＠縺ｾ縺・/div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">言語・期間・信頼度を設定します</div>
       <div id="src-github-list"></div>
-      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('github')">・・險隱槭ｒ霑ｽ蜉</button>
+      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('github')">言語を追加</button>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('source-modal')">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
-      <button class="btn btn-primary" onclick="saveSourceConfig()">菫晏ｭ倥＠縺ｦ驕ｩ逕ｨ</button>
+      <button class="btn btn-secondary" onclick="closeModal('source-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveSourceConfig()">保存して適用</button>
     </div>
   </div>
 </div>

@@ -1,4 +1,4 @@
-import request from "supertest";
+﻿import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
 import { app, cardsEngine, resetCards } from "./helpers.js";
 
@@ -119,7 +119,7 @@ describe("Markdown export", () => {
     const response = await request(app)
       .post("/api/cards/export-md-bulk")
       .buffer(true)
-      .parse(binaryParser)
+      .parse(binaryParser as any)
       .send({ ids: [first.id, second.id] });
 
     expect(response.status).toBe(200);
