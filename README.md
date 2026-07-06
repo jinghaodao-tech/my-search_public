@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/jinghaodao-tech/my-search_public/actions/workflows/ci.yml/badge.svg)](https://github.com/jinghaodao-tech/my-search_public/actions/workflows/ci.yml)
 
+[Japanese README](README_ja.md)
+
 ## 概要
 My Search App is a local-first knowledge management app built around BM25 search, SQLite persistence, normalized card relations, and backend quality practices.
 
@@ -150,3 +152,4 @@ For search quality evaluation, see [docs/search-quality.md](docs/search-quality.
 | DevOps | Docker, Docker Compose, GitHub Actions |
 | Frontend | HTML, CSS, JavaScript |
 | AI | Anthropic API, Gemini API |
+
