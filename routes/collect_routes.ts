@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
@@ -10,7 +10,7 @@ export function createCollectRouter(ctx: RouteContext) {
   router.get('/articles', (_req, res) => {
     const cachedArticles = ctx.getCachedArticles();
     if (!cachedArticles) {
-      res.json({ articles: [], stats: null, message: '譛ｪ蜿朱寔縲・api/collect 繧貞他繧薙〒縺上□縺輔＞' });
+      res.json({ articles: [], stats: null, message: '未収集。/api/collect を呼んでください' });
       return;
     }
     res.json(cachedArticles);
@@ -24,7 +24,7 @@ export function createCollectRouter(ctx: RouteContext) {
       ctx.setCollectorConfig(config);
       if (body.background) {
         if (ctx.getCollectRunning()) {
-          res.json({ ok: false, running: true, message: 'collect already running' });
+          res.json({ ok: false, running: true, message: '既に起動中' });
           return;
         }
         ctx.setCollectRunning(true);
@@ -57,7 +57,7 @@ export function createCollectRouter(ctx: RouteContext) {
     const body = parseBody(ctx.schedulerStartSchema, req, res);
     if (!body) return;
     if (ctx.getSchedulerStop()) {
-      res.json({ ok: false, message: '譌｢縺ｫ襍ｷ蜍穂ｸｭ' });
+      res.json({ ok: false, message: '既に起動中' });
       return;
     }
     const expr = body.cronExpr ?? '*/30 * * * *';
@@ -97,4 +97,3 @@ export function createCollectRouter(ctx: RouteContext) {
 
   return router;
 }
-

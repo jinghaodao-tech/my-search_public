@@ -1,4 +1,4 @@
-import type express from 'express';
+﻿import type express from 'express';
 import { MODES, runPipeline } from './search_service.js';
 import {
   collectAll,
@@ -46,6 +46,7 @@ import {
   csvImportSchema,
   idsBodySchema,
   jsonImportSchema,
+  importArticlesSchema,
   keywordExpandSchema,
   kjAssignSchema,
   kjGroupCreateSchema,
@@ -146,6 +147,7 @@ export function createRouteContext(limiters: {
     linkBodySchema,
     csvImportSchema,
     jsonImportSchema,
+  importArticlesSchema,
     keywordExpandSchema,
     kjGroupCreateSchema,
     kjGroupUpdateSchema,
@@ -173,5 +175,3 @@ export function createRouteContext(limiters: {
 
 
 export type RouteContext = ReturnType<typeof createRouteContext>;
-
-

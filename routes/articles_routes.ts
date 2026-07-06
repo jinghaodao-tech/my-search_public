@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, invalidRequest, parseBody } from '../services/http_service.js';
@@ -41,7 +41,9 @@ export function createArticlesRouter(ctx: RouteContext) {
   });
 
   router.post('/cards/import-articles', async (req, res) => {
-    const { articleIds }: { articleIds?: string[] } = req.body;
+    const body = parseBody(ctx.importArticlesSchema, req, res);
+    if (!body) return;
+    const { articleIds } = body;
     const articles = ctx.getCachedArticles()?.articles ?? [];
     const targets = articleIds
       ? articles.filter((article: Article) => articleIds.includes(article.id))
@@ -53,7 +55,6 @@ export function createArticlesRouter(ctx: RouteContext) {
     for (const article of targets) {
       if (existing.has(`card_from_${article.id}`)) continue;
       const card = await ctx.createCard({
-        id: `card_from_${article.id}`,
         title: article.title,
         body: article.body,
         url: article.url,
@@ -67,4 +68,3 @@ export function createArticlesRouter(ctx: RouteContext) {
 
   return router;
 }
-

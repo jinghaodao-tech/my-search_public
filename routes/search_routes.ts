@@ -1,9 +1,15 @@
-import express from 'express';
+﻿import express from 'express';
 import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
 import type { Card } from '../domain/card.js';
 import type { Article } from '../bm25_engine.js';
+
+type SearchInputArticle = Partial<Article> & Pick<Article, 'id' | 'title' | 'body'> & {
+  publishedAt: string | Date;
+  sourceAuthority?: number;
+  url?: string;
+};
 
 export function createSearchRouter(ctx: RouteContext) {
   const router = express.Router();
@@ -15,14 +21,13 @@ export function createSearchRouter(ctx: RouteContext) {
     if (!body) return;
     try {
       const { modeId, config, articles: reqArticles, options } = body;
-      const rawArticles = reqArticles ?? ctx.getCachedArticles()?.articles ?? [];
+      const rawArticles = (reqArticles ?? ctx.getCachedArticles()?.articles ?? []) as SearchInputArticle[];
       if (!rawArticles.length) {
-        res.status(400).json({ error: '記事がありません。先に /api/collect を実行してください', requestId: getRequestId(req) });
+        res.status(400).json({ error: '記事がありません。先に /api/collect を呼んでください', requestId: getRequestId(req) });
         return;
       }
       const cardsById = new Map(ctx.loadCards().map((card: Card) => [card.id, card]));
-      const parsed: Article[] = rawArticles.map(article => {
-        const art = article as any;
+      const parsed: Article[] = rawArticles.map(art => {
         const stored = cardsById.get(art.id);
         return {
           id: art.id,
@@ -98,16 +103,15 @@ export function createSearchRouter(ctx: RouteContext) {
       res.json({ expandedKeywords });
     } catch (err) {
       if (ctx.isAiSummaryError(err)) {
-        const aiError = err as any;
         logger.warn({
           event: 'ai_keyword_expand_error',
           requestId: getRequestId(req),
-          code: aiError.code,
-          statusCode: aiError.status,
+          code: err.code,
+          statusCode: err.status,
           provider: ctx.AI_PROVIDER,
-          error: errorMeta(aiError),
+          error: errorMeta(err),
         }, 'keyword expansion provider error');
-        res.status(aiError.status).json({ error: aiError.message, code: aiError.code, requestId: getRequestId(req) });
+        res.status(err.status).json({ error: err.message, code: err.code, requestId: getRequestId(req) });
         return;
       }
       logger.error({ event: 'ai_keyword_expand_error', requestId: getRequestId(req), error: errorMeta(err) }, 'keyword expansion failed');
@@ -117,4 +121,3 @@ export function createSearchRouter(ctx: RouteContext) {
 
   return router;
 }
-

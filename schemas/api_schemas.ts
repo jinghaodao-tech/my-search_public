@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 const authoritySchema = z.number().min(0).max(1);
 
@@ -95,8 +95,7 @@ const cardFieldsSchema = {
 export const createCardSchema = z.object(cardFieldsSchema).strict();
 
 /**
- * @internal システム内部用途（インポートや移行）に限定したID付与用のスキーマ。
- * 外部APIからは利用されません。
+ * @internal Schema for card payloads created by internal import/migration paths.
  */
 export const systemCreateCardSchema = createCardSchema.extend({
   id: idSchema.optional(),
@@ -126,6 +125,10 @@ export const csvImportSchema = z.object({
 
 export const jsonImportSchema = z.object({
   json: z.string().trim().min(1).max(1_000_000),
+}).strict();
+
+export const importArticlesSchema = z.object({
+  articleIds: z.array(idSchema).max(1000).optional(),
 }).strict();
 
 export const keywordExpandSchema = z.object({
