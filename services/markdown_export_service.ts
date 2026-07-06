@@ -1,4 +1,4 @@
-import type { Card } from '../repositories/cards_repository.js';
+﻿import type { Card } from '../domain/card.js';
 import { getCard } from '../repositories/cards_repository.js';
 import { cardToMarkdown, safeMarkdownFilename } from '../utils/markdown_export.js';
 import { createZip } from '../utils/zip_export.js';
