@@ -379,6 +379,25 @@ describe('cards API validation', () => {
     expect(ids).not.toContain(other.id);
   });
 
+  it('treats LIKE wildcard and escape characters as literals in q filters', async () => {
+    const percent = await createCard({ title: 'Literal percent 100% done', body: 'plain', tags: ['literal-percent'] });
+    const underscore = await createCard({ title: 'Literal underscore key_value', body: 'plain', tags: ['literal-underscore'] });
+    const tilde = await createCard({ title: 'Literal tilde home~user', body: 'plain', tags: ['literal-tilde'] });
+    const other = await createCard({ title: 'Plain wildcard card', body: 'plain', tags: ['plain'] });
+
+    const percentResponse = await request(app).get('/api/cards?q=%25&limit=20');
+    const underscoreResponse = await request(app).get('/api/cards?q=_&limit=20');
+    const tildeResponse = await request(app).get('/api/cards?q=~&limit=20');
+
+    expect(percentResponse.status).toBe(200);
+    expect(underscoreResponse.status).toBe(200);
+    expect(tildeResponse.status).toBe(200);
+    expect(percentResponse.body.items.map((card: { id: string }) => card.id)).toEqual([percent.id]);
+    expect(underscoreResponse.body.items.map((card: { id: string }) => card.id)).toEqual([underscore.id]);
+    expect(tildeResponse.body.items.map((card: { id: string }) => card.id)).toEqual([tilde.id]);
+    expect(percentResponse.body.items.map((card: { id: string }) => card.id)).not.toContain(other.id);
+  });
+
   it('caps oversized limits and safely handles invalid offsets', async () => {
     for (let i = 0; i < 105; i += 1) {
       await createCard({ title: `Bulk page card ${i}`, tags: ['bulk-page'] });

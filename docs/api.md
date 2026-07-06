@@ -36,15 +36,34 @@ Failure response:
 
 ### `GET /api/cards`
 
-Lists cards.
+Lists cards. Without pagination parameters, this endpoint keeps the legacy response shape and returns an array of cards.
 
 Query parameters:
 
 - `archived`: `true` or `false`
-- `tag`: tag filter
+- `tag`: tag filter backed by `card_tags`
 - `type`: `memo`, `article`, or `csv`
-- `q`: simple keyword filter
+- `q`: simple SQL `LIKE` filter over title, body, summary, and tags. This is not BM25 ranking.
 - `kjGroupId`: KJ group filter
+- `limit`: enables paged response, default `20`, max `100`
+- `offset`: zero-based start position, default `0`
+- `sort`: `created_at_desc` or `created_at_asc`
+
+Backward compatibility:
+
+- Without `limit` or `offset`, the response is the legacy card array.
+- With `limit` or `offset`, the response is paged:
+
+```json
+{
+  "items": [],
+  "total": 123,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+BM25 ranking search remains handled by `POST /api/run` and the existing search pipeline.
 
 ### `POST /api/cards`
 

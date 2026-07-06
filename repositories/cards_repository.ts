@@ -310,7 +310,7 @@ function normalizeCardOffset(value?: number): number {
 }
 
 function escapeLike(value: string): string {
-  return value.replace(/[\%_]/g, (match) => `\${match}`);
+  return value.replace(/[~%_]/g, (match) => `~${match}`);
 }
 
 function buildCardListWhere(filters: CardListFilters): { whereSql: string; params: SqlParam[] } {

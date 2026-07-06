@@ -7,6 +7,10 @@ My Search App is a local-first knowledge management app built around BM25 search
 
 It supports card-style notes, tags, backlinks, KJ grouping, CSV/JSON import, Markdown export, and AI summaries while keeping data local by default.
 
+## Stable Portfolio Version
+
+This repository is treated as a stable portfolio version of the local-first knowledge management app. Future work is tracked as incremental improvements rather than required functionality for the current version. The current focus is local knowledge management, BM25 search, SQLite persistence, and backend quality through tests, CI, benchmarks, and documentation.
+
 Details:
 
 - [API examples](docs/api.md)

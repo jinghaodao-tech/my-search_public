@@ -149,7 +149,7 @@ export function createRouteContext(limiters: {
     linkBodySchema,
     csvImportSchema,
     jsonImportSchema,
-  importArticlesSchema,
+    importArticlesSchema,
     keywordExpandSchema,
     kjGroupCreateSchema,
     kjGroupUpdateSchema,
