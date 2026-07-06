@@ -1,10 +1,12 @@
 import express from 'express';
+import type { RouteContext } from '../services/route_context.js';
 import { markdownContentDisposition } from '../utils/markdown_export.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { buildBulkMarkdownZip, buildCardMarkdown } from '../services/export_service.js';
 import { getRequestId, invalidRequest, parseBody, sendError } from '../services/http_service.js';
+import type { Card } from '../domain/card.js';
 
-export function createCardsRouter(ctx: any) {
+export function createCardsRouter(ctx: RouteContext) {
   const router = express.Router();
 
   router.get('/cards', (req, res) => {
@@ -19,7 +21,7 @@ export function createCardsRouter(ctx: any) {
   });
 
   router.post('/cards', async (req, res) => {
-    const body = parseBody(ctx.createCardSchema, req, res) as any;
+    const body = parseBody(ctx.createCardSchema, req, res);
     if (!body) return;
     try {
       const card = await ctx.createCard({ type: 'memo', ...ctx.normalizeCardInput(body) });
@@ -47,7 +49,7 @@ export function createCardsRouter(ctx: any) {
   });
 
   router.post('/cards/export-md-bulk', (req, res) => {
-    const body = parseBody(ctx.idsBodySchema, req, res) as any;
+    const body = parseBody(ctx.idsBodySchema, req, res);
     if (!body) return;
     const result = buildBulkMarkdownZip(body.ids);
     if (!result) {
@@ -60,7 +62,7 @@ export function createCardsRouter(ctx: any) {
   });
 
   router.put('/cards/:id', async (req, res) => {
-    const body = parseBody(ctx.updateCardSchema, req, res) as any;
+    const body = parseBody(ctx.updateCardSchema, req, res);
     if (!body) return;
     const card = await ctx.updateCard(req.params.id, ctx.normalizeCardInput(body));
     if (!card) { sendError(req, res, 404, 'Not found'); return; }
@@ -91,7 +93,7 @@ export function createCardsRouter(ctx: any) {
   });
 
   router.post('/cards/archive-bulk', async (req, res) => {
-    const body = parseBody(ctx.idsBodySchema, req, res) as any;
+    const body = parseBody(ctx.idsBodySchema, req, res);
     if (!body) return;
     const now = new Date().toISOString();
     const updated: string[] = [];
@@ -103,28 +105,28 @@ export function createCardsRouter(ctx: any) {
   });
 
   router.post('/cards/bulk-archive', (req, res) => {
-    const body = parseBody(ctx.idsBodySchema, req, res) as any;
+    const body = parseBody(ctx.idsBodySchema, req, res);
     if (!body) return;
     const updated = ctx.bulkArchiveCards(body.ids);
     res.json({ ok: true, updated });
   });
 
   router.post('/cards/bulk-restore', (req, res) => {
-    const body = parseBody(ctx.idsBodySchema, req, res) as any;
+    const body = parseBody(ctx.idsBodySchema, req, res);
     if (!body) return;
     const updated = ctx.bulkRestoreCards(body.ids);
     res.json({ ok: true, updated });
   });
 
   router.post('/cards/bulk-delete', (req, res) => {
-    const body = parseBody(ctx.idsBodySchema, req, res) as any;
+    const body = parseBody(ctx.idsBodySchema, req, res);
     if (!body) return;
     const deleted = ctx.bulkDeleteCards(body.ids);
     res.json({ ok: true, deleted });
   });
 
   router.post('/cards/:id/links', (req, res) => {
-    const body = parseBody(ctx.linkBodySchema, req, res) as any;
+    const body = parseBody(ctx.linkBodySchema, req, res);
     if (!body) return;
     if (req.params.id === body.targetId) {
       invalidRequest(req, res, [{ path: 'targetId', message: 'Cannot link a card to itself' }]);
@@ -156,8 +158,8 @@ export function createCardsRouter(ctx: any) {
         for (const linkId of card.links) linkedIds.add(linkId);
       }
     }
-    const visibleCards = cards.filter((card: any) => linkedIds.has(card.id));
-    const nodes = visibleCards.map((card: any) => ({
+    const visibleCards = cards.filter((card: Card) => linkedIds.has(card.id));
+    const nodes = visibleCards.map((card: Card) => ({
       id: card.id,
       label: card.title.slice(0, 40),
       title: card.summary ?? card.body.slice(0, 100),
@@ -183,3 +185,4 @@ export function createCardsRouter(ctx: any) {
 
   return router;
 }
+

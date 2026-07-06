@@ -23,6 +23,15 @@ Main tables:
 
 `tags_json` and `links_json` remain on `cards` as compatibility cache columns for older data paths, but normalized reads/writes use `card_tags` and `card_links`.
 
+### `loadCards()` と `getCards()` の設計方針
+
+* **現在設計 (In-Memory Processing)**:
+  現在、`loadCards()` は SQLite データベースから全カードレコード、および関連するジャンクションテーブル（タグ・リンク）を一度に全てオンメモリにロードし、オブジェクトの構築（ハイドレーション）を行っています。`getCards()` におけるフィルタリングやソート、検索キーワードのマッチング処理は、このロードされた全カード一覧に対してメモリ上で実行されます。これは JSON ファイルストレージ時代の API 設計を引き継いでおり、小規模データセットにおいてはシンプルに動作します。
+
+* **将来の改善方針 (Database-Level Processing)**:
+  カード件数や関連数が増大した際、全件のオンメモリ読み込みとハイドレーションはメモリおよびCPUのボトルネックとなります。将来の最適化として、ソート、フィルタリング（WHERE条件）、および件数制限（LIMIT/OFFSET によるページネーション）を SQL クエリレベルに押し下げます。さらに、ページ表示対象のカードのみタグ・リンク情報を遅延ロード（Lazy Load）または部分ハイドレーションすることで、データ読み込みオーバーヘッドを削減します。
+
+
 Important indexes:
 
 | Index | Table | Purpose |

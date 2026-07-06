@@ -1,8 +1,9 @@
-import express from 'express';
+﻿import express from 'express';
+import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
 
-export function createAiRouter(ctx: any) {
+export function createAiRouter(ctx: RouteContext) {
   const router = express.Router();
 
   router.delete('/cards/:id/summary', async (req, res) => {
@@ -23,29 +24,28 @@ export function createAiRouter(ctx: any) {
       res.json({ summary, card: updated });
     } catch (err) {
       if (ctx.isAiSummaryError(err)) {
-        const aiError = err as any;
         logger.warn({
           event: 'ai_provider_error',
           requestId: getRequestId(req),
-          code: aiError.code,
-          statusCode: aiError.status,
+          code: err.code,
+          statusCode: err.status,
           provider: ctx.AI_PROVIDER,
-          error: errorMeta(aiError),
+          error: errorMeta(err),
         }, 'AI summary provider error');
-        res.status(aiError.status).json({
-          error: aiError.message,
-          code: aiError.code,
+        res.status(err.status).json({
+          error: err.message,
+          code: err.code,
           requestId: getRequestId(req),
         });
         return;
       }
       logger.error({ event: 'ai_summary_error', requestId: getRequestId(req), error: errorMeta(err) }, 'AI summary failed');
-      sendError(req, res, 500, 'Anthropic APIでエラーが発生しました', [{ code: 'api_error' }]);
+      sendError(req, res, 500, 'AI APIでエラーが発生しました', [{ code: 'api_error' }]);
     }
   });
 
   router.post('/cards/summarize-bulk', ctx.aiLimiter, async (req, res) => {
-    const body = parseBody(ctx.idsBodySchema, req, res) as any;
+    const body = parseBody(ctx.idsBodySchema, req, res);
     if (!body) return;
     if (!ctx.hasConfiguredProviderKey()) {
       const keyName = ctx.AI_PROVIDER === 'gemini' ? 'GEMINI_API_KEY' : 'ANTHROPIC_API_KEY';

@@ -1,44 +1,55 @@
-import express from 'express';
+﻿import express from 'express';
+import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
+import type { Card } from '../domain/card.js';
+import type { Article } from '../bm25_engine.js';
 
-export function createSearchRouter(ctx: any) {
+type SearchInputArticle = Partial<Article> & Pick<Article, 'id' | 'title' | 'body'> & {
+  publishedAt: string | Date;
+  sourceAuthority?: number;
+  url?: string;
+};
+
+export function createSearchRouter(ctx: RouteContext) {
   const router = express.Router();
 
   router.get('/modes', (_req, res) => res.json(ctx.MODES));
 
   router.post('/run', async (req, res) => {
-    const body = parseBody(ctx.runBodySchema, req, res) as any;
+    const body = parseBody(ctx.runBodySchema, req, res);
     if (!body) return;
     try {
       const { modeId, config, articles: reqArticles, options } = body;
-      const rawArticles = reqArticles ?? ctx.getCachedArticles()?.articles ?? [];
+      const rawArticles = (reqArticles ?? ctx.getCachedArticles()?.articles ?? []) as SearchInputArticle[];
       if (!rawArticles.length) {
-        res.status(400).json({ error: '記事がありません。先に /api/collect を実行してください', requestId: getRequestId(req) });
+        res.status(400).json({ error: '記事がありません。先に /api/collect を呼んでください', requestId: getRequestId(req) });
         return;
       }
-      const cardsById = new Map(ctx.loadCards().map((card: any) => [card.id, card]));
-      const parsed = rawArticles.map((article: any) => {
-        const stored = cardsById.get(article.id) as any;
+      const cardsById = new Map(ctx.loadCards().map((card: Card) => [card.id, card]));
+      const parsed: Article[] = rawArticles.map(art => {
+        const stored = cardsById.get(art.id);
         return {
-          ...article,
-          title: stored?.title ?? article.title,
-          body: stored?.body ?? article.body,
-          summary: stored?.summary ?? article.summary,
-          tags: stored?.tags ?? article.tags ?? [],
-          url: stored?.url ?? article.url ?? '',
-          type: stored?.type ?? article.type,
-          createdAt: stored?.createdAt ?? article.createdAt,
-          updatedAt: stored?.updatedAt ?? article.updatedAt,
-          archived: stored?.archived ?? article.archived,
-          archivedAt: stored?.archivedAt ?? article.archivedAt,
-          publishedAt: new Date(article.publishedAt),
-          tokens: stored?.tokens ?? article.tokens,
-          docLength: stored?.docLength ?? article.docLength,
+          id: art.id,
+          title: stored?.title ?? art.title,
+          body: stored?.body ?? art.body,
+          publishedAt: new Date(art.publishedAt),
+          sourceAuthority: art.sourceAuthority ?? 0,
+          url: stored?.url ?? art.url ?? '',
+          source: art.source ?? undefined,
+          tokens: stored?.tokens ?? art.tokens,
+          docLength: stored?.docLength ?? art.docLength,
+          summary: stored?.summary ?? art.summary ?? undefined,
+          tags: stored?.tags ?? art.tags ?? [],
+          type: stored?.type ?? art.type ?? undefined,
+          createdAt: stored?.createdAt ?? art.createdAt ?? undefined,
+          updatedAt: stored?.updatedAt ?? art.updatedAt ?? undefined,
+          archived: stored?.archived ?? art.archived ?? undefined,
+          archivedAt: stored?.archivedAt ?? art.archivedAt ?? undefined,
         };
       });
       const result = await ctx.runPipeline(parsed, config, modeId ?? 'custom', options);
-      const stripSearchFields = (article: any) => {
+      const stripSearchFields = (article: Article) => {
         const { tokens: _tokens, docLength: _docLength, ...publicArticle } = article;
         return {
           ...publicArticle,
@@ -51,12 +62,12 @@ export function createSearchRouter(ctx: any) {
       };
       const response = {
         ...result,
-        active: result.active.map((item: any) => {
+        active: result.active.map(item => {
           const article = stripSearchFields(item.article);
           const meta = ctx.buildSearchMatchMeta(article, ctx.buildSearchKeywordCandidates(config), item.breakdown?.matchedTerms);
           return { ...item, article, ...meta };
         }),
-        archived: result.archived.map((item: any) => {
+        archived: result.archived.map(item => {
           const article = stripSearchFields(item.article);
           const meta = ctx.buildSearchMatchMeta(article, ctx.buildSearchKeywordCandidates(config));
           return { ...item, article, ...meta };
@@ -75,7 +86,7 @@ export function createSearchRouter(ctx: any) {
   });
 
   router.post('/search/expand-keywords', ctx.aiLimiter, async (req, res) => {
-    const body = parseBody(ctx.keywordExpandSchema, req, res) as any;
+    const body = parseBody(ctx.keywordExpandSchema, req, res);
     if (!body) return;
     try {
       const original = new Set(body.keywords.map((keyword: string) => keyword.toLowerCase()));
@@ -92,16 +103,15 @@ export function createSearchRouter(ctx: any) {
       res.json({ expandedKeywords });
     } catch (err) {
       if (ctx.isAiSummaryError(err)) {
-        const aiError = err as any;
         logger.warn({
           event: 'ai_keyword_expand_error',
           requestId: getRequestId(req),
-          code: aiError.code,
-          statusCode: aiError.status,
+          code: err.code,
+          statusCode: err.status,
           provider: ctx.AI_PROVIDER,
-          error: errorMeta(aiError),
+          error: errorMeta(err),
         }, 'keyword expansion provider error');
-        res.status(aiError.status).json({ error: aiError.message, code: aiError.code, requestId: getRequestId(req) });
+        res.status(err.status).json({ error: err.message, code: err.code, requestId: getRequestId(req) });
         return;
       }
       logger.error({ event: 'ai_keyword_expand_error', requestId: getRequestId(req), error: errorMeta(err) }, 'keyword expansion failed');

@@ -6,6 +6,8 @@
 import fs   from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { performance } from 'node:perf_hooks';
+import { logger } from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.dirname(__dirname);
@@ -247,7 +249,7 @@ function syncStoredRelations(id: string, tags: string[], links: string[], create
 }
 
 export function loadCards(): Card[] {
-  console.time("load cards");
+  const startTime = performance.now();
   try {
     const rows = db.prepare(`
       SELECT * FROM cards
@@ -257,7 +259,8 @@ export function loadCards(): Card[] {
 
     return rows.map(row => hydrateCardRelations(rowToCard(row), row, tagsMap, linksMap));
   } finally {
-    console.timeEnd("load cards");
+    const durationMs = performance.now() - startTime;
+    logger.debug({ event: 'db_load_cards_duration', durationMs }, 'Loaded cards from SQLite database');
   }
 }
 
@@ -314,12 +317,26 @@ function newId(): string {
   return `card_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/**
+ * システム内部用途（移行や外部記事収集など）限定のカード作成フィールド型。
+ * 通常のクライアントAPIからは `id` を直接指定することはできません。
+ */
+export type SystemCreateCardFields = Pick<Card, 'title' | 'body'> &
+  Partial<Omit<Card, 'createdAt' | 'updatedAt'>> & {
+    /** 内部用途限定の固定ID */
+    id?: string;
+  };
+
+/**
+ * カードを新規作成し、データベースに保存します。
+ * @param fields 作成するカードのフィールド情報
+ */
 export async function createCard(
-  fields: Pick<Card, 'title' | 'body'> & Partial<Omit<Card, 'id' | 'createdAt' | 'updatedAt'>>
+  fields: SystemCreateCardFields
 ): Promise<Card> {
   const now   = new Date().toISOString();
   const card: Card = {
-    id:        newId(),
+    id:        fields.id ?? newId(),
     title:     fields.title,
     body:      fields.body,
     summary:   fields.summary,
