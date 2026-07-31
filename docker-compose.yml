@@ -6,6 +6,24 @@ services:
     environment:
       - PORT=3000
       - DB_PATH=/app/data/cards.db
+      - STORAGE_DRIVER=${STORAGE_DRIVER:-sqlite}
+      - POSTGRES_URL=${POSTGRES_URL:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - API_KEY=${API_KEY}
+      - SEARCH_ENGINE=${SEARCH_ENGINE:-bm25}
+      - CARD_SEARCH_ENGINE=${CARD_SEARCH_ENGINE:-like}
     volumes:
       - ./data:/app/data
+  postgres:
+    image: postgres:17-alpine
+    profiles: [postgres]
+    environment:
+      POSTGRES_DB: my_search
+      POSTGRES_USER: my_search
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-my_search_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+volumes:
+  postgres-data:

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { app, database } from './helpers.js';
 import { saveArticlesToDb } from '../repositories/articles_repository.js';
+import { createCardWithTransaction } from '../repositories/cards_repository.js';
 
 const db = database.db;
 
@@ -30,6 +31,7 @@ describe('candidate lifecycle', () => {
       const saved = await request(app).post(`/api/candidates/${id}/save`).send({});
       expect(saved.status).toBe(201);
       expect(saved.body.candidate.status).toBe('saved_as_card');
+      expect(saved.body.candidate.savedCardId).toBe(saved.body.card.id);
       expect(saved.body.card.title).toBe('Candidate lifecycle article');
       const expired = await request(app).put(`/api/candidates/${id}/expire`).send({});
       expect(expired.status).toBe(200);
@@ -44,7 +46,7 @@ describe('candidate lifecycle', () => {
 
   it('adds lifecycle columns and migration indexes to SQLite', () => {
     const columns = db.prepare('PRAGMA table_info(articles)').all() as Array<{ name: string }>;
-    expect(columns.map(column => column.name)).toEqual(expect.arrayContaining(['candidate_status', 'first_seen_at', 'reviewed_at', 'saved_at', 'expired_at']));
+    expect(columns.map(column => column.name)).toEqual(expect.arrayContaining(['candidate_status', 'first_seen_at', 'reviewed_at', 'saved_at', 'expired_at', 'saved_card_id']));
     const indexes = db.prepare('PRAGMA index_list(articles)').all() as Array<{ name: string }>;
     expect(indexes.map(index => index.name)).toEqual(expect.arrayContaining(['idx_articles_candidate_status', 'idx_articles_first_seen_at']));
   });
@@ -87,5 +89,34 @@ describe('candidate ranking metadata', () => {
     expect(candidate.body.score).toBeTypeOf('number');
     expect(candidate.body.matchReason).toContain('title');
     db.prepare('DELETE FROM articles WHERE id = ?').run(id);
+  });
+});
+
+describe('candidate save atomicity', () => {
+  it('rejects a second save and leaves one linked card', async () => {
+    const id = 'candidate-double-save-' + Date.now();
+    const url = 'https://example.test/' + id;
+    saveArticlesToDb([{ id, title: 'Double save candidate', body: 'body', url, publishedAt: new Date(), sourceAuthority: 1 }]);
+    try {
+      const first = await request(app).post('/api/candidates/' + id + '/save').send({});
+      const second = await request(app).post('/api/candidates/' + id + '/save').send({});
+      expect(first.status).toBe(201);
+      expect(second.status).toBe(409);
+      expect(second.body.code).toBe('candidate_already_saved');
+      expect(db.prepare('SELECT COUNT(*) as count FROM articles WHERE id = ? AND saved_card_id IS NOT NULL').get(id)).toEqual({ count: 1 });
+      expect(db.prepare('SELECT COUNT(*) as count FROM cards WHERE url = ?').get(url)).toEqual({ count: 1 });
+    } finally {
+      db.prepare('DELETE FROM articles WHERE id = ?').run(id);
+      db.prepare('DELETE FROM cards WHERE url = ?').run(url);
+    }
+  });
+
+  it('rolls back the card insert when finalization fails', async () => {
+    const id = 'atomic-card-' + Date.now();
+    await expect(createCardWithTransaction(
+      { id, title: 'Atomic rollback card', body: 'body', type: 'memo' },
+      () => { throw new Error('finalization failed'); },
+    )).rejects.toThrow('finalization failed');
+    expect(db.prepare('SELECT 1 FROM cards WHERE id = ?').get(id)).toBeUndefined();
   });
 });

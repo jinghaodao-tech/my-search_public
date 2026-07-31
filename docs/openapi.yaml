@@ -1,0 +1,90 @@
+openapi: 3.1.0
+info:
+  title: My Search App API
+  version: 1.0.0
+  description: Local-first card, candidate, collection, and search API.
+servers:
+  - url: http://127.0.0.1:3000
+paths:
+  /healthz:
+    get:
+      operationId: health
+      responses:
+        '200': { description: Healthy application and database }
+  /api/cards:
+    get:
+      operationId: listCards
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: archived, in: query, schema: { type: boolean } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        '200': { description: Card list }
+    post:
+      operationId: createCard
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/CardInput' } }
+      responses:
+        '200': { description: Created card }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /api/run:
+    post:
+      operationId: runSearch
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/SearchRequest' } }
+      responses:
+        '200': { description: Ranked search results }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /api/collect:
+    post:
+      operationId: collect
+      requestBody:
+        content:
+          application/json: { schema: { type: object, properties: { fixture: { type: string }, background: { type: boolean } } } }
+      responses:
+        '200': { description: Collection result }
+        '202': { description: Background collection job accepted }
+  /api/jobs:
+    get:
+      operationId: listJobs
+      responses:
+        '200': { description: Persisted background jobs }
+  /api/jobs/{id}:
+    get:
+      operationId: getJob
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Job status }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    CardInput:
+      type: object
+      required: [title, body]
+      properties:
+        title: { type: string, minLength: 1 }
+        body: { type: string }
+        tags: { type: array, items: { type: string } }
+        type: { type: string, enum: [article, memo, csv] }
+    SearchRequest:
+      type: object
+      required: [config]
+      properties:
+        modeId: { type: string }
+        config: { type: object }
+        articles: { type: array, items: { type: object } }
+  responses:
+    ValidationError:
+      description: Request validation failed
+    NotFound:
+      description: Resource not found

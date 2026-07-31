@@ -19,12 +19,17 @@ import { createCollectRouter } from './routes/collect_routes.js';
 import { createKjRouter } from './routes/kj_routes.js';
 import { createSearchRouter } from './routes/search_routes.js';
 import { createCandidateRouter } from './routes/candidate_routes.js';
+import { createJobsRouter } from './routes/jobs_routes.js';
 import {
   requestLogger,
   notFoundHandler,
   errorHandler,
+  apiKeyGuard,
+  metricsMiddleware,
+  metricsSnapshot,
 } from './services/http_service.js';
 import { createRouteContext } from './services/route_context.js';
+import { loadRuntimeConfig } from './config/runtime_config.js';
 declare global {
   namespace Express {
     interface Request {
@@ -44,10 +49,12 @@ for (const envPath of [
   }
 }
 
+const runtimeConfig = loadRuntimeConfig();
+
 const app = express();
 export { app };
 
-const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
+const corsOrigin = runtimeConfig.CORS_ORIGIN;
 const routeContext = createRouteContext(createRateLimiters());
 
 app.use(helmet({
@@ -56,6 +63,9 @@ app.use(helmet({
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '10mb' }));
 app.use(requestLogger);
+app.use(metricsMiddleware);
+app.use('/api', apiKeyGuard);
+app.get('/metrics', (_req, res) => res.json({ ok: true, metrics: metricsSnapshot() }));
 const publicDir = path.join(__dirname, 'public');
 app.use(express.static(publicDir));
 app.use(createSystemRouter(publicDir));
@@ -63,6 +73,7 @@ app.use(createSystemRouter(publicDir));
 app.use('/api', createCollectRouter(routeContext));
 app.use('/api', createSearchRouter(routeContext));
 app.use('/api', createCandidateRouter(routeContext));
+app.use('/api', createJobsRouter(routeContext));
 app.use('/api', createCardsRouter(routeContext));
 app.use('/api', createAiRouter(routeContext));
 app.use('/api', createKjRouter(routeContext));
@@ -81,7 +92,7 @@ if (process.env.NODE_ENV !== 'test') {
   await routeContext.bootstrap();
 }
 
-const PORT = Number(process.env.PORT ?? 3000);
+const PORT = runtimeConfig.PORT;
 export function startServer(port = PORT) {
   const host = process.env.HOST ?? '127.0.0.1';
   return app.listen(port, host, () => {

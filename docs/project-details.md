@@ -20,6 +20,10 @@ Main tables:
 | `card_links` | Junction table for directed Zettelkasten links and backlinks |
 | `kj_groups` | KJ grouping metadata |
 | `schema_migrations` | Local migration tracking |
+| `jobs` | Persisted background job state and results |
+| `cards_fts` | SQLite FTS5 index used by the optional hybrid search engine |
+
+PostgreSQL preparation is available through `repositories/postgres_repository.ts`, `db/postgres_schema.sql`, and `npm run db:migrate:postgres`; SQLite remains the active default driver until service-level cutover.
 
 `tags_json` and `links_json` remain on `cards` as compatibility cache columns for older data paths, but normalized reads/writes use `card_tags` and `card_links`.
 
@@ -33,7 +37,7 @@ Earlier versions loaded all cards, hydrated every tag/link relation, and then fi
 
 When `GET /api/cards` receives `limit` or `offset`, it returns a paged object with `items`, `total`, `limit`, and `offset`. Without those parameters it keeps the legacy array response for existing UI compatibility. The paged path hydrates tags and links only for the selected card rows, reducing unnecessary relation loading during list views.
 
-This list filter is separate from the BM25 ranking pipeline. BM25 search remains handled by the existing search endpoints; `q` is only a lightweight card-list narrowing tool. Future improvements could compare this simple `LIKE` path with SQLite FTS5 for larger local corpora.
+This list filter remains a lightweight card-list narrowing tool. The search endpoint can use `SEARCH_ENGINE=hybrid` to combine BM25 ranking with SQLite FTS5 evidence; `q` filtering remains independently configurable through `CARD_SEARCH_ENGINE`.
 
 Important indexes:
 
@@ -90,6 +94,8 @@ Core endpoints:
 | `GET` | `/api/zettelkasten/graph` | Get graph data |
 | `GET` | `/api/kj/groups` | List KJ groups |
 | `POST` | `/api/kj/groups` | Create KJ group |
+
+`POST /api/cards/archive-bulk` remains as a compatibility alias and returns `Deprecation: true`. New clients should use `/api/cards/bulk-archive`.
 
 ## Security and API Quality
 

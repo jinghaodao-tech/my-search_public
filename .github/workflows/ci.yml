@@ -43,6 +43,9 @@ jobs:
       - name: Encoding check
         run: npm run check:encoding
 
+      - name: OpenAPI contract check
+        run: npm run check:openapi
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -51,6 +54,17 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
+
+      - name: Write test summary
+        run: npm run test:summary
+
+      - name: Upload benchmark and quality artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-app-verification
+          path: artifacts/
+          if-no-files-found: ignore
 
       - name: Docker build
         run: docker build -t my-search-public:test .

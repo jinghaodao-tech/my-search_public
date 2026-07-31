@@ -1,6 +1,6 @@
 # BM25 Benchmark
 
-Generated: 2026-07-31T02:21:44.314Z
+Generated: 2026-07-31T10:40:06.201Z
 
 Command:
 
@@ -16,20 +16,20 @@ The script performs one 100-card warm-up search before recording results. This e
 
 | Corpus size | DB load | Token parse / preparation | BM25 scoring | Sorting / limiting | Total search | Returned |
 |---:|---:|---:|---:|---:|---:|---:|
-| 100 | 2.58 ms | 2 ms | 1.181 ms | 0.139 ms | 5.191 ms | 100 |
-| 1,000 | 1.343 ms | 4.782 ms | 7.775 ms | 0.489 ms | 14.726 ms | 100 |
-| 5,000 | 0.914 ms | 9.184 ms | 56.536 ms | 4.297 ms | 74.079 ms | 100 |
-| 10,000 | 0.783 ms | 16.017 ms | 66.901 ms | 3.16 ms | 91.758 ms | 100 |
+| 100 | 2.005 ms | 1.864 ms | 1.721 ms | 0.108 ms | 5.161 ms | 100 |
+| 1,000 | 1.752 ms | 2.732 ms | 6.056 ms | 0.474 ms | 10.871 ms | 100 |
+| 5,000 | 0.825 ms | 9.794 ms | 41.97 ms | 3.835 ms | 59.447 ms | 100 |
+| 10,000 | 0.82 ms | 16.005 ms | 66.12 ms | 3.322 ms | 92.612 ms | 100 |
 
 ## Scope Results
 
 | Scope | Corpus | Elapsed | Dedup | Result limit |
 |---|---:|---:|---|---:|
-| ranking-only | 10,000 | 74.941 ms | disabled | 100 |
-| production-like | 5,000 | 644.529 ms | enabled | 100 |
-| end-to-end-api | 1,000 | 8.515 ms | disabled | 100 |
-| cold-start | 100 | 1.431 ms | disabled | 100 |
-| warm-search | 100 | 1.637 ms | disabled | 100 |
+| ranking-only | 10,000 | 99.488 ms | disabled | 100 |
+| production-like | 5,000 | 624.975 ms | enabled | 100 |
+| end-to-end-api | 1,000 | 9.131 ms | disabled | 100 |
+| cold-start | 100 | 1.563 ms | disabled | 100 |
+| warm-search | 100 | 1.546 ms | disabled | 100 |
 
 ## End-to-end HTTP
 
@@ -64,3 +64,11 @@ Historical baseline before token precomputation:
 ## Why This Matters
 
 BM25 is only useful in the GUI if search latency stays predictable as the local-first card corpus grows. Separating benchmark stages makes future regressions easier to diagnose and makes the next optimization target clear.
+
+
+## Candidate pipeline scopes
+
+| Scope | Corpus | Elapsed | After dedup | Active |
+|---|---:|---:|---:|---:|
+| candidate-pipeline-near-duplicate | 200 | 6.964 ms | 1 | 1 |
+| candidate-pipeline-diverse | 200 | 3.031 ms | 200 | 200 |

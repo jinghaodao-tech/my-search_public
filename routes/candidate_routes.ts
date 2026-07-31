@@ -1,6 +1,7 @@
 import { candidateStatusSchema } from "../schemas/api_schemas.js";
 import express from 'express';
 import type { RouteContext } from '../services/route_context.js';
+import { CandidateSaveConflict } from '../services/candidate_service.js';
 import { sendError } from '../services/http_service.js';
 
 export function createCandidateRouter(ctx: RouteContext) {
@@ -39,8 +40,25 @@ export function createCandidateRouter(ctx: RouteContext) {
     if (candidate.status === 'saved_as_card') { sendError(req, res, 409, 'Candidate already saved', undefined, 'candidate_already_saved'); return; }
     const article = ctx.getArticleById(req.params.id);
     if (!article) { sendError(req, res, 404, 'Not found', undefined, 'candidate_not_found'); return; }
-    const card = await ctx.createCard({ title: article.title, body: article.body, summary: article.summary, url: article.url, tags: article.tags ?? [], type: 'article' });
-    res.status(201).json({ card, candidate: ctx.saveCandidate(req.params.id) });
+
+
+    let savedCandidate = null;
+    try {
+      const card = await ctx.createCardWithTransaction(
+        { title: article.title, body: article.body, summary: article.summary, url: article.url, tags: article.tags ?? [], type: 'article' },
+        createdCard => {
+          savedCandidate = ctx.saveCandidate(req.params.id, createdCard.id);
+          if (!savedCandidate) throw new CandidateSaveConflict();
+        },
+      );
+      res.status(201).json({ card, candidate: savedCandidate });
+    } catch (error) {
+      if (error instanceof CandidateSaveConflict) {
+        sendError(req, res, 409, 'Candidate save conflict', undefined, 'candidate_save_conflict');
+        return;
+      }
+      throw error;
+    }
   });
   return router;
 }

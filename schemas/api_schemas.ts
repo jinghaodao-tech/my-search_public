@@ -21,6 +21,7 @@ export const collectorConfigSchema = z.object({
 }).strict();
 
 export const collectBodySchema = z.object({
+  fixture: z.enum(['portfolio-demo']).optional(),
   background: z.boolean().optional(),
   config: collectorConfigSchema.optional(),
 }).strict();
@@ -31,17 +32,17 @@ export const schedulerStartSchema = z.object({
 
 const bm25KeywordSchema = z.object({
   term: z.string().trim().min(1).max(100),
-  weight: z.number().min(0).max(20),
+  weight: z.number().finite().min(0).max(20),
   synonyms: z.array(z.string().trim().min(1).max(100)).max(100).optional(),
 }).passthrough();
 
 const runConfigSchema = z.object({
   label: z.string().max(120).default('Custom'),
   description: z.string().max(1000).default(''),
-  k1: z.number(),
-  b: z.number(),
-  lambda: z.number(),
-  contextBonus: z.number(),
+  k1: z.number().finite().min(0).max(10),
+  b: z.number().finite().min(0).max(1),
+  lambda: z.number().finite().min(0).max(10),
+  contextBonus: z.number().finite().min(0).max(20),
   keywords: z.array(bm25KeywordSchema).max(200),
 }).passthrough();
 
@@ -49,15 +50,17 @@ const runArticleSchema = z.object({
   id: z.string().trim().min(1).max(300),
   title: z.string().max(500),
   body: z.string().max(50000).default(''),
-  publishedAt: z.union([z.string(), z.date()]),
+  publishedAt: z.union([z.string().datetime(), z.date()]),
   sourceAuthority: z.number().min(0).max(1).optional(),
   url: z.string().max(2048).optional(),
+  tokens: z.array(z.string().trim().min(1).max(100)).max(100000).optional(),
+  docLength: z.number().int().nonnegative().max(100000).optional(),
 }).passthrough();
 
 const runOptionsSchema = z.object({
-  dedupThreshold: z.number().optional(),
-  archiveScoreThreshold: z.number().optional(),
-  resultLimit: z.number().optional(),
+  dedupThreshold: z.number().finite().min(0).max(1).optional(),
+  archiveScoreThreshold: z.number().finite().optional(),
+  resultLimit: z.number().int().min(1).max(500).optional(),
 }).passthrough();
 
 export const runBodySchema = z.object({

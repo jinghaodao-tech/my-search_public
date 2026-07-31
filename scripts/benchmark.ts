@@ -66,6 +66,10 @@ function makeCorpus(size: number): Article[] {
   return Array.from({ length: size }, (_, index) => makeArticle(index));
 }
 
+function makeCandidateCorpus(size: number, nearDuplicate: boolean): Article[] {
+  return Array.from({ length: size }, (_, index) => ({ ...makeArticle(index), id: "candidate-" + (nearDuplicate ? "near-" : "diverse-") + index, body: nearDuplicate ? "Repeated candidate article about search and implementation." : "Distinct candidate article " + index + " about search and implementation " + index + "." }));
+}
+
 async function benchmarkCorpus(size: number) {
   const { loadCards } = await import("../cards_engine.js");
   const dbStart = performance.now();
@@ -106,6 +110,12 @@ async function benchmarkScope(scope: 'ranking-only' | 'production-like' | 'end-t
   await runPipeline(makeCorpus(size), benchmarkMode, `benchmark-${scope}`, options);
   return { scope, corpusSize: size, elapsedMs: roundMs(performance.now() - started), dedupEnabled: options.dedupThreshold < 1, resultLimit };
 }
+async function benchmarkCandidateScope(name: "candidate-pipeline-near-duplicate" | "candidate-pipeline-diverse", nearDuplicate: boolean) {
+  const started = performance.now();
+  const result = await runPipeline(makeCandidateCorpus(200, nearDuplicate), benchmarkMode, name, { archiveScoreThreshold: -1, dedupThreshold: nearDuplicate ? 0.8 : 1, resultLimit: 100 });
+  return { scope: name, corpusSize: 200, elapsedMs: roundMs(performance.now() - started), afterDedup: result.stats.afterDedup, activeCount: result.stats.activeCount };
+}
+
 async function warmUpBenchmark(): Promise<void> {
   await runPipeline(makeCorpus(100), benchmarkMode, "benchmark-warmup", {
     archiveScoreThreshold: -1,
@@ -114,7 +124,7 @@ async function warmUpBenchmark(): Promise<void> {
   });
 }
 
-function writeMarkdown(results: Awaited<ReturnType<typeof benchmarkCorpus>>[], scopes: Array<{ scope: string; corpusSize: number; elapsedMs: number; dedupEnabled: boolean; resultLimit: number }>): void {
+function writeMarkdown(results: Awaited<ReturnType<typeof benchmarkCorpus>>[], scopes: Array<{ scope: string; corpusSize: number; elapsedMs: number; dedupEnabled: boolean; resultLimit: number }>, candidateScopes: Array<{ scope: string; corpusSize: number; elapsedMs: number; afterDedup: number; activeCount: number }>): void {
   const generatedAt = new Date().toISOString();
   const rows = results
     .map((result) => {
@@ -195,6 +205,11 @@ for (const size of corpusSizes) {
   results.push(await benchmarkCorpus(size));
 }
 
+const candidateScopes = [
+  await benchmarkCandidateScope("candidate-pipeline-near-duplicate", true),
+  await benchmarkCandidateScope("candidate-pipeline-diverse", false),
+];
+
 const scopes = [
   await benchmarkScope("ranking-only", 10000),
   await benchmarkScope("production-like", 5000),
@@ -202,8 +217,22 @@ const scopes = [
   await benchmarkScope("cold-start", 100),
   await benchmarkScope("warm-search", 100),
 ];
-writeMarkdown(results, scopes);
-console.log(JSON.stringify({ ok: true, resultLimit, results, scopes }, null, 2));
+writeMarkdown(results, scopes, candidateScopes);
+const candidateMarkdown = "\n\n## Candidate pipeline scopes\n\n| Scope | Corpus | Elapsed | After dedup | Active |\n|---|---:|---:|---:|---:|\n" + candidateScopes.map(scope => "| " + scope.scope + " | " + scope.corpusSize + " | " + ms(scope.elapsedMs) + " | " + scope.afterDedup + " | " + scope.activeCount + " |").join("\n");
+fs.appendFileSync(path.join(projectRoot, "docs", "benchmark.md"), candidateMarkdown, "utf-8");
+const performanceThresholds = { rankingOnlyMs: 500, productionLikeMs: 3000, coldStartMs: 1000, warmSearchMs: 100, candidatePipelineMs: 1000 };
+const performanceFailures = [
+  scopes.find(scope => scope.scope === 'ranking-only' && scope.elapsedMs > performanceThresholds.rankingOnlyMs) ? 'ranking-only' : null,
+  scopes.find(scope => scope.scope === 'production-like' && scope.elapsedMs > performanceThresholds.productionLikeMs) ? 'production-like' : null,
+  scopes.find(scope => scope.scope === 'cold-start' && scope.elapsedMs > performanceThresholds.coldStartMs) ? 'cold-start' : null,
+  scopes.find(scope => scope.scope === 'warm-search' && scope.elapsedMs > performanceThresholds.warmSearchMs) ? 'warm-search' : null,
+  candidateScopes.find(scope => scope.elapsedMs > performanceThresholds.candidatePipelineMs) ? 'candidate-pipeline' : null,
+].filter(Boolean);
+const benchmarkArtifact = { generatedAt: new Date().toISOString(), resultLimit, results, scopes, candidateScopes, performanceThresholds, performanceFailures };
+fs.mkdirSync(path.join(projectRoot, "artifacts"), { recursive: true });
+fs.writeFileSync(path.join(projectRoot, "artifacts", "benchmark-results.json"), JSON.stringify(benchmarkArtifact, null, 2), "utf-8");
+console.log(JSON.stringify({ ok: true, ...benchmarkArtifact }, null, 2));
+if (performanceFailures.length) process.exitCode = 1;
 
 console.time = originalConsoleTime;
 console.timeEnd = originalConsoleTimeEnd;

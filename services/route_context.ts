@@ -1,7 +1,7 @@
 import type express from 'express';
 import { getArticleById } from '../repositories/articles_repository.js';
 import { expireCandidate, expireReviewedCandidates, getCandidate, getCandidates, reviewCandidate, saveCandidate } from './candidate_service.js';
-import { MODES, runPipeline } from './search_service.js';
+import { MODES, createSearchEngine } from './search_service.js';
 import { createCollectorService } from './collector_service.js';
 import { createSchedulerService } from './scheduler_service.js';
 import {
@@ -10,6 +10,7 @@ import {
   bulkDeleteCards,
   bulkRestoreCards,
   createCard,
+  createCardWithTransaction,
   deleteCard,
   getAllTags,
   getBacklinks,
@@ -56,6 +57,7 @@ import {
   summarizeCard,
 } from './ai_service.js';
 import { buildSearchKeywordCandidates, buildSearchMatchMeta } from './search_match_service.js';
+import { createJobService } from './job_service.js';
 
 function normalizeCardInput<T extends { url?: string | null; kjGroupId?: string | null; note?: unknown }>(body: T) {
   const { note: _note, ...rest } = body;
@@ -73,6 +75,8 @@ export function createRouteContext(limiters: {
 }) {
   const collector = createCollectorService();
   const scheduler = createSchedulerService();
+  const jobs = createJobService();
+  const searchEngine = createSearchEngine();
 
   function isCollectorConfig(value: unknown) {
     return collectorConfigSchema.safeParse(value).success;
@@ -92,15 +96,21 @@ export function createRouteContext(limiters: {
     ...collector,
     ...scheduler,
     collectAll: collector.collectAll,
+    collectFixture: collector.collectFixture,
     startScheduler: scheduler.startScheduler,
     saveArticles: collector.saveArticles,
     loadArticles: collector.loadArticles,
     ensureArticleTokens: collector.ensureArticleTokens,
-    runPipeline,
+    runPipeline: searchEngine.run.bind(searchEngine),
+    searchEngine,
+    submitJob: jobs.submit,
+    getJob: jobs.get,
+    listJobs: jobs.list,
     loadCards,
     getCards,
     getCardsPage,
     createCard,
+  createCardWithTransaction,
     updateCard,
     deleteCard,
     getCard,

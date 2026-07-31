@@ -26,7 +26,7 @@ interface KeywordWeight {
   synonyms?: string[];   // 表記揺れを代表語に統合
 }
 
-interface ModeConfig {
+export interface ModeConfig {
   label: string;
   description: string;
   k1: number;            // BM25 飽和速度 (推奨: 0.5–3.0)
@@ -88,8 +88,10 @@ interface CorpusStats {
   termDocFreq: Map<string, number>; // term → 出現文書数
 }
 
-interface PipelineResult {
+export interface PipelineResult {
   active: ScoredArticle[];
+  belowThreshold: Array<{ article: Article; reason: string }>;
+  /** @deprecated Use belowThreshold. */
   archived: Array<{ article: Article; reason: string }>;
   stats: {
     inputCount: number;
@@ -587,6 +589,7 @@ export async function runPipeline(
   if (queryTokens.length === 0) {
     return {
       active: [],
+      belowThreshold: [],
       archived: [],
       stats: {
         inputCount: rawArticles.length,
@@ -643,6 +646,7 @@ export async function runPipeline(
 
   return {
     active: limitedActive,
+    belowThreshold: limitedArchived,
     archived: limitedArchived,
     stats: {
       inputCount: rawArticles.length,

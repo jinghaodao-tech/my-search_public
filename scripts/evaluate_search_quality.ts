@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { runPipeline, type Article } from '../bm25_engine.js';
 
 type SearchCase = { id: string; query: string; keywords: Array<{ term: string; weight: number; synonyms?: string[] }>; expected: string[] };
@@ -12,8 +14,8 @@ const articles: Article[] = [
   baseArticle('zettelkasten-links', 'Zettelkasten backlinks and graph notes', 'Cards link to other cards and show backlinks for knowledge navigation.', ['zettelkasten','backlinks','links','graph','cards','knowledge','navigation']),
   baseArticle('csv-import', 'CSV and JSON import validation', 'Importers validate local card data before saving it into SQLite.', ['csv','json','import','validation','validate','local','card','data']),
   baseArticle('ui-polish', 'Dashboard visual layout memo', 'Small UI adjustments improve spacing, colors, and readability.', ['dashboard','visual','layout','spacing','colors','readability']),
-  baseArticle('jp-search', '保存済みカード検索', '保存済みの知識を通常検索で再発見する。', ['保存済み','カード','検索','知識','再発見']),
-  ...Array.from({ length: 35 }, (_, index) => baseArticle(`noise-${index}`, `Unrelated document ${index}`, `Archive note ${index} about unrelated operations and maintenance.`, ['archive','operations','maintenance',`noise-${index}`], 0.2)),
+  baseArticle('jp-search', '保存済みカード検索', '保存済みの知識を通常検索で再発見する。', ['保存','済み','カード','検索','知識','発見']),
+  ...Array.from({ length: 45 }, (_, index) => baseArticle(`noise-${index}`, `Unrelated document ${index}`, `Archive note ${index} about unrelated operations and maintenance.`, ['archive','operations','maintenance',`noise-${index}`], 0.2)),
 ];
 
 const cases: SearchCase[] = [
@@ -32,6 +34,11 @@ const cases: SearchCase[] = [
   { id: 'jp-saved-search', query: '保存済みカード検索', keywords: [{ term: '保存済み', weight: 2 }, { term: '検索', weight: 1.5 }], expected: ['jp-search'] },
   { id: 'jp-knowledge', query: '知識を再発見', keywords: [{ term: '知識', weight: 2 }, { term: '再発見', weight: 1.5 }], expected: ['jp-search'] },
   { id: 'jp-card', query: 'カード 検索', keywords: [{ term: 'カード', weight: 2 }, { term: '検索', weight: 1 }], expected: ['jp-search'] },
+  { id: 'bm25-ranking', query: 'ranking synonym search', keywords: [{ term: 'ranking', weight: 2, synonyms: ['BM25'] }, { term: 'search', weight: 1 }], expected: ['sqlite-bm25'] },
+  { id: 'graph-navigation', query: 'knowledge graph navigation', keywords: [{ term: 'knowledge', weight: 1.5 }, { term: 'navigation', weight: 2 }], expected: ['zettelkasten-links'] },
+  { id: 'local-import', query: 'local CSV import', keywords: [{ term: 'local', weight: 1.5 }, { term: 'import', weight: 2 }], expected: ['csv-import'] },
+  { id: 'readability', query: 'colors readability spacing', keywords: [{ term: 'readability', weight: 2 }, { term: 'spacing', weight: 1 }], expected: ['ui-polish'] },
+  { id: 'jp-discovery', query: '保存 知識 再発見', keywords: [{ term: '保存済み', weight: 1.5 }, { term: '再発見', weight: 2 }], expected: ['jp-search'] },
 ];
 
 const variants: Variant[] = [
@@ -69,4 +76,8 @@ const evaluations = [];
 for (const variant of variants) evaluations.push(await evaluateVariant(variant));
 const current = evaluations[0];
 console.table(current.rows.map(row => ({ case: row.case, top1: row.top1, expected: row.expected, p1: row.precisionAt1.toFixed(3), p3: row.precisionAt3.toFixed(3), mrr: row.reciprocalRank.toFixed(3), r5: row.recallAt5.toFixed(3), ndcg5: row.ndcgAt5.toFixed(3) })));
-console.log(JSON.stringify({ dataset: { documents: articles.length, queries: cases.length, languages: ['English', 'Japanese'] }, metrics: { precisionAt1: Number(current.meanPrecisionAt1.toFixed(3)), precisionAt3: Number(current.meanPrecisionAt3.toFixed(3)), mrr: Number(current.mrr.toFixed(3)), recallAt5: Number(current.recallAt5.toFixed(3)), ndcgAt5: Number(current.ndcgAt5.toFixed(3)) }, variants: evaluations.map(evaluation => ({ variant: evaluation.variant, precisionAt1: Number(evaluation.meanPrecisionAt1.toFixed(3)), precisionAt3: Number(evaluation.meanPrecisionAt3.toFixed(3)), mrr: Number(evaluation.mrr.toFixed(3)), recallAt5: Number(evaluation.recallAt5.toFixed(3)), ndcgAt5: Number(evaluation.ndcgAt5.toFixed(3)) })) }, null, 2));
+const qualityArtifact = { dataset: { version: 'v2-50-docs-20-queries', documents: articles.length, queries: cases.length, languages: ['English', 'Japanese'] }, metrics: { precisionAt1: Number(current.meanPrecisionAt1.toFixed(3)), precisionAt3: Number(current.meanPrecisionAt3.toFixed(3)), mrr: Number(current.mrr.toFixed(3)), recallAt5: Number(current.recallAt5.toFixed(3)), ndcgAt5: Number(current.ndcgAt5.toFixed(3)) }, thresholds: { precisionAt1: 0.85, mrr: 0.9, recallAt5: 0.9, ndcgAt5: 0.85 }, variants: evaluations.map(evaluation => ({ variant: evaluation.variant, precisionAt1: Number(evaluation.meanPrecisionAt1.toFixed(3)), precisionAt3: Number(evaluation.meanPrecisionAt3.toFixed(3)), mrr: Number(evaluation.mrr.toFixed(3)), recallAt5: Number(evaluation.recallAt5.toFixed(3)), ndcgAt5: Number(evaluation.ndcgAt5.toFixed(3)) })) };
+fs.mkdirSync(path.join(process.cwd(), 'artifacts'), { recursive: true });
+fs.writeFileSync(path.join(process.cwd(), 'artifacts', 'search-quality.json'), JSON.stringify(qualityArtifact, null, 2), 'utf-8');
+console.log(JSON.stringify(qualityArtifact, null, 2));
+if (qualityArtifact.metrics.precisionAt1 < qualityArtifact.thresholds.precisionAt1 || qualityArtifact.metrics.mrr < qualityArtifact.thresholds.mrr || qualityArtifact.metrics.recallAt5 < qualityArtifact.thresholds.recallAt5 || qualityArtifact.metrics.ndcgAt5 < qualityArtifact.thresholds.ndcgAt5) process.exitCode = 1;

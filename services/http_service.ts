@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'node:crypto';
 import { randomUUID } from 'crypto';
 import { type ZodError, type ZodType } from 'zod';
 import { errorMeta, logger } from '../utils/logger.js';
@@ -17,12 +18,17 @@ export type AppErrorCode =
   | 'candidate_not_found'
   | 'candidate_already_saved'
   | 'candidate_expired'
+  | 'candidate_save_conflict'
   | 'group_not_found'
   | 'link_invalid'
   | 'import_invalid'
   | 'collector_failed'
+  | 'search_failed'
+  | 'export_failed'
   | 'ai_provider_unavailable'
   | 'database_error'
+  | 'job_not_found'
+  | 'authentication_required'
   | 'request_failed';
 export class HttpError extends Error {
   status: number;
@@ -66,6 +72,39 @@ export function requestLogger(req: express.Request, res: express.Response, next:
       responseTimeMs: Date.now() - started,
     }, 'request complete');
   });
+  next();
+}
+
+const requestMetrics = new Map<string, { count: number; errors: number; totalMs: number }>();
+export function metricsMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const started = Date.now();
+  const key = `${req.method} ${req.path}`;
+  const current = requestMetrics.get(key) ?? { count: 0, errors: 0, totalMs: 0 };
+  current.count += 1;
+  requestMetrics.set(key, current);
+  res.on('finish', () => {
+    current.errors += res.statusCode >= 400 ? 1 : 0;
+    current.totalMs += Date.now() - started;
+    requestMetrics.set(key, current);
+  });
+  next();
+}
+
+export function metricsSnapshot() {
+  return [...requestMetrics.entries()].map(([route, value]) => ({ route, ...value, averageMs: value.count ? Number((value.totalMs / value.count).toFixed(2)) : 0 }));
+}
+
+export function apiKeyGuard(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const expected = process.env.API_KEY?.trim();
+  if (!expected) {
+    next();
+    return;
+  }
+  const actual = req.header('x-api-key')?.trim() ?? '';
+  if (actual.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected))) {
+    sendError(req, res, 401, 'API key required', undefined, 'authentication_required');
+    return;
+  }
   next();
 }
 

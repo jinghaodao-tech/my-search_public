@@ -8,7 +8,9 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 7_500 },
   fullyParallel: false,
-  reporter: [["list"]],
+  reporter: process.env.E2E_JSON_OUTPUT_FILE
+    ? [["list"], ["json", { outputFile: process.env.E2E_JSON_OUTPUT_FILE }]]
+    : [["list"]],
   use: {
     baseURL,
     trace: "on-first-retry",

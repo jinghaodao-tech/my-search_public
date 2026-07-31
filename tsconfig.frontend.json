@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": false, "allowImportingTsExtensions": false, "outDir": "public/js/typed", "rootDir": "frontend", "module": "ES2022", "moduleResolution": "Bundler" },
+  "include": ["frontend/**/*.ts"]
+}

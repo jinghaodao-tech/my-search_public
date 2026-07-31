@@ -89,7 +89,7 @@ export function createSearchRouter(ctx: RouteContext) {
       res.json(response);
     } catch (err) {
       logger.error({ event: 'search_error', requestId: getRequestId(req), error: errorMeta(err) }, 'BM25 search failed');
-      sendError(req, res, 500, 'Internal server error');
+      sendError(req, res, 500, 'Internal server error', undefined, 'search_failed');
     }
   });
 

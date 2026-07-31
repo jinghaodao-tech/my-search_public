@@ -1,5 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
+declare const api: { get(path: string): Promise<unknown> };
+
 type Card = {
   id: string;
   title: string;
@@ -138,62 +140,67 @@ test.describe("core user flows", () => {
     await page.locator(".card", { hasText: target.title }).click();
     await expect(page.locator("#detail-body")).not.toContainText(source.title);
   });
-  test("reviews and saves a collected candidate from the browser UI", async ({ page }) => {
-    const Database = (await import("better-sqlite3")).default;
-    const candidateId = `e2e-candidate-${stamp()}`;
-    const db = new Database("data/e2e-test.db");
-    db.prepare(`INSERT INTO articles (id, title, body, url, source, source_authority, published_at, summary, tags_json, tokens_json, doc_length, content_hash, created_at, updated_at, last_fetched_at, first_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(candidateId, "E2E candidate article", "Candidate review body", `https://example.test/${candidateId}`, "rss:e2e", 0.8, new Date().toISOString(), "Candidate summary", "[]", "[]", 0, "e2e", new Date().toISOString(), new Date().toISOString(), new Date().toISOString(), new Date().toISOString());
-    db.close();
-    try {
-      await openApp(page);
-      await page.getByRole("button", { name: "候補レビュー" }).click();
-      await expect(page.locator("#candidate-grid")).toContainText("E2E candidate article");
-      await page.locator("#candidate-grid .candidate-card").getByRole("button", { name: "レビュー済み" }).click();
-      await expect(page.locator("#candidate-grid")).toContainText("確認済み・未保存");
-      await page.locator("#candidate-grid .candidate-card").getByRole("button", { name: "カードに保存" }).click();
-      await expect(page.locator("#candidate-grid")).toContainText("保存済み");
-    } finally {
-      const cleanup = new Database("data/e2e-test.db");
-      cleanup.prepare("DELETE FROM articles WHERE id = ?").run(candidateId);
-      cleanup.prepare("DELETE FROM cards WHERE url = ?").run(`https://example.test/${candidateId}`);
-      cleanup.close();
-    }
-  });
-});
-test("completes the candidate-to-knowledge workflow", async ({ page, request }) => {
-  const Database = (await import("better-sqlite3")).default;
-  const id = `e2e-workflow-${stamp()}`;
-  const title = `E2E workflow ${id}`;
-  const now = new Date().toISOString();
-  const db = new Database("data/e2e-test.db");
-  db.prepare(`INSERT INTO articles (id, title, body, url, source, source_authority, published_at, summary, tags_json, tokens_json, doc_length, content_hash, created_at, updated_at, last_fetched_at, first_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, title, "Collected workflow body", `https://example.test/${id}`, "fixture", 0.9, now, "Collected workflow summary", "[]", "[]", 0, id, now, now, now, now);
-  db.close();
-  try {
+  test("reviews and saves a collected candidate from the browser UI", async ({ page, request }) => {
+    const collected = await request.post("/api/collect", { data: { fixture: "portfolio-demo" } });
+    expect(collected.ok()).toBeTruthy();
     await openApp(page);
     await page.locator('button[onclick="switchView(\'candidates\')"]').click();
-    await expect(page.locator("#candidate-grid")).toContainText(title);
-    const candidate = page.locator("#candidate-grid .candidate-card", { hasText: title });
-    await candidate.getByRole("button", { name: /レビュー/ }).click();
-    await candidate.getByRole("button", { name: /カードに保存/ }).click();
-    await page.locator('button[onclick="switchView(\'cards\')"]').click();
-    await page.locator("#search-input").fill(title);
-    await expect(page.locator("#card-grid")).toContainText(title);
-    await page.locator(".card", { hasText: title }).click();
-    await page.locator("#tag-add-input").fill("workflow");
-    await page.locator("#tag-add-input").press("Enter");
-    await expect(page.locator("#detail-body")).toContainText("workflow");
-    const cardsResponse = await request.get(`/api/cards?q=${encodeURIComponent(title)}`);
-    const cards = await cardsResponse.json();
-    const card = cards.find((item: { title: string }) => item.title === title);
-    expect(card?.id).toBeTruthy();
-    const exportResponse = await request.get(`/api/cards/${card.id}/export-md`);
-    expect(exportResponse.ok()).toBeTruthy();
-    expect(await exportResponse.text()).toContain(title);
-  } finally {
-    const cleanup = new Database("data/e2e-test.db");
-    cleanup.prepare("DELETE FROM articles WHERE id = ?").run(id);
-    cleanup.prepare("DELETE FROM cards WHERE url = ?").run(`https://example.test/${id}`);
-    cleanup.close();
-  }
+    await expect(page.locator("#candidate-grid")).toContainText("Portfolio search architecture");
+    const candidate = page.locator("#candidate-grid .candidate-card", { hasText: "Portfolio search architecture" });
+    await candidate.locator(".candidate-actions button").first().click();
+    await page.locator("#candidate-grid .candidate-card", { hasText: "Portfolio search architecture" }).locator(".candidate-actions button").first().click();
+    await expect(candidate).toContainText("保存済み");
+  });
+});test("completes the candidate-to-knowledge workflow", async ({ page, request }) => {
+  const collected = await request.post("/api/collect", { data: { fixture: "portfolio-demo" } });
+  expect(collected.ok()).toBeTruthy();
+  const title = "Portfolio operations and verification";
+  await openApp(page);
+  await page.locator('button[onclick="switchView(\'candidates\')"]').click();
+  const candidate = page.locator("#candidate-grid .candidate-card", { hasText: title });
+  await expect(candidate).toBeVisible();
+  await candidate.locator(".candidate-actions button").first().click();
+  await candidate.locator(".candidate-actions button").first().click();
+  await page.locator('button[onclick="switchView(\'cards\')"]').click();
+  await page.locator("#search-input").fill(title);
+  await expect(page.locator("#card-grid")).toContainText(title);
+  const cardsResponse = await request.get("/api/cards?q=" + encodeURIComponent(title));
+  const cards = await cardsResponse.json();
+  const card = cards.find((item: { title: string }) => item.title === title);
+  expect(card?.id).toBeTruthy();
+  const exportResponse = await request.get("/api/cards/" + card.id + "/export-md");
+  expect(exportResponse.ok()).toBeTruthy();
+  expect(await exportResponse.text()).toContain(title);
+});
+test("returns stable errors for invalid candidate and search operations", async ({ request }) => {
+  const collected = await request.post("/api/collect", { data: { fixture: "portfolio-demo" } });
+  expect(collected.ok()).toBeTruthy();
+
+  const firstSave = await request.post("/api/candidates/fixture-portfolio-design/save");
+  const secondSave = await request.post("/api/candidates/fixture-portfolio-design/save");
+  expect(firstSave.status()).toBe(201);
+  expect(secondSave.status()).toBe(409);
+  expect((await secondSave.json()).code).toBe("candidate_already_saved");
+
+  const invalidSearch = await request.post("/api/run", {
+    data: {
+      config: { k1: -1, b: 2, lambda: 0, contextBonus: 1, keywords: [] },
+      articles: [],
+    },
+  });
+  expect(invalidSearch.status()).toBe(400);
+  expect((await invalidSearch.json()).code).toBe("validation_failed");
+
+  const missingExport = await request.get("/api/cards/missing-card/export-md");
+  expect(missingExport.status()).toBe(404);
+  expect((await missingExport.json()).code).toBe("card_not_found");
+});
+
+test("shows API request details when a browser request fails", async ({ page }) => {
+  await openApp(page);
+  await page.evaluate(() => {
+    window.setTimeout(() => void api.get("/api/cards/missing-card/export-md"), 0);
+  });
+  await expect(page.locator("#toast")).toContainText("card_not_found");
+  await expect(page.locator("#toast")).toContainText("requestId:");
 });

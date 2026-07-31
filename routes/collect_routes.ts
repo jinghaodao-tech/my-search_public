@@ -20,19 +20,32 @@ export function createCollectRouter(ctx: RouteContext) {
     const body = parseBody(ctx.collectBodySchema, req, res);
     if (!body) return;
     try {
+      if (body.fixture === 'portfolio-demo') {
+        if (body.background) {
+          const job = ctx.submitJob('collect-fixture', async () => {
+            const fixture = await ctx.collectFixture();
+            ctx.setCachedArticles(fixture);
+            ctx.saveArticles(fixture);
+            return fixture;
+          });
+          res.status(202).json({ ok: true, running: true, jobId: job.id, status: job.status, fixture: 'portfolio-demo' });
+          return;
+        }
+        const fixture = await ctx.collectFixture();
+        ctx.setCachedArticles(fixture);
+        ctx.saveArticles(fixture);
+        res.json({ ...fixture, fixture: 'portfolio-demo' });
+        return;
+      }
       const config = ctx.resolveCollectorConfig(body.config);
       ctx.setCollectorConfig(config);
       if (body.background) {
-        if (ctx.getCollectRunning()) {
-          res.json({ ok: false, running: true, message: '既に起動中' });
-          return;
-        }
-        ctx.setCollectRunning(true);
-        res.status(202).json({ ok: true, running: true, message: 'collect started' });
-        ctx.collectAll(config)
-          .then((result: CollectResult) => { ctx.setCachedArticles(result); })
-          .catch((err: unknown) => logger.error({ event: 'collect_error', requestId: getRequestId(req), error: errorMeta(err) }, 'collect failed'))
-          .finally(() => { ctx.setCollectRunning(false); });
+        const job = ctx.submitJob('collect', async () => {
+          const result = await ctx.collectAll(config);
+          ctx.setCachedArticles(result);
+          return result;
+        });
+        res.status(202).json({ ok: true, running: true, jobId: job.id, status: job.status, message: 'collect started' });
         return;
       }
       const result = await ctx.collectAll(config);

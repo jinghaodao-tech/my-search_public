@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -27,6 +28,22 @@ for (let index = 0; index < 10; index += 1) {
   await response.arrayBuffer();
 }
 const warmSearchMs = (performance.now() - warmStart) / 10;
-server.close();
+const candidateStart = performance.now();
+const candidateResponse = await fetch('http://127.0.0.1:' + address.port + '/api/run', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ modeId: 'custom', config: { k1: 1.5, b: 0.75, lambda: 0.1, contextBonus: 1.2, keywords: [{ term: 'benchmark', weight: 1 }] }, articles: [{ id: 'http-candidate', title: 'HTTP benchmark candidate', body: 'benchmark search candidate', publishedAt: new Date().toISOString(), sourceAuthority: 1, url: 'https://fixture.local/http-candidate' }], options: { resultLimit: 5, archiveScoreThreshold: -1, dedupThreshold: 1 } }) });
+if (!candidateResponse.ok) throw new Error('Candidate HTTP benchmark failed: ' + candidateResponse.status);
+await candidateResponse.arrayBuffer();
+const candidateApiMs = performance.now() - candidateStart;
+const savedSearchStart = performance.now();
+const savedSearchResponse = await fetch('http://127.0.0.1:' + address.port + '/api/cards?q=benchmark&limit=100');
+if (!savedSearchResponse.ok) throw new Error('Saved-card HTTP benchmark failed: ' + savedSearchResponse.status);
+await savedSearchResponse.arrayBuffer();
+const savedCardSearchMs = performance.now() - savedSearchStart;server.close();
 db.close();
-console.log(JSON.stringify({ ok: true, scope: 'end-to-end-http', corpusSize: 100, coldStartMs: Number(coldStartMs.toFixed(3)), warmSearchMs: Number(warmSearchMs.toFixed(3)), endpoint: 'GET /api/cards?q=benchmark&limit=100' }, null, 2));
+const performanceThresholds = { 'process-cold-start': 2000, 'warm-request': 250, 'candidate-api-http': 3000, 'saved-card-search-http': 250 };
+const scopes = { 'process-cold-start': Number(coldStartMs.toFixed(3)), 'warm-request': Number(warmSearchMs.toFixed(3)), 'candidate-api-http': Number(candidateApiMs.toFixed(3)), 'saved-card-search-http': Number(savedCardSearchMs.toFixed(3)) };
+const performanceFailures = Object.keys(scopes).filter(scope => scopes[scope as keyof typeof scopes] > performanceThresholds[scope as keyof typeof performanceThresholds]);
+const artifact = { ok: performanceFailures.length === 0, generatedAt: new Date().toISOString(), corpusSize: 100, scopes, performanceThresholds, performanceFailures, endpoints: ['GET /api/cards?q=benchmark&limit=100', 'POST /api/run', 'GET /api/cards?q=benchmark&limit=100'] };
+fs.mkdirSync(path.join(process.cwd(), 'artifacts'), { recursive: true });
+fs.writeFileSync(path.join(process.cwd(), 'artifacts', 'benchmark-http-results.json'), JSON.stringify(artifact, null, 2), 'utf-8');
+console.log(JSON.stringify(artifact, null, 2));
+if (performanceFailures.length) process.exitCode = 1;

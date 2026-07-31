@@ -13,111 +13,12 @@ if (dbDir && dbDir !== ".") {
 export const db = new Database(dbPath);
 db.pragma('foreign_keys = ON');
 
-db.exec(`
-CREATE TABLE IF NOT EXISTS cards (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  body TEXT NOT NULL,
-  summary TEXT,
-  url TEXT,
-  type TEXT NOT NULL DEFAULT 'memo',
-  color TEXT,
-  tags_json TEXT NOT NULL DEFAULT '[]',
-  links_json TEXT NOT NULL DEFAULT '[]',
-  kj_group_id TEXT REFERENCES kj_groups(id) ON DELETE SET NULL,
-  archived INTEGER NOT NULL DEFAULT 0,
-  archived_at TEXT,
-  tokens_json TEXT NOT NULL DEFAULT '[]',
-  doc_length INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_cards_title ON cards(title);
-CREATE INDEX IF NOT EXISTS idx_cards_type ON cards(type);
-CREATE INDEX IF NOT EXISTS idx_cards_created_at ON cards(created_at);
-CREATE INDEX IF NOT EXISTS idx_cards_kj_group_id ON cards(kj_group_id);
-
-CREATE TABLE IF NOT EXISTS card_tags (
-  card_id TEXT NOT NULL,
-  tag TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  PRIMARY KEY (card_id, tag),
-  FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_card_tags_tag ON card_tags(tag);
-CREATE INDEX IF NOT EXISTS idx_card_tags_card_id ON card_tags(card_id);
-
-CREATE TABLE IF NOT EXISTS card_links (
-  source_card_id TEXT NOT NULL,
-  target_card_id TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  PRIMARY KEY (source_card_id, target_card_id),
-  FOREIGN KEY (source_card_id) REFERENCES cards(id) ON DELETE CASCADE,
-  FOREIGN KEY (target_card_id) REFERENCES cards(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_card_links_source ON card_links(source_card_id);
-CREATE INDEX IF NOT EXISTS idx_card_links_target ON card_links(target_card_id);
-
-CREATE TABLE IF NOT EXISTS kj_groups (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  color TEXT,
-  description TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_kj_groups_created_at ON kj_groups(created_at);
-
-CREATE TABLE IF NOT EXISTS articles (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  body TEXT NOT NULL,
-  url TEXT NOT NULL,
-  source TEXT,
-  source_authority REAL NOT NULL DEFAULT 0,
-  published_at TEXT,
-  summary TEXT,
-  tags_json TEXT NOT NULL DEFAULT '[]',
-  tokens_json TEXT,
-  doc_length INTEGER NOT NULL DEFAULT 0,
-  content_hash TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  last_fetched_at TEXT,
-  candidate_status TEXT NOT NULL DEFAULT 'unreviewed',
-  first_seen_at TEXT,
-  reviewed_at TEXT,
-  saved_at TEXT,
-  expired_at TEXT,
-  candidate_score REAL,
-  candidate_match_reason TEXT
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_url_unique ON articles(url);
-CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at);
-CREATE INDEX IF NOT EXISTS idx_articles_source ON articles(source);
-CREATE INDEX IF NOT EXISTS idx_articles_doc_length ON articles(doc_length);
-CREATE INDEX IF NOT EXISTS idx_articles_content_hash ON articles(content_hash);
-CREATE INDEX IF NOT EXISTS idx_articles_candidate_status ON articles(candidate_status);
-CREATE INDEX IF NOT EXISTS idx_articles_first_seen_at ON articles(first_seen_at);
-`);
-
-const cardColumns = db.prepare(`PRAGMA table_info(cards)`).all() as Array<{ name: string }>;
-const cardColumnNames = new Set(cardColumns.map((column) => column.name));
-
-if (!cardColumnNames.has("tokens_json")) {
-  db.exec(`ALTER TABLE cards ADD COLUMN tokens_json TEXT NOT NULL DEFAULT '[]'`);
-}
-
-if (!cardColumnNames.has("doc_length")) {
-  db.exec(`ALTER TABLE cards ADD COLUMN doc_length INTEGER NOT NULL DEFAULT 0`);
-}
-
 runMigrations(db);
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_articles_candidate_status ON articles(candidate_status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_saved_card_unique ON articles(saved_card_id) WHERE saved_card_id IS NOT NULL;
+`);
 
 db.exec(`
 INSERT OR IGNORE INTO card_tags (card_id, tag, created_at)

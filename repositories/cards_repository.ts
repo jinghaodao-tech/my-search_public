@@ -337,7 +337,11 @@ function buildCardListWhere(filters: CardListFilters): { whereSql: string; param
   const keyword = filters.q?.trim();
   if (keyword) {
     const like = `%${escapeLike(keyword.toLowerCase())}%`;
-    where.push(`(
+    if (process.env.CARD_SEARCH_ENGINE === 'fts5') {
+      const ftsQuery = keyword.split(/\s+/).filter(Boolean).map(term => `"${term.replace(/"/g, '""')}"`).join(' OR ');
+      where.push('cards.id IN (SELECT id FROM cards_fts WHERE cards_fts MATCH ?)');
+      params.push(ftsQuery);
+    } else where.push(`(
       LOWER(cards.title) LIKE ? ESCAPE '~'
       OR LOWER(COALESCE(cards.body, '')) LIKE ? ESCAPE '~'
       OR LOWER(COALESCE(cards.summary, '')) LIKE ? ESCAPE '~'
@@ -347,7 +351,7 @@ function buildCardListWhere(filters: CardListFilters): { whereSql: string; param
           AND LOWER(q_tags.tag) LIKE ? ESCAPE '~'
       )
     )`);
-    params.push(like, like, like, like);
+    if (process.env.CARD_SEARCH_ENGINE !== 'fts5') params.push(like, like, like, like);
   }
 
   return {
@@ -478,10 +482,39 @@ export async function createCard(
   };
   card.tokens = await tokenize(`${card.title} ${card.body} ${(card.tags ?? []).join(" ")}`);
   card.docLength = card.tokens.length;
-  insertStoredCard(card);
+  db.transaction(() => insertStoredCard(card))();
   return card;
 }
 
+export async function createCardWithTransaction(
+  fields: SystemCreateCardFields,
+  finalize: (card: Card) => void,
+): Promise<Card> {
+  const now = new Date().toISOString();
+  const card: Card = {
+    id: fields.id ?? newId(),
+    title: fields.title,
+    body: fields.body,
+    summary: fields.summary,
+    url: fields.url,
+    tags: fields.tags ?? [],
+    links: fields.links ?? [],
+    kjGroupId: fields.kjGroupId,
+    type: fields.type ?? 'memo',
+    color: fields.color,
+    archived: fields.archived ?? false,
+    archivedAt: fields.archivedAt,
+    createdAt: now,
+    updatedAt: now,
+  };
+  card.tokens = await tokenize(card.title + ' ' + card.body + ' ' + (card.tags ?? []).join(" "));
+  card.docLength = card.tokens.length;
+  return db.transaction(() => {
+    insertStoredCard(card);
+    finalize(card);
+    return card;
+  })();
+}
 export async function updateCard(id: string, updates: Partial<Card>): Promise<Card | null> {
   const existing = getCard(id);
   if (!existing) return null;
@@ -490,7 +523,7 @@ export async function updateCard(id: string, updates: Partial<Card>): Promise<Ca
     `${updated.title} ${updated.body} ${(updated.tags ?? []).join(" ")}`
   );
   updated.docLength = updated.tokens.length;
-  updateStoredCard(updated);
+  db.transaction(() => updateStoredCard(updated))();
   return updated;
 }
 

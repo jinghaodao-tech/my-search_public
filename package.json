@@ -8,9 +8,11 @@
     "start": "npx tsx server.ts",
     "dev": "npx tsx --watch server.ts",
     "typecheck": "tsc --noEmit",
-    "acceptance:test": "vitest run tests --fileParallelism=false",
-    "test": "vitest run server.test.ts",
-    "test:e2e": "playwright test",
+    "build:frontend": "tsc -p tsconfig.frontend.json",
+    "acceptance:test": "vitest run tests --fileParallelism=false --reporter=default --reporter=json --outputFile=artifacts/acceptance-tests.json",
+    "test": "vitest run server.test.ts --reporter=default --reporter=json --outputFile=artifacts/vitest-results.json",
+    "test:e2e": "tsx scripts/run_e2e.ts",
+    "test:summary": "tsx scripts/write_test_summary.ts",
     "test:e2e:ui": "playwright test --ui",
     "seed:demo": "tsx scripts/seed_demo.ts",
     "demo": "npm run seed:demo && npm start",
@@ -19,6 +21,7 @@
     "backup": "tsx scripts/backup.ts",
     "restore": "tsx scripts/restore.ts",
     "db:migrate": "tsx scripts/migrate_db.ts",
+    "db:migrate:postgres": "tsx scripts/migrate_postgres.ts",
     "migrate:kj-groups": "tsx scripts/migrate_kj_groups_json_to_sqlite.ts",
     "migrate:articles": "tsx scripts/migrate_articles_json_to_sqlite.ts",
     "benchmark": "tsx scripts/benchmark.ts",
@@ -28,10 +31,13 @@
     "git:safe-push": "powershell -ExecutionPolicy Bypass -File scripts/safe-push.ps1",
     "evaluate:search": "tsx scripts/evaluate_search_quality.ts",
     "check:encoding": "tsx scripts/check_encoding.ts",
-    "verify:ci": "npm run typecheck && npm test && npm run acceptance:test && npm run benchmark:http && npm run evaluate:search && npm run check:encoding && npm audit --audit-level=high",
-    "verify": "npm run typecheck && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark && npm run benchmark:http && npm run evaluate:search && npm run check:encoding && npm audit --audit-level=high && docker build -t my-search-public:test ."
+    "verify:schema": "tsx scripts/verify_schema.ts",
+    "check:openapi": "tsx scripts/check_openapi.ts",
+    "verify:ci": "npm run typecheck && npm run build:frontend && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark:http && npm run evaluate:search && npm run check:encoding && npm run check:openapi && npm run verify:schema && npm audit --audit-level=high && npm run test:summary",
+    "verify": "npm run typecheck && npm run build:frontend && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark && npm run benchmark:http && npm run evaluate:search && npm run check:encoding && npm run check:openapi && npm run verify:schema && npm audit --audit-level=high && npm run test:summary && docker build -t my-search-public:test ."
   },
   "dependencies": {
+    "@types/pg": "^8.20.0",
     "better-sqlite3": "^12.11.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -40,11 +46,13 @@
     "helmet": "^8.2.0",
     "kuromoji": "^0.1.2",
     "node-cron": "^4.5.0",
+    "pg": "^8.22.0",
     "pino": "^10.3.1",
     "rss-parser": "^3.13.0",
     "tsx": "^4.22.3",
     "vis-network": "^10.1.0",
     "zod": "^4.4.3"
+    ,"pg": "^8.16.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

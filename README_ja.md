@@ -115,3 +115,15 @@ BM25検索は、検索時に毎回トークン化する方式から、保存時�
 - 収集処理はRSS、arXiv、GitHubなど外部ソースに依存します。
 - AI要約は任意機能で、利用にはプロバイダーのAPIキーが必要です。
 - 大規模な重複排除、ベクトル検索、クラウド展開、PostgreSQL、Elasticsearch、モバイルアプリは対象外です。
+
+### 最新検証結果
+
+ベンチマークと検索品質評価の値は手書き固定値ではなく、検証時にJSON成果物として生成します。
+
+- artifacts/benchmark-results.json
+- artifacts/benchmark-http-results.json
+- artifacts/search-quality.json
+- 検索品質dataset: v2-50-docs-20-queries
+- 50文書、20クエリ、英語・日本語
+- P@1 0.85以上、MRR 0.90以上、Recall@5 0.90以上、nDCG@5 0.85以上をCI Gateとする
+- 最新の検索品質ゲート結果: P@1 0.95、MRR 0.95、Recall@5 0.95、nDCG@5 0.95（`artifacts/search-quality.json`）

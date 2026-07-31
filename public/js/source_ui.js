@@ -87,4 +87,4 @@ async function saveSourceConfig(){
   } catch(e){ toast('保存エラー: '+String(e),'warn'); }
 }
 
-init();
+init().catch(error => showApiError(error, '初期データの読み込みに失敗しました'));

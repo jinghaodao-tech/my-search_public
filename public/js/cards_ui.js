@@ -112,17 +112,18 @@ async function deleteSelected() {
 
 async function exportSelectedMarkdown() {
   if (!selectedCards.size) return;
-  const response = await fetch('/api/cards/export-md-bulk', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ids: [...selectedCards] }),
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Export failed' }));
-    toast(error.error || 'Export failed');
+  let response;
+  try {
+    response = await api.download('/api/cards/export-md-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [...selectedCards] }),
+    });
+  } catch (error) {
+    toast(error.message || 'Export failed');
     return;
   }
-  const blob = await response.blob();
+  const blob = response.blob;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const disposition = response.headers.get('Content-Disposition') || '';

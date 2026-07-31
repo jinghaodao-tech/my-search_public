@@ -70,15 +70,18 @@ export function createCardsRouter(ctx: RouteContext) {
   });
 
   router.get('/cards/:id/export-md', (req, res) => {
+    try {
     const card = ctx.getCard(req.params.id);
     if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     const { markdown, filename } = buildCardMarkdown(card);
     res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
     res.setHeader('Content-Disposition', markdownContentDisposition(filename));
     res.send(markdown);
+    } catch { sendError(req, res, 500, 'Export failed', undefined, 'export_failed'); }
   });
 
   router.post('/cards/export-md-bulk', (req, res) => {
+    try {
     const body = parseBody(ctx.idsBodySchema, req, res);
     if (!body) return;
     const result = buildBulkMarkdownZip(body.ids);
@@ -89,6 +92,7 @@ export function createCardsRouter(ctx: RouteContext) {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', markdownContentDisposition(result.filename));
     res.send(result.zip);
+    } catch { sendError(req, res, 500, 'Export failed', undefined, 'export_failed'); }
   });
 
   router.put('/cards/:id', async (req, res) => {
@@ -122,15 +126,11 @@ export function createCardsRouter(ctx: RouteContext) {
     res.json(card);
   });
 
-  router.post('/cards/archive-bulk', async (req, res) => {
+  router.post('/cards/archive-bulk', (req, res) => {
+    res.setHeader('Deprecation', 'true');
     const body = parseBody(ctx.idsBodySchema, req, res);
     if (!body) return;
-    const now = new Date().toISOString();
-    const updated: string[] = [];
-    for (const id of body.ids) {
-      const card = await ctx.updateCard(id, { archived: true, archivedAt: now });
-      if (card) updated.push(id);
-    }
+    const updated = ctx.bulkArchiveCards(body.ids);
     res.json({ ok: true, updated });
   });
 

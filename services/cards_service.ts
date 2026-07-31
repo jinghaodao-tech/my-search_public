@@ -4,6 +4,7 @@ export {
   bulkDeleteCards,
   bulkRestoreCards,
   createCard,
+  createCardWithTransaction,
   deleteCard,
   getAllTags,
   getBacklinks,

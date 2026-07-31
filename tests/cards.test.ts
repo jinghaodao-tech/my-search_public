@@ -47,6 +47,18 @@ describe("card workflows", () => {
     expect(cardsEngine.getCard(second.id)?.archived).toBe(true);
   });
 
+  it("marks the legacy bulk archive endpoint as deprecated", async () => {
+    const card = await cardsEngine.createCard({ title: "Legacy bulk archive", body: "body" });
+
+    const response = await request(app)
+      .post("/api/cards/archive-bulk")
+      .send({ ids: [card.id] });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.deprecation).toBe("true");
+    expect(cardsEngine.getCard(card.id)?.archived).toBe(true);
+  });
+
   it("bulk deletes cards and removes link references", async () => {
     const first = await cardsEngine.createCard({ title: "Bulk delete A", body: "body" });
     const second = await cardsEngine.createCard({ title: "Bulk delete B", body: "body" });
@@ -68,6 +80,18 @@ describe("card workflows", () => {
     expect(cardsEngine.getCards({ tag: "alpha" })).toHaveLength(0);
     expect(cardsEngine.getCards({ tag: "beta" })).toHaveLength(1);
     expect(cardsEngine.getCards({ q: "beta" })).toHaveLength(1);
+  });
+
+  it("supports the optional SQLite FTS5 card search path", async () => {
+    const card = await cardsEngine.createCard({ title: "FTS5 architecture", body: "full text search", tags: ["indexed"] });
+    const previous = process.env.CARD_SEARCH_ENGINE;
+    process.env.CARD_SEARCH_ENGINE = "fts5";
+    try {
+      expect(cardsEngine.getCards({ q: "FTS5" }).map(item => item.id)).toContain(card.id);
+    } finally {
+      if (previous === undefined) delete process.env.CARD_SEARCH_ENGINE;
+      else process.env.CARD_SEARCH_ENGINE = previous;
+    }
   });
 
   it("stores tags in card_tags when cards are created", async () => {

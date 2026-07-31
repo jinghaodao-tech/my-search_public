@@ -18,6 +18,15 @@ describe("logging and error observability", () => {
     expect(response.headers["x-request-id"]).toBe("test-request-id");
   });
 
+  it("exposes aggregated request metrics without private payloads", async () => {
+    await request(app).get("/api/cards");
+    await new Promise(resolve => setImmediate(resolve));
+    const response = await request(app).get("/metrics");
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(response.body.metrics.some((metric: { route: string; count: number; averageMs: number }) => metric.route.includes("/api/cards") && metric.count > 0)).toBe(true);
+  });
+
   it("includes requestId in validation errors", async () => {
     const response = await request(app)
       .post("/api/cards")
