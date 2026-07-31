@@ -1,43 +1,53 @@
 # 15分デモ手順
 
-## 0:00-1:30 問題と中心フロー
+## 0:00-1:30 中心フロー
 
-説明: 外部情報を集めても、選別・保存・整理・再発見が分断される問題を解決する。画面上部の工程表示を確認する。
+このデモでは、収集候補をBM25で選別し、レビュー、カード保存、整理、通常検索、Markdown出力までを確認します。
 
-## 1:30-3:00 収集
+## 1:30-3:00 デモデータ
 
-1. 
-pm run demo` starts the seed-and-server flow, or run 
-pm run seed:demo` and 
-pm start` separately.
-2. 
-pm start`
-3. 収集画面でfixtureまたはローカル保存済み候補を確認する。
+一発で起動する場合:
+
+```bash
+npm run demo
+```
+
+分けて実行する場合:
+
+```bash
+npm run seed:demo
+npm start
+```
+
+デモ候補「Demo candidate: SQLite BM25 ranking」が候補一覧に表示されます。
 
 ## 3:00-5:00 BM25選別
 
-BM25画面で収集記事をデータソースにし、キーワードを設定する。スコア、同義語、候補の順位を確認する。
+BM25画面で候補を検索し、スコア、一致理由、公開日、sourceを確認します。
 
 ## 5:00-8:00 Reviewと保存
 
-候補レビュー画面で一件をレビュー済みにし、別の一件を見送る。保存する候補はカードへ保存し、`saved_as_card`を確認する。
+候補をレビュー済みに変更し、別の候補を見送ります。保存する候補を「カードに保存」し、`saved_as_card`状態を確認します。
 
 ## 8:00-11:00 整理
 
-カードへタグを追加し、KJグループへ割り当てる。別カードへの一方向Zettelkastenリンクを作成し、対象カードのbacklinkを確認する。
+保存カードにタグを付け、KJグループへ割り当てます。別カードへのdirected linkを作成し、backlinkを確認します。
 
-## 11:00-13:00 再発見
+## 11:00-13:00 再検索
 
-カード画面の「保存済みカードを検索」で保存済み知識を検索する。BM25が収集候補、通常検索が保存済みカードを担当することを説明する。
+「保存済みカードを検索」で保存後のカードを検索します。これはBM25候補検索とは別のSQLite LIKE検索です。
 
 ## 13:00-14:00 Export
 
-カード詳細からMarkdown exportを実行する。
+カード詳細からMarkdown exportを実行します。
 
-## 14:00-15:00 設計判断
+## 14:00-15:00 設計説明
 
-SQLite、事前計算tokens、候補保持期限、Foreign Key、Migration、AI非依存、local-first境界を説明する。
+SQLite、事前計算tokens、候補保持期間、foreign key、migration、local-first、任意のAI要約を説明します。
 
-自動確認は 
-pm run verify`、実HTTP性能確認は 
-pm run benchmark:http` で再現できる。
+検証コマンド:
+
+```bash
+npm run verify
+npm run benchmark:http
+```

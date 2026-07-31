@@ -19,7 +19,7 @@ My Search App をlocal-firstなポートフォリオとして見せやすくす�
 
 ## Tests
 
-- [x] npm run verify
+- [x] npm run verify (2026-07-31: unit 36, acceptance 59, E2E 7, benchmark, audit, Docker build passed)
 
 ## Notes
 

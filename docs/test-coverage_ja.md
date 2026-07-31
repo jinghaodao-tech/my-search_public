@@ -1,42 +1,33 @@
-# Test Coverage 日本語版
+# テストカバレッジ
 
-最終確認コマンド:
+最終確認日: 2026-07-31
+
+## 実行コマンド
 
 ```bash
+npm run typecheck
+npm test
+npm run acceptance:test
+npm run test:e2e
+npm run benchmark
+npm run benchmark:http
+npm run evaluate:search
+npm run check:encoding
 npm run verify
 ```
 
-`verify` では以下をまとめて実行します。
+## 最新結果
 
-- `npm run typecheck`
-- `npm test`
-- `npm run acceptance:test`
-- `npm run test:e2e`
-- `npm run benchmark`
-- `npm run evaluate:search`
-- `npm run check:encoding`
-- `npm audit --audit-level=high`
-- `docker build -t my-search-public:test .`
+- `npm run typecheck`: 成功
+- `npm test`: 36/36 成功
+- `npm run acceptance:test`: 59/59 成功
+- `npm run test:e2e`: 7/7 成功
+- `npm run benchmark`: ranking-only、production-like、API、cold-start、warm-search 成功
+- `npm run benchmark:http`: HTTP cold-start / warm-search 成功
+- `npm run evaluate:search`: Precision@1 1.0、MRR 1.0、Recall@5 1.0、nDCG@5 1.0
+- `npm run check:encoding`: 成功
+- `npm audit --audit-level=high`: 脆弱性0件
+- Docker build: 成功
+- `npm run verify`: 成功
 
-## 主なテスト対象
-
-- Card CRUD
-- Archive / Restore
-- Bulk Archive / Bulk Delete
-- Tag操作と `card_tags` 中間テーブル
-- Zettelkasten links / backlinks と `card_links` 中間テーブル
-- KJ groups
-- CSV / JSON import
-- Markdown export
-- BM25 ranking
-- Search quality evaluation
-- API validation
-- Logging / request ID / error response
-- E2E user flows
-- UTF-8 / 日本語文字化けチェック
-
-## 文字化けチェック
-
-`npm run check:encoding` で README、docs、public UI、routes/services/utils、tests を対象に、代表的な文字化けパターンや不正な制御文字を検出します。
-
-また、日本語カード、タグ、KJグループ、Markdown export、CSV/JSON import が壊れないことをテストしています。
+候補ライフサイクル、SQLite外部キー、Migration rollback、directed link、BM25一致理由、E2E主要フローも確認済みです。
