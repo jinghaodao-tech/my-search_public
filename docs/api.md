@@ -129,3 +129,16 @@ npm run benchmark
 ```
 
 Backup and restore are CLI scripts, not HTTP APIs. They copy and restore the SQLite database used by the local-first app. The project includes minimal SQLite migration tracking for local development and future schema changes.
+## Candidate lifecycle
+
+Candidate state is separate from saved-card archive state:
+
+- `GET /api/candidates?status=unreviewed|reviewed_not_saved|saved_as_card|expired` returns candidate lifecycle and source article metadata.\n- `GET /api/candidates/:id` returns one candidate lifecycle. Candidate records also expose the latest BM25 `score` and `matchReason` when `/api/run` has ranked that article.
+- `PUT /api/candidates/:id/review` marks a candidate as reviewed but not saved.
+- `POST /api/candidates/:id/save` creates an article card and marks the candidate as `saved_as_card`.
+- `PUT /api/candidates/:id/expire` expires a candidate without deleting the source article.
+- `POST /api/candidates/expire-reviewed` expires old `reviewed_not_saved` candidates. The default candidate retention is 14 days and is supplied as `candidateRetentionDays`.
+
+Saved-card search remains separate: `GET /api/cards?q=...` uses SQLite `LIKE` filtering over saved-card fields, while `POST /api/run` executes the BM25 collection pipeline.
+
+API errors include a stable code field such as validation_failed, card_not_found, candidate_not_found, candidate_already_saved, and candidate_expired; X-Request-Id is included for correlation.

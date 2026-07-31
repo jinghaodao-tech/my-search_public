@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -7,7 +8,7 @@ process.env.NODE_ENV = 'test';
 process.env.MOCK_AI_SUMMARY = 'true';
 process.env.CORS_ORIGIN = 'http://localhost:3000';
 process.env.IMPORT_RATE_LIMIT = '3';
-process.env.DB_PATH = path.join(process.cwd(), 'data', 'test-cards.db');
+process.env.DB_PATH = path.join(os.tmpdir(), 'my-search-server-test-' + process.pid + '.db');
 
 fs.rmSync(process.env.DB_PATH, { force: true });
 
@@ -112,6 +113,7 @@ describe('cards API validation', () => {
     const response = await request(app).get('/api/cards/missing-card');
 
     expect(response.status).toBe(404);
+    expect(response.body.code).toBe('card_not_found');
   });
 
   it('updates a card without changing its id', async () => {
@@ -223,9 +225,10 @@ describe('cards API validation', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Invalid request');
+    expect(response.body.code).toBe('validation_failed');
   });
 
-  it('creates and removes bidirectional links', async () => {
+  it('creates directed links and derived backlinks', async () => {
     const first = await createCard({ title: 'First' });
     const second = await createCard({ title: 'Second' });
 
@@ -237,7 +240,7 @@ describe('cards API validation', () => {
     const firstAfterLink = await request(app).get(`/api/cards/${first.id}`);
     const secondAfterLink = await request(app).get(`/api/cards/${second.id}`);
     expect(firstAfterLink.body.links).toContain(second.id);
-    expect(secondAfterLink.body.links).toContain(first.id);
+    expect(secondAfterLink.body.links).not.toContain(first.id);
     expect((await request(app).get(`/api/cards/${second.id}/backlinks`)).body.map((card: { id: string }) => card.id)).toContain(first.id);
 
     const unlinked = await request(app).delete(`/api/cards/${first.id}/links/${second.id}`);
@@ -539,5 +542,22 @@ describe('remaining API validation', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Invalid request');
+  });
+});
+
+
+describe('directed graph API', () => {
+  it('preserves both directions when both links exist', async () => {
+    const first = await createCard({ title: 'Graph first' });
+    const second = await createCard({ title: 'Graph second' });
+    await request(app).post(`/api/cards/${first.id}/links`).send({ targetId: second.id });
+    await request(app).post(`/api/cards/${second.id}/links`).send({ targetId: first.id });
+
+    const response = await request(app).get('/api/zettelkasten/graph');
+    expect(response.status).toBe(200);
+    expect(response.body.edges).toEqual(expect.arrayContaining([
+      { from: first.id, to: second.id },
+      { from: second.id, to: first.id },
+    ]));
   });
 });

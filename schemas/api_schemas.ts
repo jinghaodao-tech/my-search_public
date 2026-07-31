@@ -1,4 +1,4 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 
 const authoritySchema = z.number().min(0).max(1);
 
@@ -58,7 +58,6 @@ const runOptionsSchema = z.object({
   dedupThreshold: z.number().optional(),
   archiveScoreThreshold: z.number().optional(),
   resultLimit: z.number().optional(),
-  noViewDays: z.number().optional(),
 }).passthrough();
 
 export const runBodySchema = z.object({
@@ -68,6 +67,7 @@ export const runBodySchema = z.object({
   options: runOptionsSchema.optional(),
 }).strict();
 
+export const candidateStatusSchema = z.enum(["unreviewed", "reviewed_not_saved", "saved_as_card", "expired"]);
 const idSchema = z.string().trim().min(1).max(200);
 
 const urlSchema = z
@@ -91,6 +91,8 @@ const cardFieldsSchema = {
   kjGroupId: z.string().trim().max(200).nullable().optional(),
   summary: z.string().max(20000).optional(),
 };
+
+export const cardListQuerySchema = z.object({ tag: z.string().trim().max(50).optional(), kjGroupId: z.string().trim().max(200).optional(), type: z.enum(["article", "memo", "csv"]).optional(), q: z.string().max(500).optional(), archived: z.enum(["true", "false"]).optional(), limit: z.coerce.number().int().min(1).max(100).optional(), offset: z.coerce.number().int().min(0).optional(), sort: z.enum(["created_at_asc", "created_at_desc", "createdAtAsc", "createdAtDesc"]).optional(), }).strict();
 
 export const createCardSchema = z.object(cardFieldsSchema).strict();
 

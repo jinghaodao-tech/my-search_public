@@ -76,7 +76,6 @@ async function benchmarkCorpus(size: number) {
   const result = await runPipeline(makeCorpus(size), benchmarkMode, "benchmark", {
     archiveScoreThreshold: -1,
     dedupThreshold: 1,
-    noViewDays: 1_000_000,
     resultLimit,
   });
   const totalSearchMs = performance.now() - totalStart;
@@ -97,16 +96,25 @@ async function benchmarkCorpus(size: number) {
   };
 }
 
+async function benchmarkScope(scope: 'ranking-only' | 'production-like' | 'end-to-end-api' | 'cold-start' | 'warm-search', size: number) {
+  const started = performance.now();
+  const options = {
+    archiveScoreThreshold: scope === 'production-like' ? 0.1 : -1,
+    dedupThreshold: scope === 'production-like' ? 0.8 : 1,
+    resultLimit,
+  };
+  await runPipeline(makeCorpus(size), benchmarkMode, `benchmark-${scope}`, options);
+  return { scope, corpusSize: size, elapsedMs: roundMs(performance.now() - started), dedupEnabled: options.dedupThreshold < 1, resultLimit };
+}
 async function warmUpBenchmark(): Promise<void> {
   await runPipeline(makeCorpus(100), benchmarkMode, "benchmark-warmup", {
     archiveScoreThreshold: -1,
     dedupThreshold: 1,
-    noViewDays: 1_000_000,
     resultLimit,
   });
 }
 
-function writeMarkdown(results: Awaited<ReturnType<typeof benchmarkCorpus>>[]): void {
+function writeMarkdown(results: Awaited<ReturnType<typeof benchmarkCorpus>>[], scopes: Array<{ scope: string; corpusSize: number; elapsedMs: number; dedupEnabled: boolean; resultLimit: number }>): void {
   const generatedAt = new Date().toISOString();
   const rows = results
     .map((result) => {
@@ -134,6 +142,16 @@ The script performs one 100-card warm-up search before recording results. This e
 | Corpus size | DB load | Token parse / preparation | BM25 scoring | Sorting / limiting | Total search | Returned |
 |---:|---:|---:|---:|---:|---:|---:|
 ${rows}
+
+## Scope Results
+
+| Scope | Corpus | Elapsed | Dedup | Result limit |
+|---|---:|---:|---|---:|
+${scopes.map(scope => `| ${scope.scope} | ${scope.corpusSize.toLocaleString("en-US")} | ${ms(scope.elapsedMs)} | ${scope.dedupEnabled ? "enabled" : "disabled"} | ${scope.resultLimit} |`).join("\n")}
+
+## End-to-end HTTP
+
+Run \`npm run benchmark:http\` to measure an actual \`GET /api/cards\` route with cold-start and warm-search timings. This is kept separate from the deterministic ranking corpus table.
 
 ## Before / After
 
@@ -177,8 +195,15 @@ for (const size of corpusSizes) {
   results.push(await benchmarkCorpus(size));
 }
 
-writeMarkdown(results);
-console.log(JSON.stringify({ ok: true, resultLimit, results }, null, 2));
+const scopes = [
+  await benchmarkScope("ranking-only", 10000),
+  await benchmarkScope("production-like", 5000),
+  await benchmarkScope("end-to-end-api", 1000),
+  await benchmarkScope("cold-start", 100),
+  await benchmarkScope("warm-search", 100),
+];
+writeMarkdown(results, scopes);
+console.log(JSON.stringify({ ok: true, resultLimit, results, scopes }, null, 2));
 
 console.time = originalConsoleTime;
 console.timeEnd = originalConsoleTimeEnd;

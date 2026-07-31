@@ -140,8 +140,9 @@ function cardToRow(card: Card) {
     url: card.url ?? null,
     type: card.type ?? "memo",
     color: card.color ?? null,
-    tags_json: JSON.stringify(card.tags ?? []),
-    links_json: JSON.stringify(card.links ?? []),
+    // Normalized relation tables are canonical; JSON columns remain read-only compatibility fields.
+    tags_json: "[]",
+    links_json: "[]",
     kj_group_id: card.kjGroupId ?? null,
     archived: card.archived ? 1 : 0,
     archived_at: card.archivedAt ?? null,
@@ -589,33 +590,19 @@ export function getCard(id: string): Card | null {
 // ════════════════════════════════════════════════════
 
 /** 双方向リンクを貼る */
-export function linkCards(id1: string, id2: string): void {
-  const card1 = getCard(id1);
-  const card2 = getCard(id2);
-  if (!card1 || !card2) return;
-  const links1 = card1.links.includes(id2) ? card1.links : [...card1.links, id2];
-  const links2 = card2.links.includes(id1) ? card2.links : [...card2.links, id1];
-  const now = new Date().toISOString();
-  const tx = db.transaction(() => {
-    updateStoredLinks(id1, links1, now);
-    updateStoredLinks(id2, links2, now);
-  });
-  tx();
+export function linkCards(sourceId: string, targetId: string): void {
+  const source = getCard(sourceId);
+  const target = getCard(targetId);
+  if (!source || !target || sourceId === targetId) return;
+  const links = source.links.includes(targetId) ? source.links : [...source.links, targetId];
+  updateStoredLinks(sourceId, links, new Date().toISOString());
 }
 
-/** 双方向リンクを外す */
-export function unlinkCards(id1: string, id2: string): void {
-  const card1 = getCard(id1);
-  const card2 = getCard(id2);
-  const now = new Date().toISOString();
-  const tx = db.transaction(() => {
-    if (card1) updateStoredLinks(id1, card1.links.filter(linkId => linkId !== id2), now);
-    if (card2) updateStoredLinks(id2, card2.links.filter(linkId => linkId !== id1), now);
-  });
-  tx();
+export function unlinkCards(sourceId: string, targetId: string): void {
+  const source = getCard(sourceId);
+  if (!source) return;
+  updateStoredLinks(sourceId, source.links.filter(linkId => linkId !== targetId), new Date().toISOString());
 }
-
-/** 指定カードのバックリンク（被リンク）を返す */
 export function getBacklinks(id: string): Card[] {
   return loadCards().filter(c => c.links.includes(id) && c.id !== id);
 }

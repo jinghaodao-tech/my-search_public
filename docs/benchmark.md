@@ -1,6 +1,6 @@
 # BM25 Benchmark
 
-Generated: 2026-07-06T13:29:17.730Z
+Generated: 2026-07-31T02:21:44.314Z
 
 Command:
 
@@ -16,10 +16,24 @@ The script performs one 100-card warm-up search before recording results. This e
 
 | Corpus size | DB load | Token parse / preparation | BM25 scoring | Sorting / limiting | Total search | Returned |
 |---:|---:|---:|---:|---:|---:|---:|
-| 100 | 2.355 ms | 2.096 ms | 1.746 ms | 0.169 ms | 5.668 ms | 100 |
-| 1,000 | 1.594 ms | 2.626 ms | 7.163 ms | 1.39 ms | 12.748 ms | 100 |
-| 5,000 | 1.534 ms | 6.725 ms | 42.606 ms | 8.853 ms | 62.067 ms | 100 |
-| 10,000 | 1.039 ms | 24.15 ms | 83.481 ms | 17.257 ms | 133.282 ms | 100 |
+| 100 | 2.58 ms | 2 ms | 1.181 ms | 0.139 ms | 5.191 ms | 100 |
+| 1,000 | 1.343 ms | 4.782 ms | 7.775 ms | 0.489 ms | 14.726 ms | 100 |
+| 5,000 | 0.914 ms | 9.184 ms | 56.536 ms | 4.297 ms | 74.079 ms | 100 |
+| 10,000 | 0.783 ms | 16.017 ms | 66.901 ms | 3.16 ms | 91.758 ms | 100 |
+
+## Scope Results
+
+| Scope | Corpus | Elapsed | Dedup | Result limit |
+|---|---:|---:|---|---:|
+| ranking-only | 10,000 | 74.941 ms | disabled | 100 |
+| production-like | 5,000 | 644.529 ms | enabled | 100 |
+| end-to-end-api | 1,000 | 8.515 ms | disabled | 100 |
+| cold-start | 100 | 1.431 ms | disabled | 100 |
+| warm-search | 100 | 1.637 ms | disabled | 100 |
+
+## End-to-end HTTP
+
+Run `npm run benchmark:http` to measure an actual `GET /api/cards` route with cold-start and warm-search timings. This is kept separate from the deterministic ranking corpus table.
 
 ## Before / After
 

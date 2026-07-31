@@ -11,6 +11,7 @@ if (dbDir && dbDir !== ".") {
 }
 
 export const db = new Database(dbPath);
+db.pragma('foreign_keys = ON');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS cards (
@@ -23,7 +24,7 @@ CREATE TABLE IF NOT EXISTS cards (
   color TEXT,
   tags_json TEXT NOT NULL DEFAULT '[]',
   links_json TEXT NOT NULL DEFAULT '[]',
-  kj_group_id TEXT,
+  kj_group_id TEXT REFERENCES kj_groups(id) ON DELETE SET NULL,
   archived INTEGER NOT NULL DEFAULT 0,
   archived_at TEXT,
   tokens_json TEXT NOT NULL DEFAULT '[]',
@@ -53,7 +54,8 @@ CREATE TABLE IF NOT EXISTS card_links (
   target_card_id TEXT NOT NULL,
   created_at TEXT NOT NULL,
   PRIMARY KEY (source_card_id, target_card_id),
-  FOREIGN KEY (source_card_id) REFERENCES cards(id) ON DELETE CASCADE
+  FOREIGN KEY (source_card_id) REFERENCES cards(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_card_id) REFERENCES cards(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_card_links_source ON card_links(source_card_id);
@@ -85,7 +87,14 @@ CREATE TABLE IF NOT EXISTS articles (
   content_hash TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  last_fetched_at TEXT
+  last_fetched_at TEXT,
+  candidate_status TEXT NOT NULL DEFAULT 'unreviewed',
+  first_seen_at TEXT,
+  reviewed_at TEXT,
+  saved_at TEXT,
+  expired_at TEXT,
+  candidate_score REAL,
+  candidate_match_reason TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_url_unique ON articles(url);
@@ -93,6 +102,8 @@ CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at);
 CREATE INDEX IF NOT EXISTS idx_articles_source ON articles(source);
 CREATE INDEX IF NOT EXISTS idx_articles_doc_length ON articles(doc_length);
 CREATE INDEX IF NOT EXISTS idx_articles_content_hash ON articles(content_hash);
+CREATE INDEX IF NOT EXISTS idx_articles_candidate_status ON articles(candidate_status);
+CREATE INDEX IF NOT EXISTS idx_articles_first_seen_at ON articles(first_seen_at);
 `);
 
 const cardColumns = db.prepare(`PRAGMA table_info(cards)`).all() as Array<{ name: string }>;
@@ -117,5 +128,5 @@ WHERE json_each.value IS NOT NULL AND TRIM(json_each.value) <> '';
 INSERT OR IGNORE INTO card_links (source_card_id, target_card_id, created_at)
 SELECT cards.id, json_each.value, cards.created_at
 FROM cards, json_each(COALESCE(cards.links_json, '[]'))
-WHERE json_each.value IS NOT NULL AND TRIM(json_each.value) <> '';
+WHERE json_each.value IS NOT NULL AND TRIM(json_each.value) <> '' AND EXISTS (SELECT 1 FROM cards target WHERE target.id = json_each.value);
 `);

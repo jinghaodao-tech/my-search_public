@@ -4,15 +4,8 @@ import { markdownContentDisposition } from '../utils/markdown_export.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { buildBulkMarkdownZip, buildCardMarkdown } from '../services/export_service.js';
 import { getRequestId, invalidRequest, parseBody, sendError } from '../services/http_service.js';
+import { cardListQuerySchema } from '../schemas/api_schemas.js';
 import type { Card } from '../domain/card.js';
-
-function parseQueryNumber(value: unknown, min: number, max: number): number | undefined {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (typeof raw !== 'string' || raw.trim() === '') return undefined;
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed < min) return undefined;
-  return Math.min(parsed, max);
-}
 
 function parseCardSort(value: unknown): 'created_at_asc' | 'created_at_desc' | undefined {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -23,19 +16,29 @@ function parseCardSort(value: unknown): 'created_at_asc' | 'created_at_desc' | u
 }
 
 
+function normalizeQueryNumber(value: unknown, min: number, max: number): number | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (typeof raw !== 'string' || raw.trim() === '') return undefined;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < min) return undefined;
+  return Math.min(parsed, max);
+}
 export function createCardsRouter(ctx: RouteContext) {
   const router = express.Router();
 
   router.get('/cards', (req, res) => {
-    const { tag, kjGroupId, type, q, archived, limit, offset, sort } = req.query as Record<string, string | undefined>;
+    const rawQuery = req.query as Record<string, unknown>;
+    const parsedQuery = cardListQuerySchema.safeParse({ ...rawQuery, limit: normalizeQueryNumber(rawQuery.limit, 1, 100), offset: normalizeQueryNumber(rawQuery.offset, 0, Number.MAX_SAFE_INTEGER) });
+    if (!parsedQuery.success) { invalidRequest(req, res, parsedQuery.error.issues); return; }
+    const { tag, kjGroupId, type, q, archived, limit, offset, sort } = parsedQuery.data;
     const filters = {
       tag,
       kjGroupId,
       type,
       q,
       archived: archived === 'true' ? true : archived === 'false' ? false : undefined,
-      limit: parseQueryNumber(limit, 1, 100),
-      offset: parseQueryNumber(offset, 0, Number.MAX_SAFE_INTEGER),
+      limit,
+      offset,
       sort: parseCardSort(sort),
     };
 
@@ -61,14 +64,14 @@ export function createCardsRouter(ctx: RouteContext) {
 
   router.get('/cards/:id', (req, res) => {
     const card = ctx.getCard(req.params.id);
-    if (!card) { sendError(req, res, 404, 'Not found'); return; }
+    if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     const backlinks = ctx.getBacklinks(req.params.id);
     res.json({ ...card, backlinks });
   });
 
   router.get('/cards/:id/export-md', (req, res) => {
     const card = ctx.getCard(req.params.id);
-    if (!card) { sendError(req, res, 404, 'Not found'); return; }
+    if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     const { markdown, filename } = buildCardMarkdown(card);
     res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
     res.setHeader('Content-Disposition', markdownContentDisposition(filename));
@@ -80,7 +83,7 @@ export function createCardsRouter(ctx: RouteContext) {
     if (!body) return;
     const result = buildBulkMarkdownZip(body.ids);
     if (!result) {
-      sendError(req, res, 404, 'Not found');
+      sendError(req, res, 404, 'Not found', undefined, 'card_not_found');
       return;
     }
     res.setHeader('Content-Type', 'application/zip');
@@ -92,7 +95,7 @@ export function createCardsRouter(ctx: RouteContext) {
     const body = parseBody(ctx.updateCardSchema, req, res);
     if (!body) return;
     const card = await ctx.updateCard(req.params.id, ctx.normalizeCardInput(body));
-    if (!card) { sendError(req, res, 404, 'Not found'); return; }
+    if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     res.json(card);
   });
 
@@ -103,19 +106,19 @@ export function createCardsRouter(ctx: RouteContext) {
 
   router.put('/cards/:id/archive', async (req, res) => {
     const card = await ctx.updateCard(req.params.id, { archived: true, archivedAt: new Date().toISOString() });
-    if (!card) { sendError(req, res, 404, 'Not found'); return; }
+    if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     res.json(card);
   });
 
   router.put('/cards/:id/unarchive', async (req, res) => {
     const card = await ctx.restoreCard(req.params.id);
-    if (!card) { sendError(req, res, 404, 'Not found'); return; }
+    if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     res.json(card);
   });
 
   router.post('/cards/:id/restore', async (req, res) => {
     const card = await ctx.restoreCard(req.params.id);
-    if (!card) { sendError(req, res, 404, 'Not found'); return; }
+    if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     res.json(card);
   });
 
@@ -160,7 +163,7 @@ export function createCardsRouter(ctx: RouteContext) {
       return;
     }
     if (!ctx.getCard(req.params.id) || !ctx.getCard(body.targetId)) {
-      sendError(req, res, 404, 'Not found');
+      sendError(req, res, 404, 'Not found', undefined, 'card_not_found');
       return;
     }
     ctx.linkCards(req.params.id, body.targetId);
@@ -193,16 +196,11 @@ export function createCardsRouter(ctx: RouteContext) {
       group: card.type,
       color: card.color,
     }));
-    const edgesSet = new Set<string>();
     const edges: { from: string; to: string }[] = [];
     for (const card of visibleCards) {
       for (const linkId of card.links) {
         if (!linkedIds.has(linkId)) continue;
-        const key = [card.id, linkId].sort().join('--');
-        if (!edgesSet.has(key)) {
-          edgesSet.add(key);
-          edges.push({ from: card.id, to: linkId });
-        }
+        edges.push({ from: card.id, to: linkId });
       }
     }
     res.json({ nodes, edges });

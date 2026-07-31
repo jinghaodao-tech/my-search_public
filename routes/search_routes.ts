@@ -1,9 +1,10 @@
-﻿import express from 'express';
+import express from 'express';
 import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
 import type { Card } from '../domain/card.js';
 import type { Article } from '../bm25_engine.js';
+import { db } from '../db/database.js';
 
 type SearchInputArticle = Partial<Article> & Pick<Article, 'id' | 'title' | 'body'> & {
   publishedAt: string | Date;
@@ -60,11 +61,18 @@ export function createSearchRouter(ctx: RouteContext) {
           archived: publicArticle.archived ?? false,
         };
       };
+      const updateRankingMetadata = db.prepare("UPDATE articles SET candidate_score = ?, candidate_match_reason = ?, updated_at = updated_at WHERE id = ?");
+      const rankingReason = (item: { breakdown?: { matchedTerms?: Array<{ term?: string }> } }, meta: { matchedFields: string[]; matchedKeywords: string[] }) => {
+        const fields = meta.matchedFields.length ? meta.matchedFields.join(", ") : "本文一致";
+        const keywords = meta.matchedKeywords.length ? `キーワード: ${meta.matchedKeywords.join(", ")}` : "キーワード一致";
+        return `${fields} / ${keywords}`;
+      };
       const response = {
         ...result,
         active: result.active.map(item => {
           const article = stripSearchFields(item.article);
           const meta = ctx.buildSearchMatchMeta(article, ctx.buildSearchKeywordCandidates(config), item.breakdown?.matchedTerms);
+          updateRankingMetadata.run(item.score, rankingReason(item, meta), item.article.id);
           return { ...item, article, ...meta };
         }),
         archived: result.archived.map(item => {

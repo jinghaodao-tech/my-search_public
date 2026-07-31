@@ -8,7 +8,7 @@ const mojibakePatterns = [
 ].map(pattern => JSON.parse('"' + pattern + '"'));
 const allowedExtensions = new Set(['.md', '.html', '.css', '.js', '.ts', '.json', '.csv']);
 const excludedDirs = new Set([
-  '.git', 'node_modules', 'data', 'backups', 'coverage', 'dist', 'playwright-report', 'test-results', 'scripts',
+  '.git', 'node_modules', 'data', 'backups', 'coverage', 'dist', 'playwright-report', 'test-results', 'scripts', 'vendor',
 ]);
 const includedTopLevel = new Set([
   'README.md', 'README_ja.md', 'package.json', 'docs', 'public', 'routes', 'controllers', 'services', 'utils', 'tests',

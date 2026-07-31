@@ -29,7 +29,7 @@ export function createKjRouter(ctx: RouteContext) {
     const body = parseBody(ctx.kjGroupUpdateSchema, req, res);
     if (!body) return;
     const group = ctx.updateKJGroup(req.params.id, body);
-    if (!group) { sendError(req, res, 404, 'Not found'); return; }
+    if (!group) { sendError(req, res, 404, 'Not found', undefined, 'group_not_found'); return; }
     res.json(group);
   });
 

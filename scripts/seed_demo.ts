@@ -6,6 +6,7 @@ import {
   loadCards,
   loadKJGroups,
 } from "../cards_engine.js";
+import { saveArticlesToDb } from "../repositories/articles_repository.js";
 
 const demoCards = [
   {
@@ -103,6 +104,19 @@ for (const [sourceTitle, targetTitle] of [
   const target = createdOrExisting.find((card) => card.title === targetTitle);
   if (source && target) linkCards(source.id, target.id);
 }
+
+saveArticlesToDb([{
+  id: "demo_candidate_bm25",
+  title: "Demo candidate: SQLite BM25 ranking",
+  body: "This collected fixture demonstrates candidate score, match reason, review, save, and normal card search.",
+  summary: "Local candidate fixture for the 15-minute demo.",
+  url: "https://example.test/demo-candidate-bm25",
+  source: "fixture:demo",
+  sourceAuthority: 0.95,
+  publishedAt: new Date(),
+  tokens: ["sqlite", "bm25", "ranking", "candidate"],
+  docLength: 4,
+}]);
 
 console.log(JSON.stringify({
   ok: true,

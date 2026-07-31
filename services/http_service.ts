@@ -11,6 +11,19 @@ declare global {
   }
 }
 
+export type AppErrorCode =
+  | 'validation_failed'
+  | 'card_not_found'
+  | 'candidate_not_found'
+  | 'candidate_already_saved'
+  | 'candidate_expired'
+  | 'group_not_found'
+  | 'link_invalid'
+  | 'import_invalid'
+  | 'collector_failed'
+  | 'ai_provider_unavailable'
+  | 'database_error'
+  | 'request_failed';
 export class HttpError extends Error {
   status: number;
 
@@ -25,15 +38,15 @@ export function getRequestId(req: express.Request): string {
   return req.requestId ?? String(req.get('x-request-id') ?? '');
 }
 
-export function sendError(req: express.Request, res: express.Response, status: number, error: string, details?: unknown) {
-  const payload: { error: string; requestId: string; details?: unknown } = {
+export function sendError(req: express.Request, res: express.Response, status: number, error: string, details?: unknown, code: AppErrorCode = 'request_failed') {
+  const payload: { error: string; code: AppErrorCode; requestId: string; details?: unknown } = {
     error,
+    code,
     requestId: getRequestId(req),
   };
   if (details !== undefined) payload.details = details;
   res.status(status).json(payload);
 }
-
 export function requestLogger(req: express.Request, res: express.Response, next: express.NextFunction) {
   const started = Date.now();
   const incomingRequestId = req.header('x-request-id')?.trim();
@@ -64,7 +77,7 @@ export function validationDetails(error: ZodError) {
 }
 
 export function invalidRequest(req: express.Request, res: express.Response, details: unknown) {
-  sendError(req, res, 400, 'Invalid request', details);
+  sendError(req, res, 400, 'Invalid request', details, 'validation_failed');
 }
 
 export function parseBody<T>(schema: ZodType<T>, req: express.Request, res: express.Response): T | null {

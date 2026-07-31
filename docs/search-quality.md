@@ -1,19 +1,19 @@
 # Search Quality Evaluation
 
-Speed alone does not prove that a search app returns useful results. My Search App includes a small deterministic search-quality evaluation so ranking behavior can be discussed alongside benchmark timings.
+The repository includes a deterministic search-quality evaluation in addition to latency benchmarks.
 
 ## Dataset
 
-The evaluation script uses a fixed in-repo dataset with cards/articles about BM25 token caching, Zettelkasten backlinks, and CSV/JSON import validation. Each query defines the expected relevant top result.
+The evaluation uses 40 documents and 15 hand-labeled English/Japanese queries. It includes relevant documents, unrelated documents, terminology variation, short and long text, and Japanese queries.
 
 ## Metrics
 
-The first version reports:
+- Precision@1 and Precision@3
+- Mean Reciprocal Rank (MRR)
+- Recall@5
+- nDCG@5
 
-- Precision@1: whether the top result is an expected relevant result.
-- MRR: how high the first expected result appears in the ranking.
-
-These are intentionally small but easy to reproduce locally and in CI.
+The script also compares current BM25 against variants without synonym expansion and without time decay.
 
 ## Run
 
@@ -21,21 +21,10 @@ These are intentionally small but easy to reproduce locally and in CI.
 npm run evaluate:search
 ```
 
-## Current Result
-
-The current fixed evaluation returns the target item at rank 1 for each case: `meanPrecisionAt1 = 1.0` and `MRR = 1.0`. Exact values should be refreshed whenever ranking logic or tokenization changes.
+The current run reports the dataset size, per-case metrics, aggregate metrics, and variant comparison. Exact values should be refreshed whenever ranking logic or tokenization changes.
 
 ## Limits
 
-The dataset is small and hand-labeled, so it is not a research benchmark. It exists to catch obvious ranking regressions and to document search-quality thinking in the portfolio.
+This is a deterministic regression fixture, not a general web-search benchmark. Relevance labels are intentionally small and curated for portfolio-level regression detection.
 
-## Future Comparisons
-
-Useful future comparisons would include:
-
-- Current BM25 implementation
-- Simple keyword matching baseline
-- SQLite FTS5
-- Vector search or hybrid lexical/vector ranking
-
-FTS5 and vector search are comparison candidates only; they are not implemented in this closing pass because they would add scope beyond the local-first portfolio cleanup.
+FTS5 and vector search remain comparison candidates only and are not production dependencies.

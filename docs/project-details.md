@@ -139,6 +139,7 @@ The server exposes `GET /healthz` for a lightweight app and SQLite health check.
 | `PORT` | `3000` | Express server port |
 | `DB_PATH` | `data/cards.db` | SQLite database path |
 | `CORS_ORIGIN` | `http://localhost:3000` | Allowed CORS origin |
+| CANDIDATE_RETENTION_DAYS | 14 | Days to retain reviewed-but-unsaved candidates |
 | `AI_PROVIDER` | `anthropic` | `anthropic` or `gemini` |
 | `ANTHROPIC_API_KEY` | - | Anthropic API key |
 | `ANTHROPIC_MODEL` | app default | Anthropic model |
@@ -158,7 +159,7 @@ npm test
 npm start
 ```
 
-Then open `http://localhost:3000`.
+Then open `http://localhost:3000`. The server binds to `127.0.0.1` by default. Set `HOST=0.0.0.0` only when explicitly exposing it on a trusted network. CORS controls browser origins but is not authentication. The Zettelkasten graph is bundled locally at `public/vendor/vis-network.min.js`, so the core UI does not depend on a CDN.
 
 ## Docker Setup
 

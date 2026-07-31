@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>カード検索システム</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js"></script>
+<script src="vendor/vis-network.min.js"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,6 +14,7 @@
   <h1>カード検索</h1>
   <div class="tab-group">
     <button class="tab active" onclick="switchView('cards')">カード一覧</button>
+    <button class="tab" onclick="switchView('candidates')">候補レビュー</button>
     <button class="tab" onclick="switchView('kj')">グルーピングボード</button>
     <button class="tab" onclick="switchView('zettel')">Zettelkasten</button>
     <button class="tab" onclick="switchView('bm25')">BM25スコアリング</button>
@@ -67,7 +68,7 @@
       <span id="count-badge">0件</span>
       <div class="spacer"></div>
       <div id="header-actions">
-        <input type="text" id="search-input" placeholder="キーワード検索..." oninput="onSearch(this.value)">
+        <input type="text" id="search-input" placeholder="保存済みカードを検索" oninput="onSearch(this.value)">
         <button class="btn btn-primary btn-sm" onclick="openNewCardModal()">メモ作成</button>
         <button id="multi-select-btn" class="btn btn-secondary btn-sm" onclick="toggleMultiSelect()">選択</button>
         <button id="bulk-archive-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="archiveSelected()">一括アーカイブ</button>
@@ -81,6 +82,8 @@
 
       <!-- カードグリッド -->
       <div id="card-grid"></div>
+
+      <div id="candidate-view"><div id="candidate-toolbar"><span id="candidate-count">0件</span><label>状態 <select id="candidate-status-filter" onchange="candidateStatusFilter=this.value; loadCandidates()"><option value="">すべて</option><option value="unreviewed">未確認</option><option value="reviewed_not_saved">確認済み・未保存</option><option value="saved_as_card">保存済み</option><option value="expired">期限切れ</option></select></label><button class="btn btn-secondary btn-sm" onclick="loadCandidates()">更新</button></div><div id="candidate-grid"></div></div>
 
       <!-- KJボード -->
       <div id="kj-board">
@@ -435,5 +438,6 @@
 <script src="js/mobile_edit.js"></script>
 <script src="js/bm25_modes_ui.js"></script>
 <script src="js/source_ui.js"></script>
+<script src="js/candidate_ui.js"></script>
 </body>
 </html>

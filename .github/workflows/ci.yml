@@ -28,6 +28,21 @@ jobs:
       - name: API tests
         run: npm test
 
+      - name: Acceptance tests
+        run: npm run acceptance:test
+
+      - name: HTTP benchmark smoke
+        run: npm run benchmark:http
+
+      - name: Search quality evaluation
+        run: npm run evaluate:search
+
+      - name: Benchmark smoke
+        run: npm run benchmark
+
+      - name: Encoding check
+        run: npm run check:encoding
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 

@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
@@ -8,7 +8,7 @@ export function createAiRouter(ctx: RouteContext) {
 
   router.delete('/cards/:id/summary', async (req, res) => {
     const card = ctx.getCard(req.params.id);
-    if (!card) { sendError(req, res, 404, 'Not found'); return; }
+    if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     const updated = await ctx.updateCard(req.params.id, { summary: undefined });
     res.json({ ok: true, card: updated });
   });
@@ -16,7 +16,7 @@ export function createAiRouter(ctx: RouteContext) {
   router.post('/cards/:id/summarize', ctx.aiLimiter, async (req, res) => {
     const cardId = String(req.params.id);
     const card = ctx.getCard(cardId);
-    if (!card) { sendError(req, res, 404, 'Not found'); return; }
+    if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
 
     try {
       const summary = await ctx.summarizeCard(card);
@@ -40,7 +40,7 @@ export function createAiRouter(ctx: RouteContext) {
         return;
       }
       logger.error({ event: 'ai_summary_error', requestId: getRequestId(req), error: errorMeta(err) }, 'AI summary failed');
-      sendError(req, res, 500, 'AI APIでエラーが発生しました', [{ code: 'api_error' }]);
+      sendError(req, res, 500, 'AI APIでエラーが発生しました', [{ code: 'api_error' }], 'ai_provider_unavailable');
     }
   });
 

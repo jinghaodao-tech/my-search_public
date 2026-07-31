@@ -18,6 +18,7 @@ import { createCardsRouter } from './routes/cards_routes.js';
 import { createCollectRouter } from './routes/collect_routes.js';
 import { createKjRouter } from './routes/kj_routes.js';
 import { createSearchRouter } from './routes/search_routes.js';
+import { createCandidateRouter } from './routes/candidate_routes.js';
 import {
   requestLogger,
   notFoundHandler,
@@ -61,6 +62,7 @@ app.use(createSystemRouter(publicDir));
 
 app.use('/api', createCollectRouter(routeContext));
 app.use('/api', createSearchRouter(routeContext));
+app.use('/api', createCandidateRouter(routeContext));
 app.use('/api', createCardsRouter(routeContext));
 app.use('/api', createAiRouter(routeContext));
 app.use('/api', createKjRouter(routeContext));
@@ -74,16 +76,15 @@ if (process.env.NODE_ENV === 'test') {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// ════════════════════════════════════════════════════
-//  起動
-// ════════════════════════════════════════════════════
+// Server bootstrap
 if (process.env.NODE_ENV !== 'test') {
   await routeContext.bootstrap();
 }
 
 const PORT = Number(process.env.PORT ?? 3000);
 export function startServer(port = PORT) {
-  return app.listen(port, () => {
+  const host = process.env.HOST ?? '127.0.0.1';
+  return app.listen(port, host, () => {
     logger.info({ event: 'server_start', port, url: `http://localhost:${port}` }, 'server started');
   });
 }

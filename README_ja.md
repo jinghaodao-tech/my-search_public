@@ -32,6 +32,11 @@ My Search App は、ローカルファーストの知識管理アプリです。
 
 https://github.com/user-attachments/assets/be5052d8-1d60-4aaa-8f6a-565dbaa1ee4d
 
+## 中心ワークフロー
+
+`収集 -> BM25で順位付け -> レビュー -> カード保存 -> 整理 -> 保存知識の検索 -> Export`
+
+収集記事と保存済みカードは別のライフサイクルで管理します。候補には `unreviewed`、`reviewed_not_saved`、`saved_as_card`、`expired` の状態があり、候補の期限切れは保存済みカードをアーカイブ・削除しません。`POST /api/run` は収集候補のBM25検索、`GET /api/cards?q=...` は保存済みカードのSQLite `LIKE` フィルターです。
 ## 特徴
 
 - カードのタイトル・本文・要約・タグを対象にしたBM25検索
@@ -89,7 +94,7 @@ BM25検索は、検索時に毎回トークン化する方式から、保存時�
 
 最大の改善は、検索ごとの形態素解析をなくしたことです。残るボトルネック候補は、DBアクセス、集計、ソートです。
 
-再現可能なベンチマークは [docs/benchmark_ja.md](docs/benchmark_ja.md) を参照してください。検索品質評価は [docs/search-quality_ja.md](docs/search-quality_ja.md) にまとめています。
+ベンチマークは ranking-only、production-like、end-to-end API、cold-start、warm-search の条件を分けて測定します。[docs/benchmark_ja.md](docs/benchmark_ja.md) を参照してください。検索品質評価は40文書・15クエリ（日本語/英語）で実施し、[docs/search-quality_ja.md](docs/search-quality_ja.md) にまとめています。
 
 ## 技術スタック
 
@@ -103,3 +108,10 @@ BM25検索は、検索時に毎回トークン化する方式から、保存時�
 | DevOps | Docker, Docker Compose, GitHub Actions |
 | Frontend | HTML, CSS, JavaScript |
 | AI | Anthropic API, Gemini API |
+
+## 現在の制約
+
+- 単一ユーザー向けのローカルアプリであり、本番認証と複数端末同期は対象外です。
+- 収集処理はRSS、arXiv、GitHubなど外部ソースに依存します。
+- AI要約は任意機能で、利用にはプロバイダーのAPIキーが必要です。
+- 大規模な重複排除、ベクトル検索、クラウド展開、PostgreSQL、Elasticsearch、モバイルアプリは対象外です。

@@ -9,10 +9,11 @@
     "dev": "npx tsx --watch server.ts",
     "typecheck": "tsc --noEmit",
     "acceptance:test": "vitest run tests --fileParallelism=false",
-    "test": "vitest run tests server.test.ts",
+    "test": "vitest run server.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "seed:demo": "tsx scripts/seed_demo.ts",
+    "demo": "npm run seed:demo && npm start",
     "export:json": "tsx scripts/export_json.ts",
     "export:sqlite": "tsx scripts/export_sqlite.ts",
     "backup": "tsx scripts/backup.ts",
@@ -21,12 +22,14 @@
     "migrate:kj-groups": "tsx scripts/migrate_kj_groups_json_to_sqlite.ts",
     "migrate:articles": "tsx scripts/migrate_articles_json_to_sqlite.ts",
     "benchmark": "tsx scripts/benchmark.ts",
+    "benchmark:http": "tsx scripts/benchmark_http.ts",
     "backfill:card-tokens": "tsx scripts/backfill_card_tokens.ts",
     "backfill:article-tokens": "tsx scripts/backfill_article_tokens.ts",
     "git:safe-push": "powershell -ExecutionPolicy Bypass -File scripts/safe-push.ps1",
     "evaluate:search": "tsx scripts/evaluate_search_quality.ts",
     "check:encoding": "tsx scripts/check_encoding.ts",
-    "verify":"npm run typecheck && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark && npm run evaluate:search && npm run check:encoding && npm audit --audit-level=high && docker build -t my-search-public:test ."
+    "verify:ci": "npm run typecheck && npm test && npm run acceptance:test && npm run benchmark:http && npm run evaluate:search && npm run check:encoding && npm audit --audit-level=high",
+    "verify": "npm run typecheck && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark && npm run benchmark:http && npm run evaluate:search && npm run check:encoding && npm audit --audit-level=high && docker build -t my-search-public:test ."
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
@@ -40,6 +43,7 @@
     "pino": "^10.3.1",
     "rss-parser": "^3.13.0",
     "tsx": "^4.22.3",
+    "vis-network": "^10.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

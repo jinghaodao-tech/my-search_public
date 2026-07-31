@@ -4,6 +4,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { testDir } from "./helpers.js";
+import { runMigrations } from "../db/migrate.js";
 
 describe("DB migration", () => {
   function runTsx(script: string, env: NodeJS.ProcessEnv) {
@@ -296,4 +297,27 @@ describe("DB migration", () => {
       db.close();
     }
   });
-});
+
+  it("applies relation foreign keys transactionally and is safe to rerun", () => {
+    const db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    db.exec(`CREATE TABLE kj_groups (id TEXT PRIMARY KEY); CREATE TABLE cards (id TEXT PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, summary TEXT, url TEXT, type TEXT NOT NULL DEFAULT 'memo', color TEXT, tags_json TEXT NOT NULL DEFAULT '[]', links_json TEXT NOT NULL DEFAULT '[]', kj_group_id TEXT, archived INTEGER NOT NULL DEFAULT 0, archived_at TEXT, tokens_json TEXT NOT NULL DEFAULT '[]', doc_length INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE card_tags (card_id TEXT NOT NULL, tag TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(card_id, tag)); CREATE TABLE card_links (source_card_id TEXT NOT NULL, target_card_id TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(source_card_id, target_card_id));`);
+    db.exec("CREATE TABLE schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL);");
+    db.prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)").run("001_create_migrations_table", "now");
+    for (const id of ["002_add_search_token_columns", "003_create_kj_groups", "004_create_card_relation_tables", "005_create_articles_table", "006_add_candidate_lifecycle"]) db.prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)").run(id, "now");
+    const applied = runMigrations(db);
+    expect(applied).toContain("007_enforce_relation_foreign_keys");
+    const rerun = runMigrations(db);
+    expect(rerun).toEqual([]);
+    expect((db.prepare("PRAGMA foreign_key_list(card_links)").all() as any[]).map(row => row.from)).toEqual(expect.arrayContaining(["source_card_id", "target_card_id"]));
+    db.close();
+  });
+
+  it("does not record a failed migration", () => {
+    const db = new Database(":memory:");
+    db.exec(`CREATE TABLE kj_groups (id TEXT PRIMARY KEY); CREATE TABLE cards (id TEXT PRIMARY KEY); CREATE TABLE card_tags (card_id TEXT, tag TEXT, created_at TEXT); CREATE TABLE card_links (source_card_id TEXT, target_card_id TEXT, created_at TEXT); CREATE TABLE schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL); INSERT INTO schema_migrations VALUES ('001_create_migrations_table', 'now'), ('002_add_search_token_columns', 'now'), ('003_create_kj_groups', 'now'), ('004_create_card_relation_tables', 'now'), ('005_create_articles_table', 'now'), ('006_add_candidate_lifecycle', 'now');`);
+    expect(() => runMigrations(db)).toThrow();
+    expect(db.prepare("SELECT id FROM schema_migrations WHERE id = '007_enforce_relation_foreign_keys'").get()).toBeUndefined();
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 'cards_new'").get()).toBeUndefined();
+    db.close();
+  });});

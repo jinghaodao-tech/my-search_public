@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
@@ -40,7 +40,7 @@ export function createCollectRouter(ctx: RouteContext) {
       res.json(result);
     } catch (err) {
       logger.error({ event: 'collect_error', requestId: getRequestId(req), error: errorMeta(err) }, 'collect failed');
-      sendError(req, res, 500, 'Internal server error');
+      sendError(req, res, 500, 'Internal server error', undefined, 'collector_failed');
     }
   });
 

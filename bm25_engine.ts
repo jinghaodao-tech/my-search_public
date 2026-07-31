@@ -537,29 +537,11 @@ function deduplicateArticles(articles: Article[], threshold = 0.8): Article[] {
  * Priority = Quality × Freshness × Authority
  * グループ内代表記事の選出に使う。
  */
-function priorityScore(article: Article, bm25Score: number): number {
-  const quality = Math.min(article.body.length / 2000, 1);
-  const ageDays = (Date.now() - article.publishedAt.getTime()) / 86_400_000;
-  const freshness = Math.exp(-0.05 * ageDays);
-  return bm25Score * quality * freshness * article.sourceAuthority;
-}
-
 // ═══════════════════════════════════════════════════════════════════
 //  § 6. 自動アーカイブ判定
 // ═══════════════════════════════════════════════════════════════════
 
-function evaluateArchive(
-  scored: ScoredArticle,
-  viewCount: number,
-  scoreThreshold = 0.5,
-  noViewDays = 14
-): ArchiveDecision {
-  const ageDays =
-    (Date.now() - scored.article.publishedAt.getTime()) / 86_400_000;
-
-  if (viewCount === 0 && ageDays >= noViewDays) {
-    return { shouldArchive: true, reason: `未閲覧 ${noViewDays} 日経過` };
-  }
+function evaluateArchive(scored: ScoredArticle, scoreThreshold = 0.5): ArchiveDecision {
   if (scored.score < scoreThreshold) {
     return {
       shouldArchive: true,
@@ -582,8 +564,6 @@ export async function runPipeline(
     dedupThreshold?: number;
     archiveScoreThreshold?: number;
     resultLimit?: number;
-    noViewDays?: number;
-    viewCounts?: Map<string, number>;
   } = {}
 ): Promise<PipelineResult> {
   const totalStart = nowMs();
@@ -597,8 +577,6 @@ export async function runPipeline(
     dedupThreshold = 0.8,
     archiveScoreThreshold = 0.5,
     resultLimit = 50,
-    noViewDays = 14,
-    viewCounts = new Map(),
   } = options;
 
   // Layer 1: LSH 重複排除
@@ -645,8 +623,7 @@ export async function runPipeline(
   scored.sort((a, b) => b.score - a.score);
 
   for (const s of scored) {
-    const views = viewCounts.get(s.article.id) ?? 0;
-    const decision = evaluateArchive(s, views, archiveScoreThreshold, noViewDays);
+    const decision = evaluateArchive(s, archiveScoreThreshold);
     if (decision.shouldArchive) {
       archived.push({ article: s.article, reason: decision.reason });
     } else {

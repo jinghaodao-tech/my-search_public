@@ -113,7 +113,7 @@ describe("card workflows", () => {
     cardsEngine.linkCards(first.id, second.id);
 
     expect(cardLinks(first.id)).toContainEqual({ source_card_id: first.id, target_card_id: second.id });
-    expect(cardLinks(second.id)).toContainEqual({ source_card_id: second.id, target_card_id: first.id });
+    expect(cardLinks(second.id)).toEqual([]);
   });
 
   it("rejects self links through the API", async () => {
@@ -135,7 +135,7 @@ describe("card workflows", () => {
     cardsEngine.linkCards(first.id, second.id);
 
     expect(cardLinks(first.id).filter((link: any) => link.target_card_id === second.id)).toHaveLength(1);
-    expect(cardLinks(second.id).filter((link: any) => link.target_card_id === first.id)).toHaveLength(1);
+    expect(cardLinks(second.id).filter((link: any) => link.target_card_id === first.id)).toHaveLength(0);
   });
 
   it("removes link rows when cards are unlinked", async () => {
