@@ -1,6 +1,6 @@
 # BM25 Benchmark
 
-Generated: 2026-07-31T10:40:06.201Z
+Generated: 2026-07-31T11:06:52.886Z
 
 Command:
 
@@ -16,20 +16,20 @@ The script performs one 100-card warm-up search before recording results. This e
 
 | Corpus size | DB load | Token parse / preparation | BM25 scoring | Sorting / limiting | Total search | Returned |
 |---:|---:|---:|---:|---:|---:|---:|
-| 100 | 2.005 ms | 1.864 ms | 1.721 ms | 0.108 ms | 5.161 ms | 100 |
-| 1,000 | 1.752 ms | 2.732 ms | 6.056 ms | 0.474 ms | 10.871 ms | 100 |
-| 5,000 | 0.825 ms | 9.794 ms | 41.97 ms | 3.835 ms | 59.447 ms | 100 |
-| 10,000 | 0.82 ms | 16.005 ms | 66.12 ms | 3.322 ms | 92.612 ms | 100 |
+| 100 | 2.186 ms | 1.915 ms | 1.487 ms | 0.16 ms | 5.262 ms | 100 |
+| 1,000 | 1.437 ms | 4.061 ms | 9.674 ms | 0.678 ms | 16.364 ms | 100 |
+| 5,000 | 1.01 ms | 9.77 ms | 50.096 ms | 4.746 ms | 68.974 ms | 100 |
+| 10,000 | 3.03 ms | 25.231 ms | 57.955 ms | 7.118 ms | 100.18 ms | 100 |
 
 ## Scope Results
 
 | Scope | Corpus | Elapsed | Dedup | Result limit |
 |---|---:|---:|---|---:|
-| ranking-only | 10,000 | 99.488 ms | disabled | 100 |
-| production-like | 5,000 | 624.975 ms | enabled | 100 |
-| end-to-end-api | 1,000 | 9.131 ms | disabled | 100 |
-| cold-start | 100 | 1.563 ms | disabled | 100 |
-| warm-search | 100 | 1.546 ms | disabled | 100 |
+| ranking-only | 10,000 | 90.158 ms | disabled | 100 |
+| production-like | 5,000 | 590.685 ms | enabled | 100 |
+| end-to-end-api | 1,000 | 8.242 ms | disabled | 100 |
+| cold-start | 100 | 1.835 ms | disabled | 100 |
+| warm-search | 100 | 1.681 ms | disabled | 100 |
 
 ## End-to-end HTTP
 
@@ -70,5 +70,5 @@ BM25 is only useful in the GUI if search latency stays predictable as the local-
 
 | Scope | Corpus | Elapsed | After dedup | Active |
 |---|---:|---:|---:|---:|
-| candidate-pipeline-near-duplicate | 200 | 6.964 ms | 1 | 1 |
-| candidate-pipeline-diverse | 200 | 3.031 ms | 200 | 200 |
+| candidate-pipeline-near-duplicate | 200 | 7.271 ms | 1 | 1 |
+| candidate-pipeline-diverse | 200 | 3.92 ms | 200 | 200 |
