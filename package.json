@@ -52,7 +52,6 @@
     "tsx": "^4.22.3",
     "vis-network": "^10.1.0",
     "zod": "^4.4.3"
-    ,"pg": "^8.16.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
