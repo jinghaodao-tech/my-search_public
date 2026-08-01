@@ -54,6 +54,7 @@ export interface Article {
   tags?: string[];
   type?: string;
   createdAt?: string;
+  firstSeenAt?: string;
   updatedAt?: string;
   archived?: boolean;
   archivedAt?: string;

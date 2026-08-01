@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
-const files = ["artifacts/vitest-results.json", "artifacts/acceptance-tests.json", "artifacts/search-quality.json", "artifacts/benchmark-results.json"];
+const files = ["artifacts/vitest-results.json", "artifacts/acceptance-tests.json", "artifacts/search-quality.json", "artifacts/ranking-engine-quality.json", "artifacts/end-to-end-query-quality.json", "artifacts/benchmark-results.json"];
 const missing = files.filter((file) => !existsSync(file));
 assert.equal(missing.length, 0, `verification artifacts missing: ${missing.join(", ")}`);
 for (const file of files) assert.ok(JSON.parse(readFileSync(file, "utf8")));
