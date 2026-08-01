@@ -100,14 +100,16 @@ async function benchmarkCorpus(size: number) {
   };
 }
 
-async function benchmarkScope(scope: 'ranking-only' | 'production-like' | 'end-to-end-api' | 'first-http-request-after-server-start' | 'warm-http-request', size: number) {
+async function benchmarkScope(scope: 'ranking-only' | 'production-like' | 'end-to-end-pipeline' | 'first-pipeline-call' | 'repeated-pipeline-call', size: number) {
   const started = performance.now();
   const options = {
     archiveScoreThreshold: scope === 'production-like' ? 0.1 : -1,
     dedupThreshold: scope === 'production-like' ? 0.8 : 1,
     resultLimit,
   };
-  await runPipeline(makeCorpus(size), benchmarkMode, `benchmark-${scope}`, options);
+  const corpus = makeCorpus(size);
+  if (scope === "repeated-pipeline-call") await runPipeline(corpus, benchmarkMode, `benchmark-${scope}-warmup`, options);
+  await runPipeline(corpus, benchmarkMode, `benchmark-${scope}`, options);
   return { scope, corpusSize: size, elapsedMs: roundMs(performance.now() - started), dedupEnabled: options.dedupThreshold < 1, resultLimit };
 }
 async function benchmarkCandidateScope(name: "candidate-pipeline-near-duplicate" | "candidate-pipeline-diverse", nearDuplicate: boolean) {
@@ -213,19 +215,25 @@ const candidateScopes = [
 const scopes = [
   await benchmarkScope("ranking-only", 10000),
   await benchmarkScope("production-like", 5000),
-  await benchmarkScope("end-to-end-api", 1000),
-  await benchmarkScope("first-http-request-after-server-start", 100),
-  await benchmarkScope("warm-http-request", 100),
+  await benchmarkScope("end-to-end-pipeline", 1000),
+  await benchmarkScope("first-pipeline-call", 100),
+  await benchmarkScope("repeated-pipeline-call", 100),
 ];
 writeMarkdown(results, scopes, candidateScopes);
-const candidateMarkdown = "\n\n## Candidate pipeline scopes\n\n| Scope | Corpus | Elapsed | After dedup | Active |\n|---|---:|---:|---:|---:|\n" + candidateScopes.map(scope => "| " + scope.scope + " | " + scope.corpusSize + " | " + ms(scope.elapsedMs) + " | " + scope.afterDedup + " | " + scope.activeCount + " |").join("\n");
+const candidateMarkdown = `
+
+## Candidate pipeline scopes
+
+| Scope | Corpus | Elapsed | After dedup | Active |
+|---|---:|---:|---:|---:|
+${candidateScopes.map(scope => "| " + scope.scope + " | " + scope.corpusSize + " | " + ms(scope.elapsedMs) + " | " + scope.afterDedup + " | " + scope.activeCount + " |").join("\n")}`
 fs.appendFileSync(path.join(projectRoot, "docs", "benchmark.md"), candidateMarkdown, "utf-8");
 const performanceThresholds = { rankingOnlyMs: 500, productionLikeMs: 3000, coldStartMs: 1000, warmSearchMs: 100, candidatePipelineMs: 1000 };
 const performanceFailures = [
   scopes.find(scope => scope.scope === 'ranking-only' && scope.elapsedMs > performanceThresholds.rankingOnlyMs) ? 'ranking-only' : null,
   scopes.find(scope => scope.scope === 'production-like' && scope.elapsedMs > performanceThresholds.productionLikeMs) ? 'production-like' : null,
-  scopes.find(scope => scope.scope === 'first-http-request-after-server-start' && scope.elapsedMs > performanceThresholds.coldStartMs) ? 'first-http-request-after-server-start' : null,
-  scopes.find(scope => scope.scope === 'warm-http-request' && scope.elapsedMs > performanceThresholds.warmSearchMs) ? 'warm-http-request' : null,
+  scopes.find(scope => scope.scope === 'first-pipeline-call' && scope.elapsedMs > performanceThresholds.coldStartMs) ? 'first-pipeline-call' : null,
+  scopes.find(scope => scope.scope === 'repeated-pipeline-call' && scope.elapsedMs > performanceThresholds.warmSearchMs) ? 'repeated-pipeline-call' : null,
   candidateScopes.find(scope => scope.elapsedMs > performanceThresholds.candidatePipelineMs) ? 'candidate-pipeline' : null,
 ].filter(Boolean);
 const benchmarkArtifact = { generatedAt: new Date().toISOString(), resultLimit, results, scopes, candidateScopes, performanceThresholds, performanceFailures };

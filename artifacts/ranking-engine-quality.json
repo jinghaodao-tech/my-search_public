@@ -1,0 +1,51 @@
+{
+  "dataset": {
+    "version": "v3-50-docs-20-queries-ranking-and-end-to-end",
+    "documents": 50,
+    "queries": 20,
+    "languages": [
+      "English",
+      "Japanese"
+    ]
+  },
+  "metrics": {
+    "precisionAt1": 1,
+    "precisionAt3": 0.95,
+    "mrr": 1,
+    "recallAt5": 1,
+    "ndcgAt5": 1
+  },
+  "thresholds": {
+    "precisionAt1": 0.85,
+    "mrr": 0.9,
+    "recallAt5": 0.9,
+    "ndcgAt5": 0.85
+  },
+  "variants": [
+    {
+      "variant": "current-bm25",
+      "precisionAt1": 1,
+      "precisionAt3": 0.95,
+      "mrr": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "variant": "without-synonym",
+      "precisionAt1": 1,
+      "precisionAt3": 0.975,
+      "mrr": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "variant": "without-time-decay",
+      "precisionAt1": 1,
+      "precisionAt3": 0.95,
+      "mrr": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    }
+  ],
+  "scope": "ranking-only"
+}

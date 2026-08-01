@@ -16,6 +16,7 @@ export interface ArticleRow {
   doc_length: number;
   content_hash: string | null;
   created_at: string;
+  first_seen_at: string | null;
   updated_at: string;
   last_fetched_at: string | null;
 }
@@ -79,6 +80,7 @@ function rowToArticle(row: ArticleRow): Article & { source?: string | null; last
     tags: parseJsonArray(row.tags_json),
     source: row.source,
     createdAt: row.created_at,
+    firstSeenAt: row.first_seen_at ?? row.created_at,
     updatedAt: row.updated_at,
     lastFetchedAt: row.last_fetched_at,
   };
@@ -145,6 +147,7 @@ export function saveArticlesToDb(articles: Article[], fetchedAt = new Date().toI
       doc_length,
       content_hash,
       created_at,
+      first_seen_at,
       updated_at,
       last_fetched_at
     )
@@ -162,6 +165,7 @@ export function saveArticlesToDb(articles: Article[], fetchedAt = new Date().toI
       @doc_length,
       @content_hash,
       @created_at,
+      @first_seen_at,
       @updated_at,
       @last_fetched_at
     )
@@ -211,6 +215,7 @@ export function saveArticlesToDb(articles: Article[], fetchedAt = new Date().toI
         doc_length: article.docLength ?? article.tokens?.length ?? 0,
         content_hash: articleContentHash(article),
         created_at: existingId ? now : article.createdAt ?? now,
+        first_seen_at: existingId ? null : article.firstSeenAt ?? article.createdAt ?? now,
         updated_at: now,
         last_fetched_at: fetchedAt,
       });
