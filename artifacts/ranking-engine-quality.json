@@ -1,51 +1,401 @@
 {
+  "scope": "ranking-only",
+  "pipeline": [
+    "keywords",
+    "ranking_engine"
+  ],
   "dataset": {
-    "version": "v3-50-docs-20-queries-ranking-and-end-to-end",
+    "version": "v4-50-docs-11-query-cases",
     "documents": 50,
-    "queries": 20,
+    "queries": 11,
+    "caseKinds": [
+      "clear-positive",
+      "japanese",
+      "near-negative",
+      "title-body-conflict",
+      "long-document",
+      "time-decay-trap",
+      "parser-ambiguity"
+    ],
     "languages": [
       "English",
       "Japanese"
     ]
   },
+  "rows": [
+    {
+      "case": "bm25-cache",
+      "kind": "clear-positive",
+      "query": "BM25 token cache",
+      "rankingKeywords": [
+        {
+          "term": "BM25",
+          "weight": 2,
+          "synonyms": [
+            "ranking"
+          ]
+        },
+        {
+          "term": "token",
+          "weight": 1.5,
+          "synonyms": [
+            "tokens_json"
+          ]
+        },
+        {
+          "term": "SQLite",
+          "weight": 1.2,
+          "synonyms": []
+        }
+      ],
+      "top1": "sqlite-bm25",
+      "expected": [
+        "sqlite-bm25"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "sqlite-persistence",
+      "kind": "clear-positive",
+      "query": "SQLite BM25 token caching",
+      "rankingKeywords": [
+        {
+          "term": "SQLite",
+          "weight": 2,
+          "synonyms": []
+        },
+        {
+          "term": "token",
+          "weight": 2,
+          "synonyms": []
+        },
+        {
+          "term": "persistence",
+          "weight": 1.5,
+          "synonyms": []
+        }
+      ],
+      "top1": "sqlite-token-persistence",
+      "expected": [
+        "sqlite-token-persistence",
+        "sqlite-bm25"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.6666666666666666,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 0.9197207891481876
+    },
+    {
+      "case": "backlinks-graph",
+      "kind": "clear-positive",
+      "query": "card backlinks graph",
+      "rankingKeywords": [
+        {
+          "term": "backlinks",
+          "weight": 2,
+          "synonyms": [
+            "links"
+          ]
+        },
+        {
+          "term": "graph",
+          "weight": 1.5,
+          "synonyms": []
+        }
+      ],
+      "top1": "zettelkasten-links",
+      "expected": [
+        "zettelkasten-links"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "csv-validation",
+      "kind": "clear-positive",
+      "query": "CSV JSON validation",
+      "rankingKeywords": [
+        {
+          "term": "CSV",
+          "weight": 1.5,
+          "synonyms": [
+            "JSON"
+          ]
+        },
+        {
+          "term": "validation",
+          "weight": 2,
+          "synonyms": [
+            "validate"
+          ]
+        }
+      ],
+      "top1": "csv-import",
+      "expected": [
+        "csv-import"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "dashboard-layout",
+      "kind": "clear-positive",
+      "query": "dashboard visual layout",
+      "rankingKeywords": [
+        {
+          "term": "dashboard",
+          "weight": 2,
+          "synonyms": []
+        },
+        {
+          "term": "layout",
+          "weight": 1.5,
+          "synonyms": []
+        }
+      ],
+      "top1": "ui-polish",
+      "expected": [
+        "ui-polish"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "jp-saved-search",
+      "kind": "japanese",
+      "query": "保存済みカード ローカル検索",
+      "rankingKeywords": [
+        {
+          "term": "保存済みカード",
+          "weight": 2,
+          "synonyms": []
+        },
+        {
+          "term": "ローカル検索",
+          "weight": 1.5,
+          "synonyms": []
+        }
+      ],
+      "top1": "saved-new",
+      "expected": [
+        "jp-search"
+      ],
+      "precisionAt1": 0,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 0.5,
+      "recallAt5": 1,
+      "ndcgAt5": 0.6309297535714575
+    },
+    {
+      "case": "near-negative",
+      "kind": "near-negative",
+      "query": "SQLite token persistence",
+      "rankingKeywords": [
+        {
+          "term": "SQLite",
+          "weight": 2,
+          "synonyms": []
+        },
+        {
+          "term": "token",
+          "weight": 2,
+          "synonyms": []
+        },
+        {
+          "term": "persistence",
+          "weight": 2,
+          "synonyms": []
+        }
+      ],
+      "top1": "sqlite-token-persistence",
+      "expected": [
+        "sqlite-token-persistence"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "title-body-conflict",
+      "kind": "title-body-conflict",
+      "query": "SQLite token persistence",
+      "rankingKeywords": [
+        {
+          "term": "SQLite",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "token",
+          "weight": 2,
+          "synonyms": []
+        },
+        {
+          "term": "persistence",
+          "weight": 2,
+          "synonyms": []
+        }
+      ],
+      "top1": "sqlite-token-persistence",
+      "expected": [
+        "sqlite-token-persistence"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "long-document",
+      "kind": "long-document",
+      "query": "long document local search",
+      "rankingKeywords": [
+        {
+          "term": "long",
+          "weight": 1.5,
+          "synonyms": []
+        },
+        {
+          "term": "document",
+          "weight": 1.5,
+          "synonyms": []
+        },
+        {
+          "term": "local",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "search",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "long-document",
+      "expected": [
+        "long-document"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "time-decay",
+      "kind": "time-decay-trap",
+      "query": "保存済みカード ローカル検索 再発見",
+      "rankingKeywords": [
+        {
+          "term": "保存済みカード",
+          "weight": 2,
+          "synonyms": []
+        },
+        {
+          "term": "ローカル検索",
+          "weight": 1.5,
+          "synonyms": []
+        },
+        {
+          "term": "再発見",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "saved-new",
+      "expected": [
+        "saved-new",
+        "saved-old"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.6666666666666666,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 0.9197207891481876
+    },
+    {
+      "case": "parser-ambiguity",
+      "kind": "parser-ambiguity",
+      "query": "\"SQLite BM25\" 保存済みカード -UI",
+      "rankingKeywords": [
+        {
+          "term": "SQLite",
+          "weight": 1.5,
+          "synonyms": []
+        },
+        {
+          "term": "BM25",
+          "weight": 1.5,
+          "synonyms": []
+        },
+        {
+          "term": "保存済みカード",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "saved-new",
+      "expected": [
+        "sqlite-bm25"
+      ],
+      "precisionAt1": 0,
+      "precisionAt3": 0,
+      "reciprocalRank": 0.2,
+      "recallAt5": 1,
+      "ndcgAt5": 0.38685280723454163
+    }
+  ],
   "metrics": {
-    "precisionAt1": 1,
-    "precisionAt3": 0.95,
-    "mrr": 1,
+    "precisionAt1": 0.818,
+    "precisionAt3": 0.485,
+    "mrr": 0.882,
     "recallAt5": 1,
-    "ndcgAt5": 1
+    "ndcgAt5": 0.896
   },
   "thresholds": {
-    "precisionAt1": 0.85,
-    "mrr": 0.9,
-    "recallAt5": 0.9,
-    "ndcgAt5": 0.85
+    "precisionAt1": 0.75,
+    "mrr": 0.8,
+    "recallAt5": 0.8,
+    "ndcgAt5": 0.75
   },
   "variants": [
     {
-      "variant": "current-bm25",
-      "precisionAt1": 1,
-      "precisionAt3": 0.95,
-      "mrr": 1,
+      "meanPrecisionAt1": 0.8181818181818182,
+      "meanPrecisionAt3": 0.4848484848484848,
+      "mrr": 0.8818181818181817,
       "recallAt5": 1,
-      "ndcgAt5": 1
+      "ndcgAt5": 0.8961112853729429
     },
     {
-      "variant": "without-synonym",
-      "precisionAt1": 1,
-      "precisionAt3": 0.975,
-      "mrr": 1,
+      "meanPrecisionAt1": 0.7272727272727273,
+      "meanPrecisionAt3": 0.4848484848484848,
+      "mrr": 0.8363636363636363,
       "recallAt5": 1,
-      "ndcgAt5": 1
+      "ndcgAt5": 0.8625594447885301
     },
     {
-      "variant": "without-time-decay",
-      "precisionAt1": 1,
-      "precisionAt3": 0.95,
-      "mrr": 1,
-      "recallAt5": 1,
-      "ndcgAt5": 1
+      "meanPrecisionAt1": 0.8181818181818182,
+      "meanPrecisionAt3": 0.4848484848484848,
+      "mrr": 0.8636363636363636,
+      "recallAt5": 0.9090909090909091,
+      "ndcgAt5": 0.873922472069587
     }
-  ],
-  "scope": "ranking-only"
+  ]
 }

@@ -101,7 +101,6 @@ async function benchmarkCorpus(size: number) {
 }
 
 async function benchmarkScope(scope: 'ranking-only' | 'production-like' | 'end-to-end-pipeline' | 'first-pipeline-call' | 'repeated-pipeline-call', size: number) {
-  const started = performance.now();
   const options = {
     archiveScoreThreshold: scope === 'production-like' ? 0.1 : -1,
     dedupThreshold: scope === 'production-like' ? 0.8 : 1,
@@ -109,6 +108,8 @@ async function benchmarkScope(scope: 'ranking-only' | 'production-like' | 'end-t
   };
   const corpus = makeCorpus(size);
   if (scope === "repeated-pipeline-call") await runPipeline(corpus, benchmarkMode, `benchmark-${scope}-warmup`, options);
+  const started = performance.now();
+
   await runPipeline(corpus, benchmarkMode, `benchmark-${scope}`, options);
   return { scope, corpusSize: size, elapsedMs: roundMs(performance.now() - started), dedupEnabled: options.dedupThreshold < 1, resultLimit };
 }
@@ -118,13 +119,6 @@ async function benchmarkCandidateScope(name: "candidate-pipeline-near-duplicate"
   return { scope: name, corpusSize: 200, elapsedMs: roundMs(performance.now() - started), afterDedup: result.stats.afterDedup, activeCount: result.stats.activeCount };
 }
 
-async function warmUpBenchmark(): Promise<void> {
-  await runPipeline(makeCorpus(100), benchmarkMode, "benchmark-warmup", {
-    archiveScoreThreshold: -1,
-    dedupThreshold: 1,
-    resultLimit,
-  });
-}
 
 function writeMarkdown(results: Awaited<ReturnType<typeof benchmarkCorpus>>[], scopes: Array<{ scope: string; corpusSize: number; elapsedMs: number; dedupEnabled: boolean; resultLimit: number }>, candidateScopes: Array<{ scope: string; corpusSize: number; elapsedMs: number; afterDedup: number; activeCount: number }>): void {
   const generatedAt = new Date().toISOString();
@@ -147,7 +141,7 @@ npm run benchmark
 
 The benchmark uses deterministic synthetic card corpora with precomputed \`tokens\` and \`docLength\`, matching the production SQLite design where \`tokens_json\` and \`doc_length\` are generated on write instead of tokenizing every card during search.
 
-The script performs one 100-card warm-up search before recording results. This excludes first-run tokenizer initialization and JavaScript runtime warm-up from the measured rows.
+Ranking, production-like, and end-to-end pipeline rows are measured independently. The first-pipeline-call row has no prior pipeline warm-up; the repeated-pipeline-call row performs an excluded warm-up immediately before its measured call.
 
 ## Results
 
@@ -182,13 +176,14 @@ Historical baseline before token precomputation:
 - BM25 scoring avoids creating one Promise per card because scoring is CPU-bound and synchronous.
 - Benchmarks now report DB load, token preparation, scoring, sorting/limiting, and total search separately.
 - Benchmark corpora cover 100, 1,000, 5,000, and 10,000 cards.
-- A warm-up run is executed before measurement to avoid reporting one-time tokenizer startup cost as steady-state search latency.
+- First-pipeline-call intentionally includes first-call cost; repeated-pipeline-call excludes only its own pre-measurement warm-up.
 - Deduplication is skipped when \`dedupThreshold >= 1\`, which is the expected benchmark and acceptance-test setting for measuring ranking rather than duplicate detection.
 
 ## Remaining Bottlenecks
 
 - Token arrays still need to be normalized and counted into term-frequency maps during each search.
-- Full result sorting is still used after scoring; a bounded top-K heap could reduce work for small \`resultLimit\` values.
+- Full result sorting is still used after scoring; a bounded top-K heap could reduce work for small \
+esultLimit\` values.
 - DB load is measured separately here, but production searches still parse \`tokens_json\` from SQLite rows into JavaScript arrays.
 
 ## Why This Matters
@@ -200,7 +195,6 @@ BM25 is only useful in the GUI if search latency stays predictable as the local-
   fs.writeFileSync(path.join(projectRoot, "docs", "benchmark.md"), markdown, "utf-8");
 }
 
-await warmUpBenchmark();
 
 const results = [];
 for (const size of corpusSizes) {
@@ -228,12 +222,13 @@ const candidateMarkdown = `
 |---|---:|---:|---:|---:|
 ${candidateScopes.map(scope => "| " + scope.scope + " | " + scope.corpusSize + " | " + ms(scope.elapsedMs) + " | " + scope.afterDedup + " | " + scope.activeCount + " |").join("\n")}`
 fs.appendFileSync(path.join(projectRoot, "docs", "benchmark.md"), candidateMarkdown, "utf-8");
-const performanceThresholds = { rankingOnlyMs: 500, productionLikeMs: 3000, coldStartMs: 1000, warmSearchMs: 100, candidatePipelineMs: 1000 };
+const performanceThresholds = { rankingOnlyMs: 500, productionLikeMs: 3000, endToEndPipelineMs: 1000, firstPipelineCallMs: 1000, repeatedPipelineCallMs: 100, candidatePipelineMs: 1000 };
 const performanceFailures = [
   scopes.find(scope => scope.scope === 'ranking-only' && scope.elapsedMs > performanceThresholds.rankingOnlyMs) ? 'ranking-only' : null,
   scopes.find(scope => scope.scope === 'production-like' && scope.elapsedMs > performanceThresholds.productionLikeMs) ? 'production-like' : null,
-  scopes.find(scope => scope.scope === 'first-pipeline-call' && scope.elapsedMs > performanceThresholds.coldStartMs) ? 'first-pipeline-call' : null,
-  scopes.find(scope => scope.scope === 'repeated-pipeline-call' && scope.elapsedMs > performanceThresholds.warmSearchMs) ? 'repeated-pipeline-call' : null,
+  scopes.find(scope => scope.scope === 'end-to-end-pipeline' && scope.elapsedMs > performanceThresholds.endToEndPipelineMs) ? 'end-to-end-pipeline' : null,
+  scopes.find(scope => scope.scope === 'first-pipeline-call' && scope.elapsedMs > performanceThresholds.firstPipelineCallMs) ? 'first-pipeline-call' : null,
+  scopes.find(scope => scope.scope === 'repeated-pipeline-call' && scope.elapsedMs > performanceThresholds.repeatedPipelineCallMs) ? 'repeated-pipeline-call' : null,
   candidateScopes.find(scope => scope.elapsedMs > performanceThresholds.candidatePipelineMs) ? 'candidate-pipeline' : null,
 ].filter(Boolean);
 const benchmarkArtifact = { generatedAt: new Date().toISOString(), resultLimit, results, scopes, candidateScopes, performanceThresholds, performanceFailures };

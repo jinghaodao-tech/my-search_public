@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "generatedAt": "2026-08-01T12:01:36.527Z",
+  "corpusSize": 100,
+  "scopes": {
+    "first-http-request-after-server-start": 92.966,
+    "warm-http-request": 8.754,
+    "candidate-api-http": 608.626,
+    "saved-card-search-http": 5.177
+  },
+  "performanceThresholds": {
+    "first-http-request-after-server-start": 2000,
+    "warm-http-request": 250,
+    "candidate-api-http": 3000,
+    "saved-card-search-http": 250
+  },
+  "performanceFailures": [],
+  "endpoints": [
+    "GET /api/cards?q=benchmark&limit=100",
+    "POST /api/run",
+    "GET /api/cards?q=benchmark&limit=100"
+  ]
+}
