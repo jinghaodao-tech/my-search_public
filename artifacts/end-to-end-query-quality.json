@@ -1,51 +1,442 @@
 {
+  "scope": "end-to-end-query",
+  "pipeline": [
+    "raw_query",
+    "query_parser",
+    "keyword_candidates",
+    "ranking_engine"
+  ],
   "dataset": {
-    "version": "v3-50-docs-20-queries-ranking-and-end-to-end",
+    "version": "v4-50-docs-11-query-cases",
     "documents": 50,
-    "queries": 20,
+    "queries": 11,
+    "caseKinds": [
+      "clear-positive",
+      "japanese",
+      "near-negative",
+      "title-body-conflict",
+      "long-document",
+      "time-decay-trap",
+      "parser-ambiguity"
+    ],
     "languages": [
       "English",
       "Japanese"
     ]
   },
+  "rows": [
+    {
+      "case": "bm25-cache",
+      "kind": "clear-positive",
+      "query": "BM25 token cache",
+      "rawQuery": "BM25 token cache",
+      "parsedKeywords": [
+        {
+          "term": "bm25",
+          "weight": 1,
+          "synonyms": [
+            "ranking"
+          ]
+        },
+        {
+          "term": "token",
+          "weight": 1,
+          "synonyms": [
+            "tokens_json"
+          ]
+        },
+        {
+          "term": "cache",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "sqlite-bm25",
+      "expected": [
+        "sqlite-bm25"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "sqlite-persistence",
+      "kind": "clear-positive",
+      "query": "SQLite BM25 token caching",
+      "rawQuery": "SQLite BM25 token caching",
+      "parsedKeywords": [
+        {
+          "term": "sqlite",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "bm25",
+          "weight": 1,
+          "synonyms": [
+            "ranking"
+          ]
+        },
+        {
+          "term": "token",
+          "weight": 1,
+          "synonyms": [
+            "tokens_json"
+          ]
+        },
+        {
+          "term": "caching",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "sqlite-bm25",
+      "expected": [
+        "sqlite-token-persistence",
+        "sqlite-bm25"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.6666666666666666,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 0.9197207891481876
+    },
+    {
+      "case": "backlinks-graph",
+      "kind": "clear-positive",
+      "query": "card backlinks graph",
+      "rawQuery": "card backlinks graph",
+      "parsedKeywords": [
+        {
+          "term": "card",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "backlinks",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "graph",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "zettelkasten-links",
+      "expected": [
+        "zettelkasten-links"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.5,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "csv-validation",
+      "kind": "clear-positive",
+      "query": "CSV JSON validation",
+      "rawQuery": "CSV JSON validation",
+      "parsedKeywords": [
+        {
+          "term": "csv",
+          "weight": 1,
+          "synonyms": [
+            "json"
+          ]
+        },
+        {
+          "term": "json",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "validation",
+          "weight": 1,
+          "synonyms": [
+            "validate"
+          ]
+        }
+      ],
+      "top1": "csv-import",
+      "expected": [
+        "csv-import"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "dashboard-layout",
+      "kind": "clear-positive",
+      "query": "dashboard visual layout",
+      "rawQuery": "dashboard visual layout",
+      "parsedKeywords": [
+        {
+          "term": "dashboard",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "visual",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "layout",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "ui-polish",
+      "expected": [
+        "ui-polish"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "jp-saved-search",
+      "kind": "japanese",
+      "query": "保存済みカード ローカル検索",
+      "rawQuery": "保存済みカード ローカル検索",
+      "parsedKeywords": [
+        {
+          "term": "保存済みカード",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "ローカル検索",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "saved-new",
+      "expected": [
+        "jp-search"
+      ],
+      "precisionAt1": 0,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 0.5,
+      "recallAt5": 1,
+      "ndcgAt5": 0.6309297535714575
+    },
+    {
+      "case": "near-negative",
+      "kind": "near-negative",
+      "query": "SQLite token persistence",
+      "rawQuery": "SQLite token persistence",
+      "parsedKeywords": [
+        {
+          "term": "sqlite",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "token",
+          "weight": 1,
+          "synonyms": [
+            "tokens_json"
+          ]
+        },
+        {
+          "term": "persistence",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "sqlite-token-persistence",
+      "expected": [
+        "sqlite-token-persistence"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "title-body-conflict",
+      "kind": "title-body-conflict",
+      "query": "SQLite token persistence",
+      "rawQuery": "SQLite token persistence",
+      "parsedKeywords": [
+        {
+          "term": "sqlite",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "token",
+          "weight": 1,
+          "synonyms": [
+            "tokens_json"
+          ]
+        },
+        {
+          "term": "persistence",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "sqlite-token-persistence",
+      "expected": [
+        "sqlite-token-persistence"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "long-document",
+      "kind": "long-document",
+      "query": "long document local search",
+      "rawQuery": "long document local search",
+      "parsedKeywords": [
+        {
+          "term": "long",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "document",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "local",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "search",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "long-document",
+      "expected": [
+        "long-document"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1
+    },
+    {
+      "case": "time-decay",
+      "kind": "time-decay-trap",
+      "query": "保存済みカード ローカル検索 再発見",
+      "rawQuery": "保存済みカード ローカル検索 再発見",
+      "parsedKeywords": [
+        {
+          "term": "保存済みカード",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "ローカル検索",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "再発見",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "saved-new",
+      "expected": [
+        "saved-new",
+        "saved-old"
+      ],
+      "precisionAt1": 1,
+      "precisionAt3": 0.6666666666666666,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 0.9197207891481876
+    },
+    {
+      "case": "parser-ambiguity",
+      "kind": "parser-ambiguity",
+      "query": "\"SQLite BM25\" 保存済みカード -UI",
+      "rawQuery": "\"SQLite BM25\" 保存済みカード -UI",
+      "parsedKeywords": [
+        {
+          "term": "sqlite",
+          "weight": 1.5,
+          "synonyms": []
+        },
+        {
+          "term": "bm25",
+          "weight": 1.5,
+          "synonyms": [
+            "ranking"
+          ]
+        },
+        {
+          "term": "保存済みカード",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "saved-new",
+      "expected": [
+        "sqlite-bm25"
+      ],
+      "precisionAt1": 0,
+      "precisionAt3": 0.3333333333333333,
+      "reciprocalRank": 0.3333333333333333,
+      "recallAt5": 1,
+      "ndcgAt5": 0.5
+    }
+  ],
   "metrics": {
-    "precisionAt1": 1,
-    "precisionAt3": 0.95,
-    "mrr": 1,
+    "precisionAt1": 0.818,
+    "precisionAt3": 0.47,
+    "mrr": 0.894,
     "recallAt5": 1,
-    "ndcgAt5": 1
+    "ndcgAt5": 0.906
   },
   "thresholds": {
-    "precisionAt1": 0.85,
-    "mrr": 0.9,
-    "recallAt5": 0.9,
-    "ndcgAt5": 0.85
+    "precisionAt1": 0.75,
+    "mrr": 0.8,
+    "recallAt5": 0.8,
+    "ndcgAt5": 0.75
   },
   "variants": [
     {
-      "variant": "current-bm25",
-      "precisionAt1": 1,
-      "precisionAt3": 0.95,
-      "mrr": 1,
+      "meanPrecisionAt1": 0.8181818181818182,
+      "meanPrecisionAt3": 0.4696969696969697,
+      "mrr": 0.893939393939394,
       "recallAt5": 1,
-      "ndcgAt5": 1
+      "ndcgAt5": 0.9063973938061665
     },
     {
-      "variant": "without-synonym",
-      "precisionAt1": 1,
-      "precisionAt3": 0.975,
-      "mrr": 1,
+      "meanPrecisionAt1": 0.7272727272727273,
+      "meanPrecisionAt3": 0.4696969696969697,
+      "mrr": 0.8484848484848485,
       "recallAt5": 1,
-      "ndcgAt5": 1
+      "ndcgAt5": 0.8858251769397195
     },
     {
-      "variant": "without-time-decay",
-      "precisionAt1": 1,
-      "precisionAt3": 0.95,
-      "mrr": 1,
-      "recallAt5": 1,
-      "ndcgAt5": 1
+      "meanPrecisionAt1": 0.8181818181818182,
+      "meanPrecisionAt3": 0.43939393939393945,
+      "mrr": 0.8636363636363636,
+      "recallAt5": 0.9090909090909091,
+      "ndcgAt5": 0.873922472069587
     }
-  ],
-  "scope": "end-to-end-query-pipeline"
+  ]
 }

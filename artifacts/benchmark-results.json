@@ -1,0 +1,120 @@
+{
+  "generatedAt": "2026-08-01T12:02:37.995Z",
+  "resultLimit": 100,
+  "results": [
+    {
+      "corpusSize": 100,
+      "resultLimit": 100,
+      "activeResults": 100,
+      "matchedBeforeLimit": 100,
+      "timings": {
+        "dbLoadMs": 3.648,
+        "tokenPreparationMs": 3.855,
+        "scoringMs": 2.664,
+        "sortingLimitMs": 0.394,
+        "totalSearchMs": 560.699
+      }
+    },
+    {
+      "corpusSize": 1000,
+      "resultLimit": 100,
+      "activeResults": 100,
+      "matchedBeforeLimit": 1000,
+      "timings": {
+        "dbLoadMs": 3.407,
+        "tokenPreparationMs": 6.783,
+        "scoringMs": 9.438,
+        "sortingLimitMs": 0.852,
+        "totalSearchMs": 19.27
+      }
+    },
+    {
+      "corpusSize": 5000,
+      "resultLimit": 100,
+      "activeResults": 100,
+      "matchedBeforeLimit": 5000,
+      "timings": {
+        "dbLoadMs": 0.958,
+        "tokenPreparationMs": 7.779,
+        "scoringMs": 35.885,
+        "sortingLimitMs": 2.983,
+        "totalSearchMs": 49.989
+      }
+    },
+    {
+      "corpusSize": 10000,
+      "resultLimit": 100,
+      "activeResults": 100,
+      "matchedBeforeLimit": 10000,
+      "timings": {
+        "dbLoadMs": 0.824,
+        "tokenPreparationMs": 15.963,
+        "scoringMs": 49.65,
+        "sortingLimitMs": 5.76,
+        "totalSearchMs": 76.552
+      }
+    }
+  ],
+  "scopes": [
+    {
+      "scope": "ranking-only",
+      "corpusSize": 10000,
+      "elapsedMs": 59.552,
+      "dedupEnabled": false,
+      "resultLimit": 100
+    },
+    {
+      "scope": "production-like",
+      "corpusSize": 5000,
+      "elapsedMs": 685.652,
+      "dedupEnabled": true,
+      "resultLimit": 100
+    },
+    {
+      "scope": "end-to-end-pipeline",
+      "corpusSize": 1000,
+      "elapsedMs": 5.35,
+      "dedupEnabled": false,
+      "resultLimit": 100
+    },
+    {
+      "scope": "first-pipeline-call",
+      "corpusSize": 100,
+      "elapsedMs": 1.231,
+      "dedupEnabled": false,
+      "resultLimit": 100
+    },
+    {
+      "scope": "repeated-pipeline-call",
+      "corpusSize": 100,
+      "elapsedMs": 1.69,
+      "dedupEnabled": false,
+      "resultLimit": 100
+    }
+  ],
+  "candidateScopes": [
+    {
+      "scope": "candidate-pipeline-near-duplicate",
+      "corpusSize": 200,
+      "elapsedMs": 6.309,
+      "afterDedup": 1,
+      "activeCount": 1
+    },
+    {
+      "scope": "candidate-pipeline-diverse",
+      "corpusSize": 200,
+      "elapsedMs": 2.705,
+      "afterDedup": 200,
+      "activeCount": 200
+    }
+  ],
+  "performanceThresholds": {
+    "rankingOnlyMs": 500,
+    "productionLikeMs": 3000,
+    "endToEndPipelineMs": 1000,
+    "firstPipelineCallMs": 1000,
+    "repeatedPipelineCallMs": 100,
+    "candidatePipelineMs": 1000
+  },
+  "performanceFailures": []
+}

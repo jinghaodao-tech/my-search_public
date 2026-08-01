@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "build:frontend": "tsc -p tsconfig.frontend.json",
     "acceptance:test": "vitest run tests --fileParallelism=false --reporter=default --reporter=json --outputFile=artifacts/acceptance-tests.json",
-    "test": "vitest run server.test.ts --reporter=default --reporter=json --outputFile=artifacts/vitest-results.json",
+    "test": "vitest run server.test.ts query_parser.test.ts articles-first-seen.test.ts --reporter=default --reporter=json --outputFile=artifacts/vitest-results.json",
     "test:e2e": "tsx scripts/run_e2e.ts",
     "test:summary": "tsx scripts/write_test_summary.ts",
     "check:verification-artifacts": "tsx scripts/check-verification-artifacts.ts",
