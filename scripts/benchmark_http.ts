@@ -39,8 +39,8 @@ if (!savedSearchResponse.ok) throw new Error('Saved-card HTTP benchmark failed: 
 await savedSearchResponse.arrayBuffer();
 const savedCardSearchMs = performance.now() - savedSearchStart;server.close();
 db.close();
-const performanceThresholds = { 'process-cold-start': 2000, 'warm-request': 250, 'candidate-api-http': 3000, 'saved-card-search-http': 250 };
-const scopes = { 'process-cold-start': Number(coldStartMs.toFixed(3)), 'warm-request': Number(warmSearchMs.toFixed(3)), 'candidate-api-http': Number(candidateApiMs.toFixed(3)), 'saved-card-search-http': Number(savedCardSearchMs.toFixed(3)) };
+const performanceThresholds = { 'first-http-request-after-server-start': 2000, 'warm-http-request': 250, 'candidate-api-http': 3000, 'saved-card-search-http': 250 };
+const scopes = { 'first-http-request-after-server-start': Number(coldStartMs.toFixed(3)), 'warm-http-request': Number(warmSearchMs.toFixed(3)), 'candidate-api-http': Number(candidateApiMs.toFixed(3)), 'saved-card-search-http': Number(savedCardSearchMs.toFixed(3)) };
 const performanceFailures = Object.keys(scopes).filter(scope => scopes[scope as keyof typeof scopes] > performanceThresholds[scope as keyof typeof performanceThresholds]);
 const artifact = { ok: performanceFailures.length === 0, generatedAt: new Date().toISOString(), corpusSize: 100, scopes, performanceThresholds, performanceFailures, endpoints: ['GET /api/cards?q=benchmark&limit=100', 'POST /api/run', 'GET /api/cards?q=benchmark&limit=100'] };
 fs.mkdirSync(path.join(process.cwd(), 'artifacts'), { recursive: true });

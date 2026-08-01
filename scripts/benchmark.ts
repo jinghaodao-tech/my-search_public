@@ -100,7 +100,7 @@ async function benchmarkCorpus(size: number) {
   };
 }
 
-async function benchmarkScope(scope: 'ranking-only' | 'production-like' | 'end-to-end-api' | 'cold-start' | 'warm-search', size: number) {
+async function benchmarkScope(scope: 'ranking-only' | 'production-like' | 'end-to-end-api' | 'first-http-request-after-server-start' | 'warm-http-request', size: number) {
   const started = performance.now();
   const options = {
     archiveScoreThreshold: scope === 'production-like' ? 0.1 : -1,
@@ -161,7 +161,7 @@ ${scopes.map(scope => `| ${scope.scope} | ${scope.corpusSize.toLocaleString("en-
 
 ## End-to-end HTTP
 
-Run \`npm run benchmark:http\` to measure an actual \`GET /api/cards\` route with cold-start and warm-search timings. This is kept separate from the deterministic ranking corpus table.
+Run \`npm run benchmark:http\` to measure an actual \`GET /api/cards\` route with first-http-request-after-server-start and warm-http-request timings. This is kept separate from the deterministic ranking corpus table.
 
 ## Before / After
 
@@ -214,8 +214,8 @@ const scopes = [
   await benchmarkScope("ranking-only", 10000),
   await benchmarkScope("production-like", 5000),
   await benchmarkScope("end-to-end-api", 1000),
-  await benchmarkScope("cold-start", 100),
-  await benchmarkScope("warm-search", 100),
+  await benchmarkScope("first-http-request-after-server-start", 100),
+  await benchmarkScope("warm-http-request", 100),
 ];
 writeMarkdown(results, scopes, candidateScopes);
 const candidateMarkdown = "\n\n## Candidate pipeline scopes\n\n| Scope | Corpus | Elapsed | After dedup | Active |\n|---|---:|---:|---:|---:|\n" + candidateScopes.map(scope => "| " + scope.scope + " | " + scope.corpusSize + " | " + ms(scope.elapsedMs) + " | " + scope.afterDedup + " | " + scope.activeCount + " |").join("\n");
@@ -224,8 +224,8 @@ const performanceThresholds = { rankingOnlyMs: 500, productionLikeMs: 3000, cold
 const performanceFailures = [
   scopes.find(scope => scope.scope === 'ranking-only' && scope.elapsedMs > performanceThresholds.rankingOnlyMs) ? 'ranking-only' : null,
   scopes.find(scope => scope.scope === 'production-like' && scope.elapsedMs > performanceThresholds.productionLikeMs) ? 'production-like' : null,
-  scopes.find(scope => scope.scope === 'cold-start' && scope.elapsedMs > performanceThresholds.coldStartMs) ? 'cold-start' : null,
-  scopes.find(scope => scope.scope === 'warm-search' && scope.elapsedMs > performanceThresholds.warmSearchMs) ? 'warm-search' : null,
+  scopes.find(scope => scope.scope === 'first-http-request-after-server-start' && scope.elapsedMs > performanceThresholds.coldStartMs) ? 'first-http-request-after-server-start' : null,
+  scopes.find(scope => scope.scope === 'warm-http-request' && scope.elapsedMs > performanceThresholds.warmSearchMs) ? 'warm-http-request' : null,
   candidateScopes.find(scope => scope.elapsedMs > performanceThresholds.candidatePipelineMs) ? 'candidate-pipeline' : null,
 ].filter(Boolean);
 const benchmarkArtifact = { generatedAt: new Date().toISOString(), resultLimit, results, scopes, candidateScopes, performanceThresholds, performanceFailures };

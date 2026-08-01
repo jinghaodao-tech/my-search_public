@@ -1,6 +1,6 @@
 # BM25 Benchmark
 
-Generated: 2026-07-31T11:06:52.886Z
+Generated: 2026-08-01T07:04:46.772Z
 
 Command:
 
@@ -16,24 +16,24 @@ The script performs one 100-card warm-up search before recording results. This e
 
 | Corpus size | DB load | Token parse / preparation | BM25 scoring | Sorting / limiting | Total search | Returned |
 |---:|---:|---:|---:|---:|---:|---:|
-| 100 | 2.186 ms | 1.915 ms | 1.487 ms | 0.16 ms | 5.262 ms | 100 |
-| 1,000 | 1.437 ms | 4.061 ms | 9.674 ms | 0.678 ms | 16.364 ms | 100 |
-| 5,000 | 1.01 ms | 9.77 ms | 50.096 ms | 4.746 ms | 68.974 ms | 100 |
-| 10,000 | 3.03 ms | 25.231 ms | 57.955 ms | 7.118 ms | 100.18 ms | 100 |
+| 100 | 4.744 ms | 1.921 ms | 1.726 ms | 0.145 ms | 5.354 ms | 100 |
+| 1,000 | 1.139 ms | 3.478 ms | 6.337 ms | 0.504 ms | 12.412 ms | 100 |
+| 5,000 | 2.043 ms | 9.277 ms | 49.851 ms | 4.53 ms | 67.131 ms | 100 |
+| 10,000 | 1.008 ms | 18.622 ms | 60.741 ms | 16.917 ms | 104.483 ms | 100 |
 
 ## Scope Results
 
 | Scope | Corpus | Elapsed | Dedup | Result limit |
 |---|---:|---:|---|---:|
-| ranking-only | 10,000 | 90.158 ms | disabled | 100 |
-| production-like | 5,000 | 590.685 ms | enabled | 100 |
-| end-to-end-api | 1,000 | 8.242 ms | disabled | 100 |
-| cold-start | 100 | 1.835 ms | disabled | 100 |
-| warm-search | 100 | 1.681 ms | disabled | 100 |
+| ranking-only | 10,000 | 123.089 ms | disabled | 100 |
+| production-like | 5,000 | 660.39 ms | enabled | 100 |
+| end-to-end-api | 1,000 | 10.338 ms | disabled | 100 |
+| first-http-request-after-server-start | 100 | 1.362 ms | disabled | 100 |
+| warm-http-request | 100 | 0.952 ms | disabled | 100 |
 
 ## End-to-end HTTP
 
-Run `npm run benchmark:http` to measure an actual `GET /api/cards` route with cold-start and warm-search timings. This is kept separate from the deterministic ranking corpus table.
+Run `npm run benchmark:http` to measure an actual `GET /api/cards` route with first-http-request-after-server-start and warm-http-request timings. This is kept separate from the deterministic ranking corpus table.
 
 ## Before / After
 
@@ -70,5 +70,5 @@ BM25 is only useful in the GUI if search latency stays predictable as the local-
 
 | Scope | Corpus | Elapsed | After dedup | Active |
 |---|---:|---:|---:|---:|
-| candidate-pipeline-near-duplicate | 200 | 7.271 ms | 1 | 1 |
-| candidate-pipeline-diverse | 200 | 3.92 ms | 200 | 200 |
+| candidate-pipeline-near-duplicate | 200 | 8.323 ms | 1 | 1 |
+| candidate-pipeline-diverse | 200 | 4.91 ms | 200 | 200 |

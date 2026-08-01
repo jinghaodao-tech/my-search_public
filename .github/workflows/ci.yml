@@ -3,12 +3,17 @@ name: CI
 on:
   push:
     branches: [main]
+
+concurrency:
+  group: my-search-verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
   pull_request:
     branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
