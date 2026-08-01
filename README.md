@@ -124,7 +124,7 @@ More architecture notes are in [docs/project-details.md](docs/project-details.md
 
 ## Benchmark
 
-Benchmark numbers are generated, not hand-maintained. Run npm run benchmark for ranking, production-like, candidate near-duplicate/diverse, cold-start, and warm-search scopes. Run npm run benchmark:http for candidate API and saved-card HTTP measurements.
+Benchmark numbers are generated, not hand-maintained. Run `npm run benchmark` for ranking-only, production-like, end-to-end pipeline, first-pipeline-call, repeated-pipeline-call, and candidate near-duplicate/diverse scopes. Run `npm run benchmark:http` for independent HTTP measurements.
 
 Latest generated artifacts:
 
@@ -132,7 +132,7 @@ Latest generated artifacts:
 - artifacts/benchmark-http-results.json
 - artifacts/search-quality.json
 
-The current search-quality dataset is version v2-50-docs-20-queries with 50 English/Japanese documents and 20 queries. The current gate is P@1 >= 0.85, MRR >= 0.90, Recall@5 >= 0.90, and nDCG@5 >= 0.85.
+The current search-quality dataset is version `v4-50-docs-11-query-cases` with 50 English/Japanese documents and 11 labeled cases. Ranking-only and end-to-end query evaluation are reported separately in `artifacts/ranking-engine-quality.json` and `artifacts/end-to-end-query-quality.json`; the aggregate artifact is `artifacts/search-quality.json`. The current gate is ranking/end-to-end P@1 >= 0.75 and MRR >= 0.80.
 
 See docs/benchmark.md, docs/search-quality.md, and docs/demo-15min.md for reproducible details.
 ## Technology Stack

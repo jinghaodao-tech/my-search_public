@@ -1,6 +1,6 @@
 # BM25 Benchmark
 
-Generated: 2026-08-01T12:02:37.965Z
+Generated: 2026-08-01T12:31:31.110Z
 
 Command:
 
@@ -16,20 +16,20 @@ Ranking, production-like, and end-to-end pipeline rows are measured independentl
 
 | Corpus size | DB load | Token parse / preparation | BM25 scoring | Sorting / limiting | Total search | Returned |
 |---:|---:|---:|---:|---:|---:|---:|
-| 100 | 3.648 ms | 3.855 ms | 2.664 ms | 0.394 ms | 560.699 ms | 100 |
-| 1,000 | 3.407 ms | 6.783 ms | 9.438 ms | 0.852 ms | 19.27 ms | 100 |
-| 5,000 | 0.958 ms | 7.779 ms | 35.885 ms | 2.983 ms | 49.989 ms | 100 |
-| 10,000 | 0.824 ms | 15.963 ms | 49.65 ms | 5.76 ms | 76.552 ms | 100 |
+| 100 | 3.135 ms | 3.126 ms | 3.412 ms | 0.432 ms | 573.674 ms | 100 |
+| 1,000 | 4.153 ms | 4.732 ms | 14.424 ms | 1.231 ms | 23.196 ms | 100 |
+| 5,000 | 1.511 ms | 10.102 ms | 50.9 ms | 2.982 ms | 69.072 ms | 100 |
+| 10,000 | 1.12 ms | 18.724 ms | 49.113 ms | 7.125 ms | 82.899 ms | 100 |
 
 ## Scope Results
 
 | Scope | Corpus | Elapsed | Dedup | Result limit |
 |---|---:|---:|---|---:|
-| ranking-only | 10,000 | 59.552 ms | disabled | 100 |
-| production-like | 5,000 | 685.652 ms | enabled | 100 |
-| end-to-end-pipeline | 1,000 | 5.35 ms | disabled | 100 |
-| first-pipeline-call | 100 | 1.231 ms | disabled | 100 |
-| repeated-pipeline-call | 100 | 1.69 ms | disabled | 100 |
+| ranking-only | 10,000 | 70.894 ms | disabled | 100 |
+| production-like | 5,000 | 644.856 ms | enabled | 100 |
+| end-to-end-pipeline | 1,000 | 7.033 ms | disabled | 100 |
+| first-pipeline-call | 100 | 2.121 ms | disabled | 100 |
+| repeated-pipeline-call | 100 | 1.949 ms | disabled | 100 |
 
 ## End-to-end HTTP
 
@@ -70,5 +70,5 @@ BM25 is only useful in the GUI if search latency stays predictable as the local-
 
 | Scope | Corpus | Elapsed | After dedup | Active |
 |---|---:|---:|---:|---:|
-| candidate-pipeline-near-duplicate | 200 | 6.309 ms | 1 | 1 |
-| candidate-pipeline-diverse | 200 | 2.705 ms | 200 | 200 |
+| candidate-pipeline-near-duplicate | 200 | 5.944 ms | 1 | 1 |
+| candidate-pipeline-diverse | 200 | 2.633 ms | 200 | 200 |
