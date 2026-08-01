@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-08-01T12:31:50.080Z",
+  "suites": {
+    "unit": {
+      "total": 38,
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "files": 1
+    },
+    "acceptance": {
+      "total": 69,
+      "passed": 69,
+      "failed": 0,
+      "skipped": 0,
+      "files": 15
+    },
+    "e2e": {
+      "total": 9,
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "flaky": 0
+    }
+  }
+}
