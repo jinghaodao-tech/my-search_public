@@ -13,6 +13,10 @@ const runtimeConfigSchema = z.object({
   API_RATE_LIMIT: optionalNumber(60).pipe(z.number().int().positive()),
   IMPORT_RATE_LIMIT: optionalNumber(10).pipe(z.number().int().positive()),
   AI_RATE_LIMIT: optionalNumber(10).pipe(z.number().int().positive()),
+}).superRefine((config, context) => {
+  if (config.STORAGE_DRIVER === 'postgres' && !config.POSTGRES_URL) {
+    context.addIssue({ code: 'custom', path: ['POSTGRES_URL'], message: 'POSTGRES_URL is required when STORAGE_DRIVER=postgres' });
+  }
 });
 
 export type RuntimeConfig = z.infer<typeof runtimeConfigSchema>;

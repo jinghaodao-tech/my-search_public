@@ -9,11 +9,11 @@ My Search App is a local-first application with four explicit boundaries:
 
 The search boundary is `SearchEngine`. `Bm25SearchEngine` is selected by `SEARCH_ENGINE=bm25`; `HybridSearchEngine` is selected by `SEARCH_ENGINE=hybrid` and combines normalized BM25 and SQLite FTS5 evidence without changing route contracts.
 
-The frontend API boundary now has a typed TypeScript client in `frontend/api_client.ts`, built with `npm run build:frontend`. Existing UI modules remain compatible during the incremental migration.
+The frontend API boundary now has a typed TypeScript client in `frontend/api_client.ts`, built with `npm run build:frontend`. Existing UI modules remain compatible during the incremental migration and are syntax-checked by `npm run check:frontend`.
 
 The repository boundary also includes `PostgresRepository`. SQLite remains the default application driver. The PostgreSQL adapter and schema migration CLI are available for the database migration phase: set `POSTGRES_URL`, run `npm run db:migrate:postgres`, then wire service repositories to `PostgresRepository` as part of deployment-specific cutover.
 
-Background collection returns a job ID from `POST /api/collect` when `background: true`. Poll `GET /api/jobs/:id` for `queued`, `running`, `succeeded`, or `failed` status. Job state is persisted in the local SQLite database and survives process restarts; execution itself remains single-process.
+Background collection returns a job ID from `POST /api/collect` when `background: true`. Poll `GET /api/jobs/:id` for `queued`, `running`, `succeeded`, or `failed` status. Job state is persisted in the local SQLite database; unfinished `queued`/`running` jobs are explicitly marked failed on process restart because execution remains single-process.
 
 The public API contract is maintained in [openapi.yaml](openapi.yaml). Migrations remain the source of truth for SQLite schema changes.
 

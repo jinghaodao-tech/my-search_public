@@ -9,6 +9,7 @@
     "dev": "npx tsx --watch server.ts",
     "typecheck": "tsc --noEmit",
     "build:frontend": "tsc -p tsconfig.frontend.json",
+    "check:frontend": "tsc -p tsconfig.frontend-legacy.json",
     "acceptance:test": "vitest run tests --fileParallelism=false --reporter=default --reporter=json --outputFile=artifacts/acceptance-tests.json",
     "test": "vitest run server.test.ts query_parser.test.ts articles-first-seen.test.ts --reporter=default --reporter=json --outputFile=artifacts/vitest-results.json",
     "test:e2e": "tsx scripts/run_e2e.ts",
@@ -31,14 +32,15 @@
     "backfill:article-tokens": "tsx scripts/backfill_article_tokens.ts",
     "git:safe-push": "powershell -ExecutionPolicy Bypass -File scripts/safe-push.ps1",
     "evaluate:search": "tsx scripts/evaluate_search_quality.ts",
+    "check:search-quality": "tsx scripts/check-verification-artifacts.ts",
     "check:encoding": "tsx scripts/check_encoding.ts",
     "verify:schema": "tsx scripts/verify_schema.ts",
     "check:search-index": "tsx scripts/check_search_index.ts",
     "rebuild:search-index": "tsx scripts/rebuild_search_index.ts",
     "sync:search-index": "tsx scripts/sync_search_index.ts",
     "check:openapi": "tsx scripts/check_openapi.ts",
-    "verify:ci": "npm run typecheck && npm run build:frontend && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark:http && npm run evaluate:search && npm run benchmark && npm run check:verification-artifacts && npm run check:encoding && npm run check:openapi && npm run verify:schema && npm run check:search-index && npm audit --audit-level=high && npm run test:summary",
-    "verify": "npm run typecheck && npm run build:frontend && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark && npm run benchmark:http && npm run evaluate:search && npm run check:verification-artifacts && npm run check:encoding && npm run check:openapi && npm run verify:schema && npm run check:search-index && npm audit --audit-level=high && npm run test:summary && docker build -t my-search-public:test ."
+    "verify:ci": "npm run typecheck && npm run build:frontend && npm run check:frontend && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark:http && npm run evaluate:search && npm run benchmark && npm run check:verification-artifacts && npm run check:encoding && npm run check:openapi && npm run verify:schema && npm run check:search-index && npm audit --audit-level=high && npm run test:summary",
+    "verify": "npm run typecheck && npm run build:frontend && npm run check:frontend && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark && npm run benchmark:http && npm run evaluate:search && npm run check:verification-artifacts && npm run check:encoding && npm run check:openapi && npm run verify:schema && npm run check:search-index && npm audit --audit-level=high && npm run test:summary && docker build -t my-search-public:test ."
   },
   "dependencies": {
     "@types/pg": "^8.20.0",

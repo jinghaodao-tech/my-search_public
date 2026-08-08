@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { createJobService } from '../services/job_service.js';
 
 describe('job service', () => {
+  it('marks queued and running jobs as interrupted on service startup', async () => {
+    const { insertJob } = await import('../repositories/jobs_repository.js');
+    const now = new Date().toISOString();
+    const queuedId = `restart-queued-${Date.now()}`;
+    const runningId = `restart-running-${Date.now()}`;
+    insertJob({ id: queuedId, type: 'test', status: 'queued', createdAt: now, updatedAt: now });
+    insertJob({ id: runningId, type: 'test', status: 'running', createdAt: now, updatedAt: now });
+
+    const service = createJobService();
+
+    expect(service.get(queuedId)).toMatchObject({ status: 'failed', error: 'Job interrupted by process restart' });
+    expect(service.get(runningId)).toMatchObject({ status: 'failed', error: 'Job interrupted by process restart' });
+  });
+
   it('tracks successful jobs', async () => {
     const service = createJobService();
     const job = service.submit('test-success', async () => ({ ok: true }));

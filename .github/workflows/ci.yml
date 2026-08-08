@@ -30,6 +30,12 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      - name: Frontend build
+        run: npm run build:frontend
+
+      - name: Frontend legacy syntax check
+        run: npm run check:frontend
+
       - name: API tests
         run: npm test
 
@@ -42,6 +48,9 @@ jobs:
       - name: Search quality evaluation
         run: npm run evaluate:search
 
+      - name: Search quality artifact gate
+        run: npm run check:search-quality
+
       - name: Benchmark smoke
         run: npm run benchmark
 
@@ -50,6 +59,12 @@ jobs:
 
       - name: OpenAPI contract check
         run: npm run check:openapi
+
+      - name: Schema verification
+        run: npm run verify:schema
+
+      - name: Search index verification
+        run: npm run check:search-index
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium

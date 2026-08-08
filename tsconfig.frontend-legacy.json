@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "allowImportingTsExtensions": false
+  },
+  "include": ["public/app.js", "public/js/**/*.js"],
+  "exclude": ["public/js/typed/**"]
+}

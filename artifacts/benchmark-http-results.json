@@ -1,12 +1,12 @@
 {
   "ok": true,
-  "generatedAt": "2026-08-01T12:31:34.802Z",
+  "generatedAt": "2026-08-05T05:20:12.002Z",
   "corpusSize": 100,
   "scopes": {
-    "first-http-request-after-server-start": 133.902,
-    "warm-http-request": 9.767,
-    "candidate-api-http": 580.934,
-    "saved-card-search-http": 6.396
+    "first-http-request-after-server-start": 76.499,
+    "warm-http-request": 7.136,
+    "candidate-api-http": 456.404,
+    "saved-card-search-http": 6.017
   },
   "performanceThresholds": {
     "first-http-request-after-server-start": 2000,

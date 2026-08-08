@@ -57,7 +57,91 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 6.403599,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              },
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 5.321337,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              },
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "sqlite-token-persistence",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 4.931401,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              },
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "csv-import",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 2.739667,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "title-body-conflict",
+            "rank": 5,
+            "finalScore": 0,
+            "bm25Score": 2.365039,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "sqlite-persistence",
@@ -89,7 +173,81 @@
         "precisionAt3": 0.6666666666666666,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 0.9197207891481876
+        "ndcgAt5": 0.9197207891481876,
+        "rankingDetails": [
+          {
+            "documentId": "sqlite-token-persistence",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 11.663347,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              },
+              {
+                "term": "persistence",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 8.291501,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 7.683917,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "title-body-conflict",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 3.941731,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "backlinks-graph",
@@ -117,7 +275,27 @@
         "precisionAt3": 1,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "zettelkasten-links",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 12.938096,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "backlinks",
+                "contribution": 0
+              },
+              {
+                "term": "graph",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          }
+        ]
       },
       {
         "case": "csv-validation",
@@ -147,7 +325,27 @@
         "precisionAt3": 1,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "csv-import",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 14.27494,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "csv",
+                "contribution": 0
+              },
+              {
+                "term": "validation",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          }
+        ]
       },
       {
         "case": "dashboard-layout",
@@ -173,7 +371,55 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "ui-polish",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 9.386037,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "dashboard",
+                "contribution": 0
+              },
+              {
+                "term": "layout",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 4.34977,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "dashboard",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "title-body-conflict",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 4.34977,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "dashboard",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "jp-saved-search",
@@ -199,7 +445,99 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 0.5,
         "recallAt5": 1,
-        "ndcgAt5": 0.6309297535714575
+        "ndcgAt5": 0.6309297535714575,
+        "rankingDetails": [
+          {
+            "documentId": "saved-new",
+            "rank": 1,
+            "finalScore": 13.674877,
+            "bm25Score": 21.254613,
+            "timeDecayFactor": 0.536153,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 3.038862
+              },
+              {
+                "term": "済み",
+                "contribution": 3.038862
+              },
+              {
+                "term": "カード",
+                "contribution": 3.038862
+              },
+              {
+                "term": "ローカル",
+                "contribution": 2.279146
+              },
+              {
+                "term": "検索",
+                "contribution": 2.279146
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "jp-search",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 21.254613,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 0
+              },
+              {
+                "term": "済み",
+                "contribution": 0
+              },
+              {
+                "term": "カード",
+                "contribution": 0
+              },
+              {
+                "term": "ローカル",
+                "contribution": 0
+              },
+              {
+                "term": "検索",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "saved-old",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 21.254613,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 0
+              },
+              {
+                "term": "済み",
+                "contribution": 0
+              },
+              {
+                "term": "カード",
+                "contribution": 0
+              },
+              {
+                "term": "ローカル",
+                "contribution": 0
+              },
+              {
+                "term": "検索",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "near-negative",
@@ -230,7 +568,81 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "sqlite-token-persistence",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 12.989823,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              },
+              {
+                "term": "persistence",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 8.291501,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 7.683917,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "title-body-conflict",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 3.941731,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "title-body-conflict",
@@ -261,7 +673,81 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "sqlite-token-persistence",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 11.163378,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              },
+              {
+                "term": "persistence",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 6.320635,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 5.857472,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "title-body-conflict",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 1.970866,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "long-document",
@@ -297,7 +783,85 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "long-document",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 13.827289,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "long",
+                "contribution": 0
+              },
+              {
+                "term": "document",
+                "contribution": 0
+              },
+              {
+                "term": "local",
+                "contribution": 0
+              },
+              {
+                "term": "search",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 3.841958,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "local",
+                "contribution": 0
+              },
+              {
+                "term": "search",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "sqlite-token-persistence",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 3.841958,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "local",
+                "contribution": 0
+              },
+              {
+                "term": "search",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "csv-import",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 1.826445,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "local",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "time-decay",
@@ -329,7 +893,99 @@
         "precisionAt3": 0.6666666666666666,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 0.9197207891481876
+        "ndcgAt5": 0.9197207891481876,
+        "rankingDetails": [
+          {
+            "documentId": "saved-new",
+            "rank": 1,
+            "finalScore": 13.674877,
+            "bm25Score": 21.254613,
+            "timeDecayFactor": 0.536153,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 3.038862
+              },
+              {
+                "term": "済み",
+                "contribution": 3.038862
+              },
+              {
+                "term": "カード",
+                "contribution": 3.038862
+              },
+              {
+                "term": "ローカル",
+                "contribution": 2.279146
+              },
+              {
+                "term": "検索",
+                "contribution": 2.279146
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "jp-search",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 21.254613,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 0
+              },
+              {
+                "term": "済み",
+                "contribution": 0
+              },
+              {
+                "term": "カード",
+                "contribution": 0
+              },
+              {
+                "term": "ローカル",
+                "contribution": 0
+              },
+              {
+                "term": "検索",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "saved-old",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 21.254613,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 0
+              },
+              {
+                "term": "済み",
+                "contribution": 0
+              },
+              {
+                "term": "カード",
+                "contribution": 0
+              },
+              {
+                "term": "ローカル",
+                "contribution": 0
+              },
+              {
+                "term": "検索",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          }
+        ]
       },
       {
         "case": "parser-ambiguity",
@@ -360,7 +1016,95 @@
         "precisionAt3": 0,
         "reciprocalRank": 0.2,
         "recallAt5": 1,
-        "ndcgAt5": 0.38685280723454163
+        "ndcgAt5": 0.38685280723454163,
+        "rankingDetails": [
+          {
+            "documentId": "saved-new",
+            "rank": 1,
+            "finalScore": 4.558292,
+            "bm25Score": 7.084871,
+            "timeDecayFactor": 0.536153,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 1.519431
+              },
+              {
+                "term": "済み",
+                "contribution": 1.519431
+              },
+              {
+                "term": "カード",
+                "contribution": 1.519431
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "jp-search",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 7.084871,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 0
+              },
+              {
+                "term": "済み",
+                "contribution": 0
+              },
+              {
+                "term": "カード",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 2.956299,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "title-body-conflict",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 2.956299,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 5,
+            "finalScore": 0,
+            "bm25Score": 2.739667,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          }
+        ]
       }
     ],
     "metrics": {
@@ -372,12 +1116,15 @@
     },
     "thresholds": {
       "precisionAt1": 0.75,
+      "precisionAt3": 0.45,
       "mrr": 0.8,
       "recallAt5": 0.8,
       "ndcgAt5": 0.75
     },
     "variants": [
       {
+        "name": "baseline",
+        "description": "現行のBM25ランキング設定",
         "meanPrecisionAt1": 0.8181818181818182,
         "meanPrecisionAt3": 0.4848484848484848,
         "mrr": 0.8818181818181817,
@@ -385,6 +1132,8 @@
         "ndcgAt5": 0.8961112853729429
       },
       {
+        "name": "no_synonym_expansion",
+        "description": "同義語展開を無効化した比較",
         "meanPrecisionAt1": 0.7272727272727273,
         "meanPrecisionAt3": 0.4848484848484848,
         "mrr": 0.8363636363636363,
@@ -392,6 +1141,8 @@
         "ndcgAt5": 0.8625594447885301
       },
       {
+        "name": "no_time_decay",
+        "description": "時間減衰を無効化した比較",
         "meanPrecisionAt1": 0.8181818181818182,
         "meanPrecisionAt3": 0.4848484848484848,
         "mrr": 0.8636363636363636,
@@ -461,7 +1212,73 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 5.076559,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              },
+              {
+                "term": "cache",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "sqlite-token-persistence",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 4.095093,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              },
+              {
+                "term": "cache",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 1.970866,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "csv-import",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 1.826445,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "sqlite-persistence",
@@ -503,7 +1320,91 @@
         "precisionAt3": 0.6666666666666666,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 0.9197207891481876
+        "ndcgAt5": 0.9197207891481876,
+        "rankingDetails": [
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 4.634355,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 3.941731,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "sqlite-token-persistence",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 3.652889,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "title-body-conflict",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 1.970866,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "csv-import",
+            "rank": 5,
+            "finalScore": 0,
+            "bm25Score": 1.826445,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "backlinks-graph",
@@ -535,7 +1436,41 @@
         "precisionAt3": 0.5,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "zettelkasten-links",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 5.725456,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "backlinks",
+                "contribution": 0
+              },
+              {
+                "term": "graph",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "csv-import",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 2.652953,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "card",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "csv-validation",
@@ -571,7 +1506,31 @@
         "precisionAt3": 1,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "csv-import",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 9.384461,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "csv",
+                "contribution": 0
+              },
+              {
+                "term": "json",
+                "contribution": 0
+              },
+              {
+                "term": "validation",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          }
+        ]
       },
       {
         "case": "dashboard-layout",
@@ -603,7 +1562,63 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "ui-polish",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 8.128377,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "dashboard",
+                "contribution": 0
+              },
+              {
+                "term": "visual",
+                "contribution": 0
+              },
+              {
+                "term": "layout",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "title-body-conflict",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 4.622921,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "dashboard",
+                "contribution": 0
+              },
+              {
+                "term": "visual",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 2.174885,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "dashboard",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "jp-saved-search",
@@ -630,7 +1645,99 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 0.5,
         "recallAt5": 1,
-        "ndcgAt5": 0.6309297535714575
+        "ndcgAt5": 0.6309297535714575,
+        "rankingDetails": [
+          {
+            "documentId": "saved-new",
+            "rank": 1,
+            "finalScore": 7.597154,
+            "bm25Score": 11.808118,
+            "timeDecayFactor": 0.536153,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 1.519431
+              },
+              {
+                "term": "済み",
+                "contribution": 1.519431
+              },
+              {
+                "term": "カード",
+                "contribution": 1.519431
+              },
+              {
+                "term": "ローカル",
+                "contribution": 1.519431
+              },
+              {
+                "term": "検索",
+                "contribution": 1.519431
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "jp-search",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 11.808118,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 0
+              },
+              {
+                "term": "済み",
+                "contribution": 0
+              },
+              {
+                "term": "カード",
+                "contribution": 0
+              },
+              {
+                "term": "ローカル",
+                "contribution": 0
+              },
+              {
+                "term": "検索",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "saved-old",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 11.808118,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 0
+              },
+              {
+                "term": "済み",
+                "contribution": 0
+              },
+              {
+                "term": "カード",
+                "contribution": 0
+              },
+              {
+                "term": "ローカル",
+                "contribution": 0
+              },
+              {
+                "term": "検索",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "near-negative",
@@ -664,7 +1771,95 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "sqlite-token-persistence",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 6.305843,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              },
+              {
+                "term": "persistence",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 4.634355,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 3.941731,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "title-body-conflict",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 1.970866,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "csv-import",
+            "rank": 5,
+            "finalScore": 0,
+            "bm25Score": 1.826445,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "title-body-conflict",
@@ -698,7 +1893,95 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "sqlite-token-persistence",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 6.305843,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              },
+              {
+                "term": "persistence",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 4.634355,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "near-negative-ui",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 3.941731,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              },
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "title-body-conflict",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 1.970866,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "csv-import",
+            "rank": 5,
+            "finalScore": 0,
+            "bm25Score": 1.826445,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "token",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "long-document",
@@ -735,7 +2018,85 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 1
+        "ndcgAt5": 1,
+        "rankingDetails": [
+          {
+            "documentId": "long-document",
+            "rank": 1,
+            "finalScore": 0,
+            "bm25Score": 10.718763,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "long",
+                "contribution": 0
+              },
+              {
+                "term": "document",
+                "contribution": 0
+              },
+              {
+                "term": "local",
+                "contribution": 0
+              },
+              {
+                "term": "search",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 3.841958,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "local",
+                "contribution": 0
+              },
+              {
+                "term": "search",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "sqlite-token-persistence",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 3.841958,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "local",
+                "contribution": 0
+              },
+              {
+                "term": "search",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "csv-import",
+            "rank": 4,
+            "finalScore": 0,
+            "bm25Score": 1.826445,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "local",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          }
+        ]
       },
       {
         "case": "time-decay",
@@ -768,7 +2129,99 @@
         "precisionAt3": 0.6666666666666666,
         "reciprocalRank": 1,
         "recallAt5": 1,
-        "ndcgAt5": 0.9197207891481876
+        "ndcgAt5": 0.9197207891481876,
+        "rankingDetails": [
+          {
+            "documentId": "saved-new",
+            "rank": 1,
+            "finalScore": 7.597154,
+            "bm25Score": 11.808118,
+            "timeDecayFactor": 0.536153,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 1.519431
+              },
+              {
+                "term": "済み",
+                "contribution": 1.519431
+              },
+              {
+                "term": "カード",
+                "contribution": 1.519431
+              },
+              {
+                "term": "ローカル",
+                "contribution": 1.519431
+              },
+              {
+                "term": "検索",
+                "contribution": 1.519431
+              }
+            ],
+            "isExpected": true
+          },
+          {
+            "documentId": "jp-search",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 11.808118,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 0
+              },
+              {
+                "term": "済み",
+                "contribution": 0
+              },
+              {
+                "term": "カード",
+                "contribution": 0
+              },
+              {
+                "term": "ローカル",
+                "contribution": 0
+              },
+              {
+                "term": "検索",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "saved-old",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 11.808118,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 0
+              },
+              {
+                "term": "済み",
+                "contribution": 0
+              },
+              {
+                "term": "カード",
+                "contribution": 0
+              },
+              {
+                "term": "ローカル",
+                "contribution": 0
+              },
+              {
+                "term": "検索",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          }
+        ]
       },
       {
         "case": "parser-ambiguity",
@@ -802,7 +2255,67 @@
         "precisionAt3": 0.3333333333333333,
         "reciprocalRank": 0.3333333333333333,
         "recallAt5": 1,
-        "ndcgAt5": 0.5
+        "ndcgAt5": 0.5,
+        "rankingDetails": [
+          {
+            "documentId": "saved-new",
+            "rank": 1,
+            "finalScore": 4.558292,
+            "bm25Score": 7.084871,
+            "timeDecayFactor": 0.536153,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 1.519431
+              },
+              {
+                "term": "済み",
+                "contribution": 1.519431
+              },
+              {
+                "term": "カード",
+                "contribution": 1.519431
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "jp-search",
+            "rank": 2,
+            "finalScore": 0,
+            "bm25Score": 7.084871,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "保存",
+                "contribution": 0
+              },
+              {
+                "term": "済み",
+                "contribution": 0
+              },
+              {
+                "term": "カード",
+                "contribution": 0
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "sqlite-bm25",
+            "rank": 3,
+            "finalScore": 0,
+            "bm25Score": 2.739667,
+            "timeDecayFactor": 0,
+            "matchedTerms": [
+              {
+                "term": "sqlite",
+                "contribution": 0
+              }
+            ],
+            "isExpected": true
+          }
+        ]
       }
     ],
     "metrics": {
@@ -814,12 +2327,15 @@
     },
     "thresholds": {
       "precisionAt1": 0.75,
+      "precisionAt3": 0.45,
       "mrr": 0.8,
       "recallAt5": 0.8,
       "ndcgAt5": 0.75
     },
     "variants": [
       {
+        "name": "baseline",
+        "description": "現行のBM25ランキング設定",
         "meanPrecisionAt1": 0.8181818181818182,
         "meanPrecisionAt3": 0.4696969696969697,
         "mrr": 0.893939393939394,
@@ -827,6 +2343,8 @@
         "ndcgAt5": 0.9063973938061665
       },
       {
+        "name": "no_synonym_expansion",
+        "description": "同義語展開を無効化した比較",
         "meanPrecisionAt1": 0.7272727272727273,
         "meanPrecisionAt3": 0.4696969696969697,
         "mrr": 0.8484848484848485,
@@ -834,6 +2352,8 @@
         "ndcgAt5": 0.8858251769397195
       },
       {
+        "name": "no_time_decay",
+        "description": "時間減衰を無効化した比較",
         "meanPrecisionAt1": 0.8181818181818182,
         "meanPrecisionAt3": 0.43939393939393945,
         "mrr": 0.8636363636363636,
@@ -841,5 +2361,456 @@
         "ndcgAt5": 0.873922472069587
       }
     ]
+  },
+  "failureCases": [
+    {
+      "case": "sqlite-persistence",
+      "query": "SQLite BM25 token caching",
+      "expected": [
+        "sqlite-token-persistence",
+        "sqlite-bm25"
+      ],
+      "top1": "sqlite-bm25",
+      "rankingDetails": [
+        {
+          "documentId": "sqlite-bm25",
+          "rank": 1,
+          "finalScore": 0,
+          "bm25Score": 4.634355,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 0
+            },
+            {
+              "term": "token",
+              "contribution": 0
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "near-negative-ui",
+          "rank": 2,
+          "finalScore": 0,
+          "bm25Score": 3.941731,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 0
+            },
+            {
+              "term": "token",
+              "contribution": 0
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "sqlite-token-persistence",
+          "rank": 3,
+          "finalScore": 0,
+          "bm25Score": 3.652889,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 0
+            },
+            {
+              "term": "token",
+              "contribution": 0
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "title-body-conflict",
+          "rank": 4,
+          "finalScore": 0,
+          "bm25Score": 1.970866,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 0
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "csv-import",
+          "rank": 5,
+          "finalScore": 0,
+          "bm25Score": 1.826445,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "token",
+              "contribution": 0
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "jp-saved-search",
+      "query": "保存済みカード ローカル検索",
+      "expected": [
+        "jp-search"
+      ],
+      "top1": "saved-new",
+      "rankingDetails": [
+        {
+          "documentId": "saved-new",
+          "rank": 1,
+          "finalScore": 7.597154,
+          "bm25Score": 11.808118,
+          "timeDecayFactor": 0.536153,
+          "matchedTerms": [
+            {
+              "term": "保存",
+              "contribution": 1.519431
+            },
+            {
+              "term": "済み",
+              "contribution": 1.519431
+            },
+            {
+              "term": "カード",
+              "contribution": 1.519431
+            },
+            {
+              "term": "ローカル",
+              "contribution": 1.519431
+            },
+            {
+              "term": "検索",
+              "contribution": 1.519431
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "jp-search",
+          "rank": 2,
+          "finalScore": 0,
+          "bm25Score": 11.808118,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "保存",
+              "contribution": 0
+            },
+            {
+              "term": "済み",
+              "contribution": 0
+            },
+            {
+              "term": "カード",
+              "contribution": 0
+            },
+            {
+              "term": "ローカル",
+              "contribution": 0
+            },
+            {
+              "term": "検索",
+              "contribution": 0
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "saved-old",
+          "rank": 3,
+          "finalScore": 0,
+          "bm25Score": 11.808118,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "保存",
+              "contribution": 0
+            },
+            {
+              "term": "済み",
+              "contribution": 0
+            },
+            {
+              "term": "カード",
+              "contribution": 0
+            },
+            {
+              "term": "ローカル",
+              "contribution": 0
+            },
+            {
+              "term": "検索",
+              "contribution": 0
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "parser-ambiguity",
+      "query": "\"SQLite BM25\" 保存済みカード -UI",
+      "expected": [
+        "sqlite-bm25"
+      ],
+      "top1": "saved-new",
+      "rankingDetails": [
+        {
+          "documentId": "saved-new",
+          "rank": 1,
+          "finalScore": 4.558292,
+          "bm25Score": 7.084871,
+          "timeDecayFactor": 0.536153,
+          "matchedTerms": [
+            {
+              "term": "保存",
+              "contribution": 1.519431
+            },
+            {
+              "term": "済み",
+              "contribution": 1.519431
+            },
+            {
+              "term": "カード",
+              "contribution": 1.519431
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "jp-search",
+          "rank": 2,
+          "finalScore": 0,
+          "bm25Score": 7.084871,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "保存",
+              "contribution": 0
+            },
+            {
+              "term": "済み",
+              "contribution": 0
+            },
+            {
+              "term": "カード",
+              "contribution": 0
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "sqlite-bm25",
+          "rank": 3,
+          "finalScore": 0,
+          "bm25Score": 2.739667,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 0
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    }
+  ],
+  "successNearNegativeCases": [
+    {
+      "case": "near-negative",
+      "query": "SQLite token persistence",
+      "expected": [
+        "sqlite-token-persistence"
+      ],
+      "top1": "sqlite-token-persistence",
+      "rankingDetails": [
+        {
+          "documentId": "sqlite-token-persistence",
+          "rank": 1,
+          "finalScore": 0,
+          "bm25Score": 6.305843,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 0
+            },
+            {
+              "term": "token",
+              "contribution": 0
+            },
+            {
+              "term": "persistence",
+              "contribution": 0
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "sqlite-bm25",
+          "rank": 2,
+          "finalScore": 0,
+          "bm25Score": 4.634355,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 0
+            },
+            {
+              "term": "token",
+              "contribution": 0
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "near-negative-ui",
+          "rank": 3,
+          "finalScore": 0,
+          "bm25Score": 3.941731,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 0
+            },
+            {
+              "term": "token",
+              "contribution": 0
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "title-body-conflict",
+          "rank": 4,
+          "finalScore": 0,
+          "bm25Score": 1.970866,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 0
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "csv-import",
+          "rank": 5,
+          "finalScore": 0,
+          "bm25Score": 1.826445,
+          "timeDecayFactor": 0,
+          "matchedTerms": [
+            {
+              "term": "token",
+              "contribution": 0
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    }
+  ],
+  "tokenizationDiagnostics": {
+    "implementation": [
+      {
+        "file": "search/tokenizer.ts",
+        "symbol": "tokenize",
+        "role": "search and document tokenization export"
+      },
+      {
+        "file": "bm25_engine.ts",
+        "symbol": "tokenizeText",
+        "role": "kuromoji tokenization and normalization implementation",
+        "line": 662
+      },
+      {
+        "file": "search/query_parser.ts",
+        "symbol": "parseSearchQuery",
+        "role": "query splitting, phrase handling, and exclusions"
+      }
+    ],
+    "samples": [
+      {
+        "query": "保存済みカード ローカル検索",
+        "tokens": [
+          "保存",
+          "済み",
+          "カード",
+          "ローカル",
+          "検索"
+        ]
+      },
+      {
+        "query": "保存済みカード",
+        "tokens": [
+          "保存",
+          "済み",
+          "カード"
+        ]
+      },
+      {
+        "query": "SQLite BM25 token cache",
+        "tokens": [
+          "sqlite",
+          "bm",
+          "25",
+          "token",
+          "cache"
+        ]
+      },
+      {
+        "query": "\"SQLite BM25\" 保存済みカード -UI",
+        "tokens": [
+          "sqlite",
+          "bm",
+          "25",
+          "保存",
+          "済み",
+          "カード",
+          "ui"
+        ]
+      }
+    ],
+    "storedTokenExamples": [
+      {
+        "id": "jp-search",
+        "tokens": [
+          "保存",
+          "済み",
+          "カード",
+          "ローカル",
+          "検索",
+          "再発見"
+        ]
+      },
+      {
+        "id": "saved-new",
+        "tokens": [
+          "保存",
+          "済み",
+          "カード",
+          "ローカル",
+          "検索",
+          "再発見"
+        ]
+      }
+    ],
+    "checks": {
+      "japaneseNormalizationAndBigramPathPresent": true,
+      "queryParserPresent": true
+    }
   }
 }

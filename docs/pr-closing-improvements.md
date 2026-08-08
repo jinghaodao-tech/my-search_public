@@ -19,7 +19,7 @@ The goal is not to add more features. The goal is to make the existing product e
 
 ## Tests
 
-Latest local verification (2026-07-31):
+Latest local verification (2026-08-05):
 
 - [x] npm run typecheck
 - [x] npm test
@@ -30,7 +30,7 @@ Latest local verification (2026-07-31):
 - [x] npm run check:encoding
 - [x] npm audit --audit-level=high
 - [x] docker build -t my-search-public:test .
-- [x] npm run verify (36 unit, 59 acceptance, 7 E2E tests; benchmark, audit, and Docker build passed)
+- [x] Verification suites (38 unit, 72 acceptance, 9 E2E tests; benchmark and audit passed; Docker build not rerun because Docker Engine was unavailable)
 
 ## Notes
 

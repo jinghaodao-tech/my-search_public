@@ -38,3 +38,12 @@ export function getJob(id: string) {
 export function listJobs() {
   return (db.prepare('SELECT * FROM jobs ORDER BY created_at DESC').all() as any[]).map(fromRow);
 }
+
+export function markInterruptedJobs(now = new Date().toISOString()): number {
+  const result = db.prepare(`
+    UPDATE jobs
+    SET status = 'failed', updated_at = ?, error = COALESCE(error, ?)
+    WHERE status IN ('queued', 'running')
+  `).run(now, 'Job interrupted by process restart');
+  return result.changes;
+}

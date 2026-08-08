@@ -1,6 +1,6 @@
 # Test Coverage
 
-Last verified: 2026-07-31
+Last verified: 2026-08-05
 
 ## Commands
 
@@ -21,12 +21,12 @@ npm run verify
 | Command | Result |
 |---|---:|
 | `npm run typecheck` | passed |
-| `npm test` | passed 36/36 |
-| `npm run acceptance:test` | passed 69/69 |
+| `npm test` | passed 38/38 |
+| `npm run acceptance:test` | passed 72/72 |
 | `npm run test:e2e` | passed 9/9 |
 | `npm run benchmark` | passed: ranking-only, production-like, API, cold-start, warm-search |
 | `npm run benchmark:http` | passed: HTTP cold-start and warm-search |
-| `npm run evaluate:search` | passed: Precision@1 1.0, MRR 1.0, Recall@5 1.0, nDCG@5 1.0 |
+| `npm run evaluate:search` | passed: ranking P@1 0.818, MRR 0.882, Recall@5 1.000, nDCG@5 0.896; end-to-end P@1 0.818, MRR 0.894, Recall@5 1.000, nDCG@5 0.906 |
 | `npm run check:encoding` | passed |
 | `npm audit --audit-level=high` | passed: 0 vulnerabilities |
 | `docker build -t my-search-public:test .` | passed |
@@ -55,4 +55,5 @@ npm run verify
 - Background job lifecycle and job-not-found API errors.
 - Optional `API_KEY` authentication with timing-safe comparison.
 - Optional SQLite FTS5 card search path and synchronized tag triggers.
+- Frontend legacy JavaScript syntax check and runtime configuration tests.
 - Runtime configuration validation, request metrics, and hardened non-root Docker image.

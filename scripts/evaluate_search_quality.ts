@@ -1,10 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { runPipeline, type Article } from '../bm25_engine.js';
+import { tokenize } from '../search/tokenizer.js';
 import { excludesArticle, parseSearchQuery, type ParsedSearchQuery } from '../search/query_parser.js';
+import { assertSearchQualityMetrics, searchQualityThresholds } from './search_quality_config.js';
 
 type SearchCase = { id: string; query: string; keywords: Array<{ term: string; weight: number; synonyms?: string[] }>; expected: string[]; kind: string };
-type Variant = { name: string; synonym: boolean; lambda: number };
+type Variant = { name: string; description: string; synonym: boolean; lambda: number };
 const date = (value: string) => new Date(`${value}T00:00:00.000Z`);
 function article(id: string, title: string, body: string, tokens: string[], publishedAt = '2026-01-01', authority = 0.8): Article { return { id, title, body, url: `https://example.test/${id}`, sourceAuthority: authority, publishedAt: date(publishedAt), tokens, docLength: tokens.length }; }
 
@@ -36,7 +38,11 @@ const cases: SearchCase[] = [
   { id: 'time-decay', kind: 'time-decay-trap', query: '\u4fdd\u5b58\u6e08\u307f\u30ab\u30fc\u30c9 \u30ed\u30fc\u30ab\u30eb\u691c\u7d22 \u518d\u767a\u898b', keywords: [{ term: '\u4fdd\u5b58\u6e08\u307f\u30ab\u30fc\u30c9', weight: 2 }, { term: '\u30ed\u30fc\u30ab\u30eb\u691c\u7d22', weight: 1.5 }, { term: '\u518d\u767a\u898b', weight: 1 }], expected: ['saved-new','saved-old'] },
   { id: 'parser-ambiguity', kind: 'parser-ambiguity', query: '"SQLite BM25" \u4fdd\u5b58\u6e08\u307f\u30ab\u30fc\u30c9 -UI', keywords: [{ term: 'SQLite', weight: 1.5 }, { term: 'BM25', weight: 1.5 }, { term: '\u4fdd\u5b58\u6e08\u307f\u30ab\u30fc\u30c9', weight: 1 }], expected: ['sqlite-bm25'] },
 ];
-const variants: Variant[] = [{ name: 'current-bm25', synonym: true, lambda: 0.1 }, { name: 'without-synonym', synonym: false, lambda: 0.1 }, { name: 'without-time-decay', synonym: true, lambda: 0 }];
+const variants: Variant[] = [
+  { name: 'baseline', description: '現行のBM25ランキング設定', synonym: true, lambda: 0.1 },
+  { name: 'no_synonym_expansion', description: '同義語展開を無効化した比較', synonym: false, lambda: 0.1 },
+  { name: 'no_time_decay', description: '時間減衰を無効化した比較', synonym: true, lambda: 0 },
+];
 const synonymMap: Record<string, string[]> = { bm25: ['ranking'], token: ['tokens_json'], csv: ['json'], validation: ['validate'] };
 function precisionAt(results: string[], expected: string[], k: number): number { const set = new Set(expected); return results.slice(0, k).filter(id => set.has(id)).length / Math.min(k, results.length || k); }
 function reciprocalRank(results: string[], expected: string[]): number { const set = new Set(expected); const index = results.findIndex(id => set.has(id)); return index < 0 ? 0 : 1 / (index + 1); }
@@ -48,19 +54,59 @@ async function evaluateVariant(variant: Variant, endToEnd: boolean) {
     const parsed: ParsedSearchQuery | undefined = endToEnd ? parseSearchQuery(testCase.query, variant.synonym ? synonymMap : {}) : undefined;
     const keywords = parsed?.parsedKeywords ?? testCase.keywords.map(keyword => ({ ...keyword, synonyms: variant.synonym ? (keyword.synonyms ?? []) : [] }));
     const result = await runPipeline(articles, { label: variant.name, description: endToEnd ? 'Raw query parser evaluation' : 'Keyword ranking evaluation', k1: 1.5, b: 0.75, lambda: variant.lambda, contextBonus: 1.2, keywords }, endToEnd ? 'end-to-end-query' : 'ranking-only', { archiveScoreThreshold: -1, dedupThreshold: 1, resultLimit: 5 });
-    const ranked = result.active.filter(item => !parsed || !excludesArticle(item.article, parsed.excludedTerms)).map(item => item.article.id);
-    rows.push({ case: testCase.id, kind: testCase.kind, query: testCase.query, ...(endToEnd ? { rawQuery: testCase.query, parsedKeywords: keywords } : { rankingKeywords: keywords }), top1: ranked[0] ?? '', expected: testCase.expected, precisionAt1: precisionAt(ranked, testCase.expected, 1), precisionAt3: precisionAt(ranked, testCase.expected, 3), reciprocalRank: reciprocalRank(ranked, testCase.expected), recallAt5: recallAt5(ranked, testCase.expected), ndcgAt5: ndcgAt5(ranked, testCase.expected) });
+    const eligible = result.active.filter(item => !parsed || !excludesArticle(item.article, parsed.excludedTerms));
+    const ranked = eligible.map(item => item.article.id);
+    const rankingDetails = eligible.map((item, index) => ({
+      documentId: item.article.id,
+      rank: index + 1,
+      finalScore: Number(item.score.toFixed(6)),
+      bm25Score: Number(item.breakdown.bm25Raw.toFixed(6)),
+      timeDecayFactor: variant.lambda === 0 ? null : Number(item.breakdown.timeDecay.toFixed(6)),
+      matchedTerms: item.breakdown.matchedTerms.map(term => ({
+        term: term.term,
+        contribution: Number((term.contribution * item.breakdown.contextBonus * item.breakdown.timeDecay).toFixed(6)),
+      })),
+      isExpected: testCase.expected.includes(item.article.id),
+    }));
+    rows.push({ case: testCase.id, kind: testCase.kind, query: testCase.query, ...(endToEnd ? { rawQuery: testCase.query, parsedKeywords: keywords } : { rankingKeywords: keywords }), top1: ranked[0] ?? '', expected: testCase.expected, precisionAt1: precisionAt(ranked, testCase.expected, 1), precisionAt3: precisionAt(ranked, testCase.expected, 3), reciprocalRank: reciprocalRank(ranked, testCase.expected), recallAt5: recallAt5(ranked, testCase.expected), ndcgAt5: ndcgAt5(ranked, testCase.expected), rankingDetails });
   }
   return { variant: variant.name, rows, meanPrecisionAt1: rows.reduce((sum, row) => sum + row.precisionAt1, 0) / rows.length, meanPrecisionAt3: rows.reduce((sum, row) => sum + row.precisionAt3, 0) / rows.length, mrr: rows.reduce((sum, row) => sum + row.reciprocalRank, 0) / rows.length, recallAt5: rows.reduce((sum, row) => sum + row.recallAt5, 0) / rows.length, ndcgAt5: rows.reduce((sum, row) => sum + row.ndcgAt5, 0) / rows.length };
 }
-function artifact(evaluation: Awaited<ReturnType<typeof evaluateVariant>>, scope: string, pipeline: string[]) { return { scope, pipeline, dataset: { version: 'v4-50-docs-11-query-cases', documents: articles.length, queries: cases.length, caseKinds: [...new Set(cases.map(testCase => testCase.kind))], languages: ['English', 'Japanese'] }, rows: evaluation.rows, metrics: { precisionAt1: Number(evaluation.meanPrecisionAt1.toFixed(3)), precisionAt3: Number(evaluation.meanPrecisionAt3.toFixed(3)), mrr: Number(evaluation.mrr.toFixed(3)), recallAt5: Number(evaluation.recallAt5.toFixed(3)), ndcgAt5: Number(evaluation.ndcgAt5.toFixed(3)) }, thresholds: { precisionAt1: 0.75, mrr: 0.8, recallAt5: 0.8, ndcgAt5: 0.75 }, variants: [] as unknown[] }; }
+function artifact(evaluation: Awaited<ReturnType<typeof evaluateVariant>>, scope: string, pipeline: string[]) { return { scope, pipeline, dataset: { version: 'v4-50-docs-11-query-cases', documents: articles.length, queries: cases.length, caseKinds: [...new Set(cases.map(testCase => testCase.kind))], languages: ['English', 'Japanese'] }, rows: evaluation.rows, metrics: { precisionAt1: Number(evaluation.meanPrecisionAt1.toFixed(3)), precisionAt3: Number(evaluation.meanPrecisionAt3.toFixed(3)), mrr: Number(evaluation.mrr.toFixed(3)), recallAt5: Number(evaluation.recallAt5.toFixed(3)), ndcgAt5: Number(evaluation.ndcgAt5.toFixed(3)) }, thresholds: searchQualityThresholds, variants: [] as unknown[] }; }
 const rankingEvaluations = []; const endToEndEvaluations = [];
 for (const variant of variants) { rankingEvaluations.push(await evaluateVariant(variant, false)); endToEndEvaluations.push(await evaluateVariant(variant, true)); }
-const ranking = artifact(rankingEvaluations[0], 'ranking-only', ['keywords', 'ranking_engine']); ranking.variants = rankingEvaluations.map(({ variant, rows: _rows, ...metrics }) => metrics);
-const endToEnd = artifact(endToEndEvaluations[0], 'end-to-end-query', ['raw_query', 'query_parser', 'keyword_candidates', 'ranking_engine']); endToEnd.variants = endToEndEvaluations.map(({ variant, rows: _rows, ...metrics }) => metrics);
+const ranking = artifact(rankingEvaluations[0], 'ranking-only', ['keywords', 'ranking_engine']); ranking.variants = rankingEvaluations.map(({ variant, rows: _rows, ...metrics }) => ({ name: variant, description: variants.find(item => item.name === variant)?.description ?? '', ...metrics }));
+const endToEnd = artifact(endToEndEvaluations[0], 'end-to-end-query', ['raw_query', 'query_parser', 'keyword_candidates', 'ranking_engine']); endToEnd.variants = endToEndEvaluations.map(({ variant, rows: _rows, ...metrics }) => ({ name: variant, description: variants.find(item => item.name === variant)?.description ?? '', ...metrics }));
+const tokenizerSource = fs.readFileSync(path.join(process.cwd(), 'bm25_engine.ts'), 'utf8');
+const tokenizationDiagnostics = {
+  implementation: [
+    { file: 'search/tokenizer.ts', symbol: 'tokenize', role: 'search and document tokenization export' },
+    { file: 'bm25_engine.ts', symbol: 'tokenizeText', role: 'kuromoji tokenization and normalization implementation', line: tokenizerSource.slice(0, tokenizerSource.indexOf('function tokenizeText')).split('\n').length },
+    { file: 'search/query_parser.ts', symbol: 'parseSearchQuery', role: 'query splitting, phrase handling, and exclusions' },
+  ],
+  samples: await Promise.all([
+    '保存済みカード ローカル検索',
+    '保存済みカード',
+    'SQLite BM25 token cache',
+    '"SQLite BM25" 保存済みカード -UI',
+  ].map(async query => ({ query, tokens: await tokenize(query) }))),
+  storedTokenExamples: ['jp-search', 'saved-new'].map(id => ({ id, tokens: articles.find(item => item.id === id)?.tokens ?? [] })),
+  checks: {
+    japaneseNormalizationAndBigramPathPresent: /normalize|bigram|ngram/i.test(tokenizerSource),
+    queryParserPresent: fs.existsSync(path.join(process.cwd(), 'search', 'query_parser.ts')),
+  },
+};
+const failureCases = endToEnd.rows.filter(row => row.top1 !== row.expected[0]).map(row => ({ case: row.case, query: row.query, expected: row.expected, top1: row.top1, rankingDetails: row.rankingDetails }));
+const diagnostic = { ...({ ranking, endToEnd }), failureCases, successNearNegativeCases: endToEnd.rows.filter(row => row.kind === 'near-negative').map(row => ({ case: row.case, query: row.query, expected: row.expected, top1: row.top1, rankingDetails: row.rankingDetails })), tokenizationDiagnostics };
 fs.mkdirSync(path.join(process.cwd(), 'artifacts'), { recursive: true });
 fs.writeFileSync(path.join(process.cwd(), 'artifacts', 'ranking-engine-quality.json'), JSON.stringify(ranking, null, 2), 'utf-8');
 fs.writeFileSync(path.join(process.cwd(), 'artifacts', 'end-to-end-query-quality.json'), JSON.stringify(endToEnd, null, 2), 'utf-8');
-fs.writeFileSync(path.join(process.cwd(), 'artifacts', 'search-quality.json'), JSON.stringify({ ranking, endToEnd }, null, 2), 'utf-8');
+fs.writeFileSync(path.join(process.cwd(), 'artifacts', 'search-quality.json'), JSON.stringify(diagnostic, null, 2), 'utf-8');
 console.log(JSON.stringify({ ranking: { metrics: ranking.metrics, rows: ranking.rows.length }, endToEnd: { metrics: endToEnd.metrics, rows: endToEnd.rows.length } }, null, 2));
-if (ranking.metrics.precisionAt1 < ranking.thresholds.precisionAt1 || endToEnd.metrics.precisionAt1 < endToEnd.thresholds.precisionAt1 || endToEnd.metrics.mrr < endToEnd.thresholds.mrr || endToEnd.metrics.recallAt5 < endToEnd.thresholds.recallAt5) process.exitCode = 1;
+try {
+  assertSearchQualityMetrics('ranking', ranking.metrics);
+  assertSearchQualityMetrics('endToEnd', endToEnd.metrics);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+}

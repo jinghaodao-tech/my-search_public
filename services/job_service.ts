@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { errorMeta, logger } from '../utils/logger.js';
-import { getJob as getPersistedJob, insertJob, listJobs as listPersistedJobs, updateJob } from '../repositories/jobs_repository.js';
+import { getJob as getPersistedJob, insertJob, listJobs as listPersistedJobs, markInterruptedJobs, updateJob } from '../repositories/jobs_repository.js';
 
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 export interface Job<T = unknown> {
@@ -14,6 +14,11 @@ export interface Job<T = unknown> {
 }
 
 export function createJobService() {
+  const interruptedJobs = markInterruptedJobs();
+  if (interruptedJobs > 0) {
+    logger.warn({ event: 'jobs_recovered_after_restart', interruptedJobs }, 'marked unfinished jobs as failed after process restart');
+  }
+
   function submit<T>(type: string, handler: () => Promise<T>) {
     const now = new Date().toISOString();
     const job: Job<T> = { id: randomUUID(), type, status: 'queued', createdAt: now, updatedAt: now };
