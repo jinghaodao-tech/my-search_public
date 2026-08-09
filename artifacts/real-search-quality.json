@@ -1,0 +1,1858 @@
+{
+  "scope": "real",
+  "role": "ranking-engine-diagnostic",
+  "qualityGate": true,
+  "qualityGateThresholds": {
+    "precisionAt1": 0.7
+  },
+  "pipeline": [
+    "anonymized_fixture",
+    "raw_query",
+    "query_parser",
+    "keyword_candidates",
+    "ranking_engine"
+  ],
+  "dataset": {
+    "version": "anonymized-card-corpus-v1-manual-queries",
+    "documents": 74,
+    "queries": 20,
+    "caseKinds": [
+      "real-manual"
+    ],
+    "languages": [
+      "English",
+      "Japanese"
+    ],
+    "labelSource": "manual relevance labels from data/search-evaluation/real-queries.json"
+  },
+  "rows": [
+    {
+      "case": "manual-stack-overflow-agents",
+      "kind": "real-manual",
+      "query": "ai agents",
+      "rawQuery": "ai agents",
+      "parsedKeywords": [
+        {
+          "term": "ai",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "agents",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-b4d7a50098a9e923",
+      "expected": [
+        "anon-b4d7a50098a9e923",
+        "anon-095beb091817ee25",
+        "anon-afa29b53576888e0"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 0.3333333333333333,
+      "ndcgAt5": 0.46927872602275644,
+      "sensitivity": {
+        "runnerUpId": "anon-c649aaf312877b1b",
+        "finalScoreGap": 0.340671,
+        "finalScoreGapRatio": 0.03831,
+        "bm25ScoreGap": -0.693286,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 15.39831,
+        "runnerUpDecayToTie": 0.363943,
+        "winnerDecayToLose": 0.336592
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-b4d7a50098a9e923",
+          "rank": 1,
+          "finalScore": 8.892524,
+          "bm25Score": 14.115118,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 1.250467
+            },
+            {
+              "term": "agents",
+              "contribution": 7.642057
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-c649aaf312877b1b",
+          "rank": 2,
+          "finalScore": 8.551853,
+          "bm25Score": 14.808404,
+          "contextBonus": 1.65,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 1.202562
+            },
+            {
+              "term": "agents",
+              "contribution": 7.349292
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-webassembly-component",
+      "kind": "real-manual",
+      "query": "component system interface",
+      "rawQuery": "component system interface",
+      "parsedKeywords": [
+        {
+          "term": "component",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "system",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "interface",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-867b585c1cceeee6",
+      "expected": [
+        "anon-867b585c1cceeee6"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": null,
+      "rankingDetails": [
+        {
+          "documentId": "anon-867b585c1cceeee6",
+          "rank": 1,
+          "finalScore": 35.273437,
+          "bm25Score": 55.989583,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "component",
+              "contribution": 11.757812
+            },
+            {
+              "term": "system",
+              "contribution": 11.757812
+            },
+            {
+              "term": "interface",
+              "contribution": 11.757812
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-ai-coding-ide",
+      "kind": "real-manual",
+      "query": "coding editor",
+      "rawQuery": "coding editor",
+      "parsedKeywords": [
+        {
+          "term": "coding",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "editor",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-96820a91571db08b",
+      "expected": [
+        "anon-095beb091817ee25"
+      ],
+      "precisionAt1": 0,
+      "rPrecision": 0,
+      "reciprocalRank": 0,
+      "recallAt5": 0,
+      "ndcgAt5": 0,
+      "sensitivity": {
+        "runnerUpId": "anon-dba5e688c6ccdeae",
+        "finalScoreGap": 0.626086,
+        "finalScoreGapRatio": 0.100284,
+        "bm25ScoreGap": 1.192546,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 11.89165,
+        "runnerUpDecayToTie": 0.389012,
+        "winnerDecayToLose": 0.314901
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-96820a91571db08b",
+          "rank": 1,
+          "finalScore": 6.243116,
+          "bm25Score": 11.89165,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "coding",
+              "contribution": 6.243116
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-dba5e688c6ccdeae",
+          "rank": 2,
+          "finalScore": 5.61703,
+          "bm25Score": 10.699104,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "coding",
+              "contribution": 5.61703
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-apple-macos-linux",
+      "kind": "real-manual",
+      "query": "container development",
+      "rawQuery": "container development",
+      "parsedKeywords": [
+        {
+          "term": "container",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "development",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-4eedb18cff407cb0",
+      "expected": [
+        "anon-4eedb18cff407cb0"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-4580f9ec514b42b9",
+        "finalScoreGap": 1.568921,
+        "finalScoreGapRatio": 0.167965,
+        "bm25ScoreGap": 2.98842,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 17.791884,
+        "runnerUpDecayToTie": 0.420656,
+        "winnerDecayToLose": 0.291212
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-4eedb18cff407cb0",
+          "rank": 1,
+          "finalScore": 9.340739,
+          "bm25Score": 17.791883,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "container",
+              "contribution": 9.340739
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-4580f9ec514b42b9",
+          "rank": 2,
+          "finalScore": 7.771818,
+          "bm25Score": 14.803463,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "development",
+              "contribution": 7.771818
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-51c91ff6ed3d6187",
+          "rank": 3,
+          "finalScore": 6.924094,
+          "bm25Score": 13.188751,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "development",
+              "contribution": 6.924094
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-cloudflare-gateway",
+      "kind": "real-manual",
+      "query": "api security",
+      "rawQuery": "api security",
+      "parsedKeywords": [
+        {
+          "term": "api",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "security",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-c175b8c79f910465",
+      "expected": [
+        "anon-afa29b53576888e0",
+        "anon-c175b8c79f910465",
+        "anon-cbe88a9b44e0fc8b"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 0.6666666666666666,
+      "ndcgAt5": 0.6508205185601091,
+      "sensitivity": {
+        "runnerUpId": "anon-7f113a889802baa7",
+        "finalScoreGap": 8.525589,
+        "finalScoreGapRatio": 0.543101,
+        "bm25ScoreGap": 11.255729,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 29.900926,
+        "runnerUpDecayToTie": 0.766033,
+        "winnerDecayToLose": 0.159915
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 1,
+          "finalScore": 15.697986,
+          "bm25Score": 24.917438,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 5.869091
+            },
+            {
+              "term": "security",
+              "contribution": 9.828895
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-7f113a889802baa7",
+          "rank": 2,
+          "finalScore": 7.172397,
+          "bm25Score": 13.661709,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 7.172397
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-9e6476b2517b4898",
+          "rank": 3,
+          "finalScore": 5.744084,
+          "bm25Score": 10.941112,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 5.744084
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-48e8f046eb0314ab",
+          "rank": 4,
+          "finalScore": 5.428767,
+          "bm25Score": 10.340508,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 5.428767
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-cbe88a9b44e0fc8b",
+          "rank": 5,
+          "finalScore": 4.327665,
+          "bm25Score": 8.243171,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 4.327665
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-ubuntu-sandbox",
+      "kind": "real-manual",
+      "query": "development environment",
+      "rawQuery": "development environment",
+      "parsedKeywords": [
+        {
+          "term": "development",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "environment",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-4580f9ec514b42b9",
+      "expected": [
+        "anon-4580f9ec514b42b9",
+        "anon-4eedb18cff407cb0"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.5,
+      "reciprocalRank": 1,
+      "recallAt5": 0.5,
+      "ndcgAt5": 0.6131471927654584,
+      "sensitivity": {
+        "runnerUpId": "anon-51c91ff6ed3d6187",
+        "finalScoreGap": 0.847724,
+        "finalScoreGapRatio": 0.109077,
+        "bm25ScoreGap": 1.614712,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 14.803463,
+        "runnerUpDecayToTie": 0.392851,
+        "winnerDecayToLose": 0.311823
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-4580f9ec514b42b9",
+          "rank": 1,
+          "finalScore": 7.771818,
+          "bm25Score": 14.803463,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "development",
+              "contribution": 7.771818
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-51c91ff6ed3d6187",
+          "rank": 2,
+          "finalScore": 6.924094,
+          "bm25Score": 13.188751,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "development",
+              "contribution": 6.924094
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-search-grouping",
+      "kind": "real-manual",
+      "query": "search grouping",
+      "rawQuery": "search grouping",
+      "parsedKeywords": [
+        {
+          "term": "search",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "grouping",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-818b67f999b44206",
+      "expected": [
+        "anon-fd82501338adbd3b",
+        "anon-818b67f999b44206"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.5,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 0.9197207891481876,
+      "sensitivity": {
+        "runnerUpId": "anon-14afb4986e072aed",
+        "finalScoreGap": 6.146793,
+        "finalScoreGapRatio": 0.473729,
+        "bm25ScoreGap": 11.708177,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 24.714943,
+        "runnerUpDecayToTie": 0.665056,
+        "winnerDecayToLose": 0.184195
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-818b67f999b44206",
+          "rank": 1,
+          "finalScore": 12.975345,
+          "bm25Score": 24.714943,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "grouping",
+              "contribution": 12.975345
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-14afb4986e072aed",
+          "rank": 2,
+          "finalScore": 6.828552,
+          "bm25Score": 13.006766,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 6.828552
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-fd82501338adbd3b",
+          "rank": 3,
+          "finalScore": 6.399614,
+          "bm25Score": 12.189741,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 6.399614
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-f8418e969864c8e8",
+          "rank": 4,
+          "finalScore": 6.399614,
+          "bm25Score": 12.189741,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 6.399614
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-066f70e555b534d6",
+          "rank": 5,
+          "finalScore": 6.14239,
+          "bm25Score": 11.69979,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 6.14239
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-api-validation",
+      "kind": "real-manual",
+      "query": "validation tests",
+      "rawQuery": "validation tests",
+      "parsedKeywords": [
+        {
+          "term": "validation",
+          "weight": 1,
+          "synonyms": [
+            "validate"
+          ]
+        },
+        {
+          "term": "tests",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-c175b8c79f910465",
+      "expected": [
+        "anon-c175b8c79f910465",
+        "anon-cbe88a9b44e0fc8b",
+        "anon-066f70e555b534d6"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.6666666666666666,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 0.9674679834891693,
+      "sensitivity": {
+        "runnerUpId": "anon-cbe88a9b44e0fc8b",
+        "finalScoreGap": 14.350869,
+        "finalScoreGapRatio": 0.610966,
+        "bm25ScoreGap": 20.48906,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 48.807934,
+        "runnerUpDecayToTie": 0.899664,
+        "winnerDecayToLose": 0.136162
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 1,
+          "finalScore": 23.488818,
+          "bm25Score": 39.477005,
+          "contextBonus": 1.7,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "validation",
+              "contribution": 12.768237
+            },
+            {
+              "term": "tests",
+              "contribution": 10.720581
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-cbe88a9b44e0fc8b",
+          "rank": 2,
+          "finalScore": 9.137949,
+          "bm25Score": 18.987945,
+          "contextBonus": 1.375,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "validation",
+              "contribution": 9.137949
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 3,
+          "finalScore": 8.641391,
+          "bm25Score": 16.459792,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "tests",
+              "contribution": 8.641391
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-066f70e555b534d6",
+          "rank": 4,
+          "finalScore": 8.033564,
+          "bm25Score": 15.302027,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "tests",
+              "contribution": 8.033564
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-sqlite-backup-restore",
+      "kind": "real-manual",
+      "query": "sqlite local storage",
+      "rawQuery": "sqlite local storage",
+      "parsedKeywords": [
+        {
+          "term": "sqlite",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "local",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "storage",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-f8e0961922a25375",
+      "expected": [
+        "anon-f8e0961922a25375",
+        "anon-a1e4d0de42dc44cf",
+        "anon-1e1c862b8d1710c9"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-1e1c862b8d1710c9",
+        "finalScoreGap": 12.505455,
+        "finalScoreGapRatio": 0.404323,
+        "bm25ScoreGap": 16.194388,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 55.231038,
+        "runnerUpDecayToTie": 0.587567,
+        "winnerDecayToLose": 0.208487
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-f8e0961922a25375",
+          "rank": 1,
+          "finalScore": 30.929381,
+          "bm25Score": 49.094255,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 8.381521
+            },
+            {
+              "term": "local",
+              "contribution": 9.491973
+            },
+            {
+              "term": "storage",
+              "contribution": 13.055886
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-1e1c862b8d1710c9",
+          "rank": 2,
+          "finalScore": 18.423926,
+          "bm25Score": 32.899867,
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 7.203321
+            },
+            {
+              "term": "storage",
+              "contribution": 11.220605
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-a1e4d0de42dc44cf",
+          "rank": 3,
+          "finalScore": 15.028931,
+          "bm25Score": 26.837378,
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 7.047604
+            },
+            {
+              "term": "local",
+              "contribution": 7.981328
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-f8418e969864c8e8",
+          "rank": 4,
+          "finalScore": 6.764321,
+          "bm25Score": 13.804737,
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "local",
+              "contribution": 6.764321
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 5,
+          "finalScore": 6.166653,
+          "bm25Score": 12.585007,
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 6.166653
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-bm25-explanations",
+      "kind": "real-manual",
+      "query": "search highlights",
+      "rawQuery": "search highlights",
+      "parsedKeywords": [
+        {
+          "term": "search",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "highlights",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-14afb4986e072aed",
+      "expected": [
+        "anon-14afb4986e072aed",
+        "anon-f8418e969864c8e8"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-f8418e969864c8e8",
+        "finalScoreGap": 1.316513,
+        "finalScoreGapRatio": 0.062815,
+        "bm25ScoreGap": 2.089703,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 33.267389,
+        "runnerUpDecayToTie": 0.373459,
+        "winnerDecayToLose": 0.328015
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-14afb4986e072aed",
+          "rank": 1,
+          "finalScore": 20.958455,
+          "bm25Score": 33.267389,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 8.194262
+            },
+            {
+              "term": "highlights",
+              "contribution": 12.764193
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-f8418e969864c8e8",
+          "rank": 2,
+          "finalScore": 19.641942,
+          "bm25Score": 31.177686,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 7.679537
+            },
+            {
+              "term": "highlights",
+              "contribution": 11.962405
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-fd82501338adbd3b",
+          "rank": 3,
+          "finalScore": 6.399614,
+          "bm25Score": 12.189741,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 6.399614
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-066f70e555b534d6",
+          "rank": 4,
+          "finalScore": 6.14239,
+          "bm25Score": 11.69979,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 6.14239
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-54a7852ffd299f21",
+          "rank": 5,
+          "finalScore": 2.810243,
+          "bm25Score": 5.352843,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 2.810243
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-agents-api",
+      "kind": "real-manual",
+      "query": "agents api",
+      "rawQuery": "agents api",
+      "parsedKeywords": [
+        {
+          "term": "agents",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "api",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-b4d7a50098a9e923",
+      "expected": [
+        "anon-b4d7a50098a9e923",
+        "anon-095beb091817ee25",
+        "anon-afa29b53576888e0"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.3333333333333333,
+      "reciprocalRank": 1,
+      "recallAt5": 0.3333333333333333,
+      "ndcgAt5": 0.46927872602275644,
+      "sensitivity": {
+        "runnerUpId": "anon-c649aaf312877b1b",
+        "finalScoreGap": 4.278503,
+        "finalScoreGapRatio": 0.390386,
+        "bm25ScoreGap": 4.670267,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 20.875575,
+        "runnerUpDecayToTie": 0.574134,
+        "winnerDecayToLose": 0.213365
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-b4d7a50098a9e923",
+          "rank": 1,
+          "finalScore": 10.959677,
+          "bm25Score": 17.396313,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "agents",
+              "contribution": 7.642057
+            },
+            {
+              "term": "api",
+              "contribution": 3.31762
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-c649aaf312877b1b",
+          "rank": 2,
+          "finalScore": 6.681174,
+          "bm25Score": 12.726046,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "agents",
+              "contribution": 6.681174
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 3,
+          "finalScore": 4.890909,
+          "bm25Score": 9.316018,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 4.890909
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-cbe88a9b44e0fc8b",
+          "rank": 4,
+          "finalScore": 4.327665,
+          "bm25Score": 8.243171,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 4.327665
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-066f70e555b534d6",
+          "rank": 5,
+          "finalScore": 4.15372,
+          "bm25Score": 7.911847,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 4.15372
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-component-interface",
+      "kind": "real-manual",
+      "query": "component interface",
+      "rawQuery": "component interface",
+      "parsedKeywords": [
+        {
+          "term": "component",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "interface",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-867b585c1cceeee6",
+      "expected": [
+        "anon-867b585c1cceeee6"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": null,
+      "rankingDetails": [
+        {
+          "documentId": "anon-867b585c1cceeee6",
+          "rank": 1,
+          "finalScore": 23.515625,
+          "bm25Score": 37.326388,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "component",
+              "contribution": 11.757812
+            },
+            {
+              "term": "interface",
+              "contribution": 11.757812
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-container-runtime",
+      "kind": "real-manual",
+      "query": "container runtime",
+      "rawQuery": "container runtime",
+      "parsedKeywords": [
+        {
+          "term": "container",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "runtime",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-4eedb18cff407cb0",
+      "expected": [
+        "anon-4eedb18cff407cb0"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": null,
+      "rankingDetails": [
+        {
+          "documentId": "anon-4eedb18cff407cb0",
+          "rank": 1,
+          "finalScore": 9.340739,
+          "bm25Score": 17.791883,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "container",
+              "contribution": 9.340739
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-rate-limiting",
+      "kind": "real-manual",
+      "query": "rate limiting",
+      "rawQuery": "rate limiting",
+      "parsedKeywords": [
+        {
+          "term": "rate",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "limiting",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-c175b8c79f910465",
+      "expected": [
+        "anon-c175b8c79f910465",
+        "anon-cbe88a9b44e0fc8b"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.5,
+      "reciprocalRank": 1,
+      "recallAt5": 0.5,
+      "ndcgAt5": 0.6131471927654584,
+      "sensitivity": null,
+      "rankingDetails": [
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 1,
+          "finalScore": 34.088444,
+          "bm25Score": 54.108641,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "rate",
+              "contribution": 17.044222
+            },
+            {
+              "term": "limiting",
+              "contribution": 17.044222
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-docker-ci",
+      "kind": "real-manual",
+      "query": "docker ci",
+      "rawQuery": "docker ci",
+      "parsedKeywords": [
+        {
+          "term": "docker",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "ci",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-5f5ee445d308117c",
+      "expected": [
+        "anon-5f5ee445d308117c"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-23fa60b7577d1c72",
+        "finalScoreGap": 20.45363,
+        "finalScoreGapRatio": 0.732561,
+        "bm25ScoreGap": 30.095577,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 53.182312,
+        "runnerUpDecayToTie": 1.30871,
+        "winnerDecayToLose": 0.093604
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 1,
+          "finalScore": 27.920714,
+          "bm25Score": 44.318594,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "docker",
+              "contribution": 12.3503
+            },
+            {
+              "term": "ci",
+              "contribution": 15.570414
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-23fa60b7577d1c72",
+          "rank": 2,
+          "finalScore": 7.467084,
+          "bm25Score": 14.223017,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "docker",
+              "contribution": 7.467084
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-backup-restore",
+      "kind": "real-manual",
+      "query": "backup restore",
+      "rawQuery": "backup restore",
+      "parsedKeywords": [
+        {
+          "term": "backup",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "restore",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-f8e0961922a25375",
+      "expected": [
+        "anon-f8e0961922a25375",
+        "anon-a1e4d0de42dc44cf"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-a1e4d0de42dc44cf",
+        "finalScoreGap": 1.411172,
+        "finalScoreGapRatio": 0.054044,
+        "bm25ScoreGap": 2.239956,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 41.447257,
+        "runnerUpDecayToTie": 0.369996,
+        "winnerDecayToLose": 0.331085
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-f8e0961922a25375",
+          "rank": 1,
+          "finalScore": 26.111772,
+          "bm25Score": 41.447257,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "backup",
+              "contribution": 13.055886
+            },
+            {
+              "term": "restore",
+              "contribution": 13.055886
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-a1e4d0de42dc44cf",
+          "rank": 2,
+          "finalScore": 24.7006,
+          "bm25Score": 39.207301,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "backup",
+              "contribution": 12.3503
+            },
+            {
+              "term": "restore",
+              "contribution": 12.3503
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-knowledge-management",
+      "kind": "real-manual",
+      "query": "knowledge management",
+      "rawQuery": "knowledge management",
+      "parsedKeywords": [
+        {
+          "term": "knowledge",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "management",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-818b67f999b44206",
+      "expected": [
+        "anon-818b67f999b44206"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-b4d7a50098a9e923",
+        "finalScoreGap": 21.552333,
+        "finalScoreGapRatio": 0.771912,
+        "bm25ScoreGap": 32.188344,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 53.182312,
+        "runnerUpDecayToTie": 1.534495,
+        "winnerDecayToLose": 0.079831
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-818b67f999b44206",
+          "rank": 1,
+          "finalScore": 27.920714,
+          "bm25Score": 44.318594,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "knowledge",
+              "contribution": 12.3503
+            },
+            {
+              "term": "management",
+              "contribution": 15.570414
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-b4d7a50098a9e923",
+          "rank": 2,
+          "finalScore": 6.368381,
+          "bm25Score": 12.13025,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "knowledge",
+              "contribution": 6.368381
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-api-tests",
+      "kind": "real-manual",
+      "query": "api tests",
+      "rawQuery": "api tests",
+      "parsedKeywords": [
+        {
+          "term": "api",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "tests",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-c175b8c79f910465",
+      "expected": [
+        "anon-066f70e555b534d6",
+        "anon-c175b8c79f910465",
+        "anon-cbe88a9b44e0fc8b"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.6666666666666666,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 0.9674679834891693,
+      "sensitivity": {
+        "runnerUpId": "anon-066f70e555b534d6",
+        "finalScoreGap": 2.595554,
+        "finalScoreGapRatio": 0.150726,
+        "bm25ScoreGap": 4.119928,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 27.333802,
+        "runnerUpDecayToTie": 0.412117,
+        "winnerDecayToLose": 0.297246
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 1,
+          "finalScore": 17.220295,
+          "bm25Score": 27.333802,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 5.869091
+            },
+            {
+              "term": "tests",
+              "contribution": 11.351204
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-066f70e555b534d6",
+          "rank": 2,
+          "finalScore": 14.624741,
+          "bm25Score": 23.213874,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 4.984464
+            },
+            {
+              "term": "tests",
+              "contribution": 9.640277
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 3,
+          "finalScore": 8.641391,
+          "bm25Score": 16.459792,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "tests",
+              "contribution": 8.641391
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-cbe88a9b44e0fc8b",
+          "rank": 4,
+          "finalScore": 4.327665,
+          "bm25Score": 8.243171,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 4.327665
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-afa29b53576888e0",
+          "rank": 5,
+          "finalScore": 3.517503,
+          "bm25Score": 6.700006,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 3.517503
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-sqlite-migration",
+      "kind": "real-manual",
+      "query": "sqlite migration",
+      "rawQuery": "sqlite migration",
+      "parsedKeywords": [
+        {
+          "term": "sqlite",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "migration",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-1e1c862b8d1710c9",
+      "expected": [
+        "anon-1e1c862b8d1710c9"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-f8e0961922a25375",
+        "finalScoreGap": 17.033578,
+        "finalScoreGapRatio": 0.709195,
+        "bm25ScoreGap": 24.820092,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 45.748912,
+        "runnerUpDecayToTie": 1.203557,
+        "winnerDecayToLose": 0.101782
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-1e1c862b8d1710c9",
+          "rank": 1,
+          "finalScore": 24.018179,
+          "bm25Score": 38.124094,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 8.103736
+            },
+            {
+              "term": "migration",
+              "contribution": 15.914443
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-f8e0961922a25375",
+          "rank": 2,
+          "finalScore": 6.984601,
+          "bm25Score": 13.304002,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 6.984601
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 3,
+          "finalScore": 6.607129,
+          "bm25Score": 12.585007,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 6.607129
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-a1e4d0de42dc44cf",
+          "rank": 4,
+          "finalScore": 6.607129,
+          "bm25Score": 12.585007,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 6.607129
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-54a7852ffd299f21",
+          "rank": 5,
+          "finalScore": 2.810243,
+          "bm25Score": 5.352843,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 2.810243
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-xss-rendering",
+      "kind": "real-manual",
+      "query": "xss security",
+      "rawQuery": "xss security",
+      "parsedKeywords": [
+        {
+          "term": "xss",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "security",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-7f113a889802baa7",
+      "expected": [
+        "anon-7f113a889802baa7"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-c175b8c79f910465",
+        "finalScoreGap": 15.34126,
+        "finalScoreGapRatio": 0.651932,
+        "bm25ScoreGap": 21.75097,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 44.822869,
+        "runnerUpDecayToTie": 1.00555,
+        "winnerDecayToLose": 0.121824
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-7f113a889802baa7",
+          "rank": 1,
+          "finalScore": 23.532006,
+          "bm25Score": 37.35239,
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "xss",
+              "contribution": 14.925129
+            },
+            {
+              "term": "security",
+              "contribution": 8.606877
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 2,
+          "finalScore": 8.190746,
+          "bm25Score": 15.60142,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 8.190746
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-9e6476b2517b4898",
+          "rank": 3,
+          "finalScore": 5.744084,
+          "bm25Score": 10.941112,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 5.744084
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-48e8f046eb0314ab",
+          "rank": 4,
+          "finalScore": 5.428767,
+          "bm25Score": 10.340508,
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 5.428767
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "precisionAt1": 0.95,
+    "rPrecision": 0.742,
+    "mrr": 0.95,
+    "recallAt5": 0.817,
+    "ndcgAt5": 0.834
+  },
+  "theoretical": {
+    "precisionAt1": 1,
+    "rPrecision": 1,
+    "mrr": 1,
+    "recallAt5": 1,
+    "ndcgAt5": 1
+  },
+  "datasetQuality": {
+    "status": "discriminative-signal-present",
+    "issues": [],
+    "allMetricsAtUpperBound": false,
+    "duplicateQueryGroups": [],
+    "degenerateQueryCount": 0,
+    "zeroRecallRate": 0.05,
+    "scope": "real",
+    "labelSource": "manual relevance labels from data/search-evaluation/real-queries.json",
+    "warning": null
+  },
+  "thresholds": {
+    "precisionAt1": 0.75,
+    "rPrecision": 0.75,
+    "mrr": 0.8,
+    "recallAt5": 0.8,
+    "ndcgAt5": 0.75
+  },
+  "variants": []
+}

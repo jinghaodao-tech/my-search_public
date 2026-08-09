@@ -1,0 +1,102 @@
+[
+  {
+    "id": "manual-stack-overflow-agents",
+    "query": "ai agents",
+    "expected": ["anon-b4d7a50098a9e923", "anon-095beb091817ee25", "anon-afa29b53576888e0"]
+  },
+  {
+    "id": "manual-webassembly-component",
+    "query": "component system interface",
+    "expected": ["anon-867b585c1cceeee6"]
+  },
+  {
+    "id": "manual-ai-coding-ide",
+    "query": "coding editor",
+    "expected": ["anon-095beb091817ee25"]
+  },
+  {
+    "id": "manual-apple-macos-linux",
+    "query": "container development",
+    "expected": ["anon-4eedb18cff407cb0"]
+  },
+  {
+    "id": "manual-cloudflare-gateway",
+    "query": "api security",
+    "expected": ["anon-afa29b53576888e0", "anon-c175b8c79f910465", "anon-cbe88a9b44e0fc8b"]
+  },
+  {
+    "id": "manual-ubuntu-sandbox",
+    "query": "development environment",
+    "expected": ["anon-4580f9ec514b42b9", "anon-4eedb18cff407cb0"]
+  },
+  {
+    "id": "manual-search-grouping",
+    "query": "search grouping",
+    "expected": ["anon-fd82501338adbd3b", "anon-818b67f999b44206"]
+  },
+  {
+    "id": "manual-api-validation",
+    "query": "validation tests",
+    "expected": ["anon-c175b8c79f910465", "anon-cbe88a9b44e0fc8b", "anon-066f70e555b534d6"]
+  },
+  {
+    "id": "manual-sqlite-backup-restore",
+    "query": "sqlite local storage",
+    "expected": ["anon-f8e0961922a25375", "anon-a1e4d0de42dc44cf", "anon-1e1c862b8d1710c9"]
+  },
+  {
+    "id": "manual-bm25-explanations",
+    "query": "search highlights",
+    "expected": ["anon-14afb4986e072aed", "anon-f8418e969864c8e8"]
+  },
+  {
+    "id": "manual-agents-api",
+    "query": "agents api",
+    "expected": ["anon-b4d7a50098a9e923", "anon-095beb091817ee25", "anon-afa29b53576888e0"]
+  },
+  {
+    "id": "manual-component-interface",
+    "query": "component interface",
+    "expected": ["anon-867b585c1cceeee6"]
+  },
+  {
+    "id": "manual-container-runtime",
+    "query": "container runtime",
+    "expected": ["anon-4eedb18cff407cb0"]
+  },
+  {
+    "id": "manual-rate-limiting",
+    "query": "rate limiting",
+    "expected": ["anon-c175b8c79f910465", "anon-cbe88a9b44e0fc8b"]
+  },
+  {
+    "id": "manual-docker-ci",
+    "query": "docker ci",
+    "expected": ["anon-5f5ee445d308117c"]
+  },
+  {
+    "id": "manual-backup-restore",
+    "query": "backup restore",
+    "expected": ["anon-f8e0961922a25375", "anon-a1e4d0de42dc44cf"]
+  },
+  {
+    "id": "manual-knowledge-management",
+    "query": "knowledge management",
+    "expected": ["anon-818b67f999b44206"]
+  },
+  {
+    "id": "manual-api-tests",
+    "query": "api tests",
+    "expected": ["anon-066f70e555b534d6", "anon-c175b8c79f910465", "anon-cbe88a9b44e0fc8b"]
+  },
+  {
+    "id": "manual-sqlite-migration",
+    "query": "sqlite migration",
+    "expected": ["anon-1e1c862b8d1710c9"]
+  },
+  {
+    "id": "manual-xss-rendering",
+    "query": "xss security",
+    "expected": ["anon-7f113a889802baa7"]
+  }
+]

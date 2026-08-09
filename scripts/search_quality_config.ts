@@ -1,9 +1,13 @@
 export const searchQualityThresholds = {
   precisionAt1: 0.75,
-  precisionAt3: 0.45,
+  rPrecision: 0.75,
   mrr: 0.8,
   recallAt5: 0.8,
   ndcgAt5: 0.75,
+} as const;
+
+export const realQualityGateThresholds = {
+  precisionAt1: 0.7,
 } as const;
 
 export type SearchQualityMetricName = keyof typeof searchQualityThresholds;
