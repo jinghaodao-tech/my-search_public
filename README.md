@@ -132,7 +132,7 @@ Latest generated artifacts:
 - artifacts/benchmark-http-results.json
 - artifacts/search-quality.json
 
-The current search-quality dataset is version `v4-50-docs-11-query-cases` with 50 English/Japanese documents and 11 labeled cases. Ranking-only and end-to-end query evaluation are reported separately in `artifacts/ranking-engine-quality.json` and `artifacts/end-to-end-query-quality.json`; the aggregate artifact is `artifacts/search-quality.json`. The current gate is ranking/end-to-end P@1 >= 0.75 and MRR >= 0.80.
+The current search-quality dataset is version `v5-57-docs-20-query-cases` with 57 English/Japanese documents and 20 labeled cases. Ranking-only and end-to-end query evaluation are reported separately in `artifacts/ranking-engine-quality.json` and `artifacts/end-to-end-query-quality.json`; the aggregate artifact is `artifacts/search-quality.json`. The current gate is ranking/end-to-end P@1 >= 0.75 and MRR >= 0.80.
 
 See docs/benchmark.md, docs/search-quality.md, and docs/demo-15min.md for reproducible details.
 ## Technology Stack

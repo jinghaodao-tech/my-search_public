@@ -9,4 +9,5 @@ describe('runtime configuration', () => {
   it('keeps SQLite as the safe default', () => {
     expect(loadRuntimeConfig({}).STORAGE_DRIVER).toBe('sqlite');
   });
+
 });

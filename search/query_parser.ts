@@ -20,11 +20,21 @@ export function parseSearchQuery(rawQuery: string, synonyms: Record<string, stri
     if (token.startsWith('-') && token.length > 1) { for (const term of splitTerms(token.slice(1))) add(excludedTerms, term); }
     else for (const term of splitTerms(token)) add(terms, term);
   }
-  const parsedKeywords = terms.map((term) => ({ term, weight: phrases.some((phrase) => phrase.split(/\s+/u).includes(term)) ? 1.5 : 1, synonyms: (synonyms[term] ?? []).map(normalize).filter(Boolean) }));
+  const parsedKeywords = terms.map((term) => ({ term, weight: phrases.some((phrase) => phrase.split(/\s+/u).includes(term)) ? 3 : 1, synonyms: (synonyms[term] ?? []).map(normalize).filter(Boolean) }));
   return { rawQuery: raw, phrases, terms, excludedTerms, parsedKeywords };
 }
 
 export function excludesArticle(article: { title: string; body: string; tokens?: string[] }, excludedTerms: string[]): boolean {
-  const haystack = `${article.title} ${article.body} ${(article.tokens ?? []).join(' ')}`.toLocaleLowerCase();
-  return excludedTerms.some((term) => haystack.includes(term));
+  const haystack = `${article.title} ${article.body}`.toLocaleLowerCase();
+  const storedTokens = new Set((article.tokens ?? []).map((token) => normalize(token)));
+  return excludedTerms.some((term) => {
+    const normalizedTerm = normalize(term);
+    if (!normalizedTerm) return false;
+    if (storedTokens.has(normalizedTerm)) return true;
+    if (/^[a-z0-9_]+$/iu.test(normalizedTerm)) {
+      const escaped = normalizedTerm.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+      return new RegExp(`(?:^|[^\\p{L}\\p{N}_])${escaped}(?:$|[^\\p{L}\\p{N}_])`, 'iu').test(haystack);
+    }
+    return false;
+  });
 }

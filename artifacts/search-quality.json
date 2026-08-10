@@ -543,13 +543,13 @@
         "ndcgAt5": 1,
         "sensitivity": {
           "runnerUpId": "saved-new",
-          "finalScoreGap": 2.521718,
-          "finalScoreGapRatio": 0.024742,
+          "finalScoreGap": 7.716564,
+          "finalScoreGapRatio": 0.075713,
           "bm25ScoreGap": 26.087563,
-          "decayFactorGap": -0.056967,
-          "runnerUpBm25ToTie": 139.130648,
+          "decayFactorGap": -0.035697,
+          "runnerUpBm25ToTie": 146.803274,
           "runnerUpDecayToTie": 0.417291,
-          "winnerDecayToLose": 0.34134
+          "winnerDecayToLose": 0.323501
         },
         "rankingDetails": [
           {
@@ -606,50 +606,50 @@
           {
             "documentId": "saved-new",
             "rank": 2,
-            "finalScore": 99.39713,
+            "finalScore": 94.202284,
             "bm25Score": 135.688386,
             "contextBonus": 1.8,
-            "timeDecayFactor": 0.406967,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "保存",
-                "contribution": 12.969712
+                "contribution": 12.291869
               },
               {
                 "term": "済み",
-                "contribution": 12.969712
+                "contribution": 12.291869
               },
               {
                 "term": "カード",
-                "contribution": 11.09161
+                "contribution": 10.511923
               },
               {
                 "term": "カー",
-                "contribution": 11.09161
+                "contribution": 10.511923
               },
               {
                 "term": "ード",
-                "contribution": 9.680949
+                "contribution": 9.174988
               },
               {
                 "term": "ローカル",
-                "contribution": 8.318707
+                "contribution": 7.883942
               },
               {
                 "term": "ロー",
-                "contribution": 8.318707
+                "contribution": 7.883942
               },
               {
                 "term": "ーカ",
-                "contribution": 8.318707
+                "contribution": 7.883942
               },
               {
                 "term": "カル",
-                "contribution": 8.318707
+                "contribution": 7.883942
               },
               {
                 "term": "検索",
-                "contribution": 8.318707
+                "contribution": 7.883942
               }
             ],
             "isExpected": true
@@ -888,14 +888,14 @@
           {
             "documentId": "saved-new",
             "rank": 5,
-            "finalScore": 4.159354,
+            "finalScore": 3.941971,
             "bm25Score": 8.516986,
             "contextBonus": 1.2,
-            "timeDecayFactor": 0.406967,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "検索",
-                "contribution": 4.159354
+                "contribution": 3.941971
               }
             ],
             "isExpected": false
@@ -1156,31 +1156,8 @@
             "isExpected": false
           },
           {
-            "documentId": "saved-new",
-            "rank": 3,
-            "finalScore": 15.932084,
-            "bm25Score": 32.62366,
-            "contextBonus": 1.2,
-            "timeDecayFactor": 0.406966,
-            "matchedTerms": [
-              {
-                "term": "カード",
-                "contribution": 5.545805
-              },
-              {
-                "term": "カー",
-                "contribution": 5.545805
-              },
-              {
-                "term": "ード",
-                "contribution": 4.840474
-              }
-            ],
-            "isExpected": false
-          },
-          {
             "documentId": "jp-job",
-            "rank": 4,
+            "rank": 3,
             "finalScore": 15.497065,
             "bm25Score": 36.897774,
             "contextBonus": 1.2,
@@ -1193,6 +1170,29 @@
               {
                 "term": "ック",
                 "contribution": 7.748533
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "saved-new",
+            "rank": 4,
+            "finalScore": 15.099417,
+            "bm25Score": 32.62366,
+            "contextBonus": 1.2,
+            "timeDecayFactor": 0.385697,
+            "matchedTerms": [
+              {
+                "term": "カード",
+                "contribution": 5.255961
+              },
+              {
+                "term": "カー",
+                "contribution": 5.255961
+              },
+              {
+                "term": "ード",
+                "contribution": 4.587494
               }
             ],
             "isExpected": false
@@ -1317,23 +1317,8 @@
             "isExpected": false
           },
           {
-            "documentId": "saved-new",
-            "rank": 3,
-            "finalScore": 6.453966,
-            "bm25Score": 13.215596,
-            "contextBonus": 1.2,
-            "timeDecayFactor": 0.406966,
-            "matchedTerms": [
-              {
-                "term": "ード",
-                "contribution": 6.453966
-              }
-            ],
-            "isExpected": false
-          },
-          {
             "documentId": "jp-links",
-            "rank": 4,
+            "rank": 3,
             "finalScore": 6.31421,
             "bm25Score": 15.033834,
             "contextBonus": 1.2,
@@ -1342,6 +1327,21 @@
               {
                 "term": "ード",
                 "contribution": 6.31421
+              }
+            ],
+            "isExpected": false
+          },
+          {
+            "documentId": "saved-new",
+            "rank": 4,
+            "finalScore": 6.116659,
+            "bm25Score": 13.215596,
+            "contextBonus": 1.2,
+            "timeDecayFactor": 0.385697,
+            "matchedTerms": [
+              {
+                "term": "ード",
+                "contribution": 6.116659
               }
             ],
             "isExpected": false
@@ -1544,26 +1544,26 @@
           {
             "documentId": "saved-new",
             "rank": 3,
-            "finalScore": 25.418272,
+            "finalScore": 24.089823,
             "bm25Score": 41.638599,
             "contextBonus": 1.5,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "ローカル",
-                "contribution": 6.354568
+                "contribution": 6.022456
               },
               {
                 "term": "ロー",
-                "contribution": 6.354568
+                "contribution": 6.022456
               },
               {
                 "term": "ーカ",
-                "contribution": 6.354568
+                "contribution": 6.022456
               },
               {
                 "term": "カル",
-                "contribution": 6.354568
+                "contribution": 6.022456
               }
             ],
             "isExpected": false
@@ -1698,13 +1698,13 @@
         "ndcgAt5": 1,
         "sensitivity": {
           "runnerUpId": "saved-new",
-          "finalScoreGap": 17.237065,
-          "finalScoreGapRatio": 0.687621,
+          "finalScoreGap": 17.64632,
+          "finalScoreGapRatio": 0.703947,
           "bm25ScoreGap": 23.755451,
-          "decayFactorGap": -0.056966,
-          "runnerUpBm25ToTie": 51.3304,
+          "decayFactorGap": -0.035697,
+          "runnerUpBm25ToTie": 54.16098,
           "runnerUpDecayToTie": 1.302798,
-          "winnerDecayToLose": 0.109333
+          "winnerDecayToLose": 0.103618
         },
         "rankingDetails": [
           {
@@ -1729,14 +1729,14 @@
           {
             "documentId": "saved-new",
             "rank": 2,
-            "finalScore": 7.830608,
+            "finalScore": 7.421353,
             "bm25Score": 16.034506,
             "contextBonus": 1.2,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "記録",
-                "contribution": 7.830608
+                "contribution": 7.421353
               }
             ],
             "isExpected": false
@@ -1765,38 +1765,38 @@
         "ndcgAt5": 1,
         "sensitivity": {
           "runnerUpId": "saved-old",
-          "finalScoreGap": 60.592657,
-          "finalScoreGapRatio": 0.871266,
+          "finalScoreGap": 56.95796,
+          "finalScoreGapRatio": 0.864166,
           "bm25ScoreGap": 73.621159,
-          "decayFactorGap": 0.056966,
-          "runnerUpBm25ToTie": 165.584679,
-          "runnerUpDecayToTie": 2.718776,
+          "decayFactorGap": 0.035697,
+          "runnerUpBm25ToTie": 156.930638,
+          "runnerUpDecayToTie": 2.576683,
           "winnerDecayToLose": 0.052391
         },
         "rankingDetails": [
           {
             "documentId": "saved-new",
             "rank": 1,
-            "finalScore": 69.545565,
+            "finalScore": 65.910868,
             "bm25Score": 94.937606,
             "contextBonus": 1.8,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "新しい",
-                "contribution": 18.396483
+                "contribution": 17.435018
               },
               {
                 "term": "新し",
-                "contribution": 18.396483
+                "contribution": 17.435018
               },
               {
                 "term": "しい",
-                "contribution": 18.396483
+                "contribution": 17.435018
               },
               {
                 "term": "記録",
-                "contribution": 14.356115
+                "contribution": 13.605814
               }
             ],
             "isExpected": true
@@ -2217,13 +2217,13 @@
         "ndcgAt5": 0.6934264036172708,
         "sensitivity": {
           "runnerUpId": "saved-new",
-          "finalScoreGap": 2.741083,
-          "finalScoreGapRatio": 0.024742,
+          "finalScoreGap": 8.387823,
+          "finalScoreGapRatio": 0.075713,
           "bm25ScoreGap": 28.3569,
-          "decayFactorGap": -0.056966,
-          "runnerUpBm25ToTie": 151.23388,
+          "decayFactorGap": -0.035697,
+          "runnerUpBm25ToTie": 159.57357,
           "runnerUpDecayToTie": 0.417291,
-          "winnerDecayToLose": 0.34134
+          "winnerDecayToLose": 0.323501
         },
         "rankingDetails": [
           {
@@ -2288,58 +2288,58 @@
           {
             "documentId": "saved-new",
             "rank": 2,
-            "finalScore": 108.043602,
+            "finalScore": 102.396862,
             "bm25Score": 147.491807,
             "contextBonus": 1.8,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "再発見",
-                "contribution": 4.323237
+                "contribution": 4.09729
               },
               {
                 "term": "保存",
-                "contribution": 12.969712
+                "contribution": 12.291869
               },
               {
                 "term": "済み",
-                "contribution": 12.969712
+                "contribution": 12.291869
               },
               {
                 "term": "カード",
-                "contribution": 11.091609
+                "contribution": 10.511923
               },
               {
                 "term": "カー",
-                "contribution": 11.091609
+                "contribution": 10.511923
               },
               {
                 "term": "ード",
-                "contribution": 9.680949
+                "contribution": 9.174988
               },
               {
                 "term": "ローカル",
-                "contribution": 8.318707
+                "contribution": 7.883942
               },
               {
                 "term": "ロー",
-                "contribution": 8.318707
+                "contribution": 7.883942
               },
               {
                 "term": "ーカ",
-                "contribution": 8.318707
+                "contribution": 7.883942
               },
               {
                 "term": "カル",
-                "contribution": 8.318707
+                "contribution": 7.883942
               },
               {
                 "term": "検索",
-                "contribution": 8.318707
+                "contribution": 7.883942
               },
               {
                 "term": "発見",
-                "contribution": 4.323237
+                "contribution": 4.09729
               }
             ],
             "isExpected": true
@@ -2487,13 +2487,13 @@
         "ndcgAt5": 0,
         "sensitivity": {
           "runnerUpId": "saved-new",
-          "finalScoreGap": 0.5703,
-          "finalScoreGapRatio": 0.024742,
+          "finalScoreGap": 1.745142,
+          "finalScoreGapRatio": 0.075713,
           "bm25ScoreGap": 7.585506,
-          "decayFactorGap": -0.056966,
-          "runnerUpBm25ToTie": 40.455249,
+          "decayFactorGap": -0.035697,
+          "runnerUpBm25ToTie": 42.686126,
           "runnerUpDecayToTie": 0.417291,
-          "winnerDecayToLose": 0.34134
+          "winnerDecayToLose": 0.3235
         },
         "rankingDetails": [
           {
@@ -2530,30 +2530,30 @@
           {
             "documentId": "saved-new",
             "rank": 2,
-            "finalScore": 22.479175,
+            "finalScore": 21.304333,
             "bm25Score": 39.454239,
             "contextBonus": 1.4,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "保存",
-                "contribution": 5.043777
+                "contribution": 4.780171
               },
               {
                 "term": "済み",
-                "contribution": 5.043777
+                "contribution": 4.780171
               },
               {
                 "term": "カード",
-                "contribution": 4.313404
+                "contribution": 4.08797
               },
               {
                 "term": "カー",
-                "contribution": 4.313404
+                "contribution": 4.08797
               },
               {
                 "term": "ード",
-                "contribution": 3.764813
+                "contribution": 3.568051
               }
             ],
             "isExpected": false
@@ -3317,13 +3317,13 @@
         "ndcgAt5": 1,
         "sensitivity": {
           "runnerUpId": "saved-new",
-          "finalScoreGap": 1.436733,
-          "finalScoreGapRatio": 0.024742,
+          "finalScoreGap": 4.39646,
+          "finalScoreGapRatio": 0.075713,
           "bm25ScoreGap": 14.863207,
-          "decayFactorGap": -0.056966,
-          "runnerUpBm25ToTie": 79.26891,
+          "decayFactorGap": -0.035697,
+          "runnerUpBm25ToTie": 83.64014,
           "runnerUpDecayToTie": 0.417291,
-          "winnerDecayToLose": 0.34134
+          "winnerDecayToLose": 0.3235
         },
         "rankingDetails": [
           {
@@ -3380,50 +3380,50 @@
           {
             "documentId": "saved-new",
             "rank": 2,
-            "finalScore": 56.630819,
+            "finalScore": 53.671092,
             "bm25Score": 77.307511,
             "contextBonus": 1.8,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "保存",
-                "contribution": 6.484856
+                "contribution": 6.145935
               },
               {
                 "term": "済み",
-                "contribution": 6.484856
+                "contribution": 6.145935
               },
               {
                 "term": "カード",
-                "contribution": 5.545805
+                "contribution": 5.255961
               },
               {
                 "term": "カー",
-                "contribution": 5.545805
+                "contribution": 5.255961
               },
               {
                 "term": "ード",
-                "contribution": 4.840474
+                "contribution": 4.587494
               },
               {
                 "term": "ローカル",
-                "contribution": 5.545805
+                "contribution": 5.255961
               },
               {
                 "term": "ロー",
-                "contribution": 5.545805
+                "contribution": 5.255961
               },
               {
                 "term": "ーカ",
-                "contribution": 5.545805
+                "contribution": 5.255961
               },
               {
                 "term": "カル",
-                "contribution": 5.545805
+                "contribution": 5.255961
               },
               {
                 "term": "検索",
-                "contribution": 5.545805
+                "contribution": 5.255961
               }
             ],
             "isExpected": true
@@ -3658,14 +3658,14 @@
           {
             "documentId": "saved-new",
             "rank": 5,
-            "finalScore": 3.697203,
+            "finalScore": 3.503974,
             "bm25Score": 7.570654,
             "contextBonus": 1.2,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "検索",
-                "contribution": 3.697203
+                "contribution": 3.503974
               }
             ],
             "isExpected": false
@@ -3920,22 +3920,22 @@
           {
             "documentId": "saved-new",
             "rank": 3,
-            "finalScore": 10.621389,
+            "finalScore": 10.066278,
             "bm25Score": 21.749107,
             "contextBonus": 1.2,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "カード",
-                "contribution": 3.697203
+                "contribution": 3.503974
               },
               {
                 "term": "カー",
-                "contribution": 3.697203
+                "contribution": 3.503974
               },
               {
                 "term": "ード",
-                "contribution": 3.226983
+                "contribution": 3.058329
               }
             ],
             "isExpected": false
@@ -4133,16 +4133,16 @@
             "isExpected": false
           },
           {
-            "documentId": "saved-new",
+            "documentId": "jp-links",
             "rank": 5,
-            "finalScore": 3.226983,
-            "bm25Score": 6.607798,
+            "finalScore": 3.157105,
+            "bm25Score": 7.516917,
             "contextBonus": 1.2,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.35,
             "matchedTerms": [
               {
                 "term": "ード",
-                "contribution": 3.226983
+                "contribution": 3.157105
               }
             ],
             "isExpected": false
@@ -4327,26 +4327,26 @@
           {
             "documentId": "saved-new",
             "rank": 3,
-            "finalScore": 14.788812,
+            "finalScore": 14.015897,
             "bm25Score": 30.282617,
             "contextBonus": 1.2,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "ローカル",
-                "contribution": 3.697203
+                "contribution": 3.503974
               },
               {
                 "term": "ロー",
-                "contribution": 3.697203
+                "contribution": 3.503974
               },
               {
                 "term": "ーカ",
-                "contribution": 3.697203
+                "contribution": 3.503974
               },
               {
                 "term": "カル",
-                "contribution": 3.697203
+                "contribution": 3.503974
               }
             ],
             "isExpected": false
@@ -4479,13 +4479,13 @@
         "ndcgAt5": 1,
         "sensitivity": {
           "runnerUpId": "saved-new",
-          "finalScoreGap": 10.590929,
-          "finalScoreGapRatio": 0.267651,
+          "finalScoreGap": 12.105472,
+          "finalScoreGapRatio": 0.305926,
           "bm25ScoreGap": 15.337855,
-          "decayFactorGap": -0.056966,
-          "runnerUpBm25ToTie": 64.820958,
+          "decayFactorGap": -0.035697,
+          "runnerUpBm25ToTie": 68.395466,
           "runnerUpDecayToTie": 0.5557,
-          "winnerDecayToLose": 0.256322
+          "winnerDecayToLose": 0.242926
         },
         "rankingDetails": [
           {
@@ -4530,34 +4530,34 @@
           {
             "documentId": "saved-new",
             "rank": 2,
-            "finalScore": 28.97896,
+            "finalScore": 27.464417,
             "bm25Score": 47.471492,
             "contextBonus": 1.5,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "保存",
-                "contribution": 5.404047
+                "contribution": 5.121612
               },
               {
                 "term": "済み",
-                "contribution": 5.404047
+                "contribution": 5.121612
               },
               {
                 "term": "カード",
-                "contribution": 4.621504
+                "contribution": 4.379968
               },
               {
                 "term": "カー",
-                "contribution": 4.621504
+                "contribution": 4.379968
               },
               {
                 "term": "ード",
-                "contribution": 4.033729
+                "contribution": 3.822912
               },
               {
                 "term": "記録",
-                "contribution": 4.89413
+                "contribution": 4.638345
               }
             ],
             "isExpected": false
@@ -4661,58 +4661,58 @@
         "ndcgAt5": 1,
         "sensitivity": {
           "runnerUpId": "saved-old",
-          "finalScoreGap": 35.548966,
-          "finalScoreGapRatio": 0.558291,
+          "finalScoreGap": 32.221107,
+          "finalScoreGapRatio": 0.533933,
           "bm25ScoreGap": 33.35045,
-          "decayFactorGap": 0.056966,
-          "runnerUpBm25ToTie": 121.284909,
-          "runnerUpDecayToTie": 0.792378,
+          "decayFactorGap": 0.035697,
+          "runnerUpBm25ToTie": 114.94613,
+          "runnerUpDecayToTie": 0.750965,
           "winnerDecayToLose": 0.179761
         },
         "rankingDetails": [
           {
             "documentId": "saved-new",
             "rank": 1,
-            "finalScore": 63.674577,
+            "finalScore": 60.346718,
             "bm25Score": 86.923042,
             "contextBonus": 1.8,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "保存",
-                "contribution": 6.484856
+                "contribution": 6.145934
               },
               {
                 "term": "済み",
-                "contribution": 6.484856
+                "contribution": 6.145934
               },
               {
                 "term": "カード",
-                "contribution": 5.545805
+                "contribution": 5.255961
               },
               {
                 "term": "カー",
-                "contribution": 5.545805
+                "contribution": 5.255961
               },
               {
                 "term": "ード",
-                "contribution": 4.840474
+                "contribution": 4.587494
               },
               {
                 "term": "新しい",
-                "contribution": 9.198241
+                "contribution": 8.717509
               },
               {
                 "term": "新し",
-                "contribution": 9.198241
+                "contribution": 8.717509
               },
               {
                 "term": "しい",
-                "contribution": 9.198241
+                "contribution": 8.717509
               },
               {
                 "term": "記録",
-                "contribution": 7.178057
+                "contribution": 6.802907
               }
             ],
             "isExpected": true
@@ -5260,13 +5260,13 @@
         "ndcgAt5": 0.6934264036172708,
         "sensitivity": {
           "runnerUpId": "saved-new",
-          "finalScoreGap": 1.656099,
-          "finalScoreGapRatio": 0.024742,
+          "finalScoreGap": 5.06772,
+          "finalScoreGapRatio": 0.075713,
           "bm25ScoreGap": 17.132544,
-          "decayFactorGap": -0.056966,
-          "runnerUpBm25ToTie": 91.371802,
+          "decayFactorGap": -0.035697,
+          "runnerUpBm25ToTie": 96.410438,
           "runnerUpDecayToTie": 0.417291,
-          "winnerDecayToLose": 0.34134
+          "winnerDecayToLose": 0.3235
         },
         "rankingDetails": [
           {
@@ -5331,58 +5331,58 @@
           {
             "documentId": "saved-new",
             "rank": 2,
-            "finalScore": 65.277291,
+            "finalScore": 61.86567,
             "bm25Score": 89.110932,
             "contextBonus": 1.8,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "再発見",
-                "contribution": 4.323237
+                "contribution": 4.09729
               },
               {
                 "term": "保存",
-                "contribution": 6.484856
+                "contribution": 6.145934
               },
               {
                 "term": "済み",
-                "contribution": 6.484856
+                "contribution": 6.145934
               },
               {
                 "term": "カード",
-                "contribution": 5.545804
+                "contribution": 5.255961
               },
               {
                 "term": "カー",
-                "contribution": 5.545804
+                "contribution": 5.255961
               },
               {
                 "term": "ード",
-                "contribution": 4.840474
+                "contribution": 4.587494
               },
               {
                 "term": "ローカル",
-                "contribution": 5.545804
+                "contribution": 5.255961
               },
               {
                 "term": "ロー",
-                "contribution": 5.545804
+                "contribution": 5.255961
               },
               {
                 "term": "ーカ",
-                "contribution": 5.545804
+                "contribution": 5.255961
               },
               {
                 "term": "カル",
-                "contribution": 5.545804
+                "contribution": 5.255961
               },
               {
                 "term": "検索",
-                "contribution": 5.545804
+                "contribution": 5.255961
               },
               {
                 "term": "発見",
-                "contribution": 4.323237
+                "contribution": 4.09729
               }
             ],
             "isExpected": true
@@ -5595,30 +5595,30 @@
           {
             "documentId": "saved-new",
             "rank": 3,
-            "finalScore": 22.479173,
+            "finalScore": 21.304333,
             "bm25Score": 39.454239,
             "contextBonus": 1.4,
-            "timeDecayFactor": 0.406966,
+            "timeDecayFactor": 0.385697,
             "matchedTerms": [
               {
                 "term": "保存",
-                "contribution": 5.043777
+                "contribution": 4.780171
               },
               {
                 "term": "済み",
-                "contribution": 5.043777
+                "contribution": 4.780171
               },
               {
                 "term": "カード",
-                "contribution": 4.313403
+                "contribution": 4.08797
               },
               {
                 "term": "カー",
-                "contribution": 4.313403
+                "contribution": 4.08797
               },
               {
                 "term": "ード",
-                "contribution": 3.764813
+                "contribution": 3.568051
               }
             ],
             "isExpected": false
@@ -7745,8 +7745,8 @@
       {
         "lambda": 0.085,
         "timeDecayFloor": 0.25,
-        "precisionAt1": 0.9,
-        "rPrecision": 0.85,
+        "precisionAt1": 0.95,
+        "rPrecision": 0.9,
         "jpSavedSearchTop1": "saved-new",
         "timeDecayTop1": "saved-new",
         "parserAmbiguityTop1": "saved-new",
@@ -7778,27 +7778,16 @@
       {
         "lambda": 0.1,
         "timeDecayFloor": 0.25,
-        "precisionAt1": 0.95,
-        "rPrecision": 0.9,
+        "precisionAt1": 1,
+        "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
         "timeDecayTop1": "saved-new",
-        "parserAmbiguityTop1": "saved-new",
+        "parserAmbiguityTop1": "sqlite-bm25",
         "bothPass": true,
         "fullQualityPass": true
       },
       {
         "lambda": 0.105,
-        "timeDecayFloor": 0.25,
-        "precisionAt1": 0.95,
-        "rPrecision": 0.9,
-        "jpSavedSearchTop1": "saved-new",
-        "timeDecayTop1": "saved-new",
-        "parserAmbiguityTop1": "saved-new",
-        "bothPass": true,
-        "fullQualityPass": true
-      },
-      {
-        "lambda": 0.11,
         "timeDecayFloor": 0.25,
         "precisionAt1": 1,
         "rPrecision": 0.95,
@@ -7806,6 +7795,17 @@
         "timeDecayTop1": "saved-new",
         "parserAmbiguityTop1": "sqlite-bm25",
         "bothPass": true,
+        "fullQualityPass": true
+      },
+      {
+        "lambda": 0.11,
+        "timeDecayFloor": 0.25,
+        "precisionAt1": 0.95,
+        "rPrecision": 0.95,
+        "jpSavedSearchTop1": "jp-search",
+        "timeDecayTop1": "jp-search",
+        "parserAmbiguityTop1": "sqlite-bm25",
+        "bothPass": false,
         "fullQualityPass": true
       },
       {
@@ -8163,8 +8163,8 @@
       {
         "lambda": 0.07,
         "timeDecayFloor": 0.3,
-        "precisionAt1": 0.9,
-        "rPrecision": 0.85,
+        "precisionAt1": 0.95,
+        "rPrecision": 0.9,
         "jpSavedSearchTop1": "saved-new",
         "timeDecayTop1": "saved-new",
         "parserAmbiguityTop1": "saved-new",
@@ -8196,11 +8196,11 @@
       {
         "lambda": 0.085,
         "timeDecayFloor": 0.3,
-        "precisionAt1": 0.95,
-        "rPrecision": 0.9,
+        "precisionAt1": 1,
+        "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
         "timeDecayTop1": "saved-new",
-        "parserAmbiguityTop1": "saved-new",
+        "parserAmbiguityTop1": "sqlite-bm25",
         "bothPass": true,
         "fullQualityPass": true
       },
@@ -8218,12 +8218,12 @@
       {
         "lambda": 0.095,
         "timeDecayFloor": 0.3,
-        "precisionAt1": 1,
+        "precisionAt1": 0.95,
         "rPrecision": 0.95,
-        "jpSavedSearchTop1": "saved-new",
-        "timeDecayTop1": "saved-new",
+        "jpSavedSearchTop1": "jp-search",
+        "timeDecayTop1": "jp-search",
         "parserAmbiguityTop1": "sqlite-bm25",
-        "bothPass": true,
+        "bothPass": false,
         "fullQualityPass": true
       },
       {
@@ -8581,8 +8581,8 @@
       {
         "lambda": 0.055,
         "timeDecayFloor": 0.35,
-        "precisionAt1": 0.9,
-        "rPrecision": 0.85,
+        "precisionAt1": 0.95,
+        "rPrecision": 0.9,
         "jpSavedSearchTop1": "saved-new",
         "timeDecayTop1": "saved-new",
         "parserAmbiguityTop1": "saved-new",
@@ -8614,11 +8614,11 @@
       {
         "lambda": 0.07,
         "timeDecayFloor": 0.35,
-        "precisionAt1": 0.95,
-        "rPrecision": 0.9,
+        "precisionAt1": 1,
+        "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
         "timeDecayTop1": "saved-new",
-        "parserAmbiguityTop1": "saved-new",
+        "parserAmbiguityTop1": "sqlite-bm25",
         "bothPass": true,
         "fullQualityPass": true
       },
@@ -8636,12 +8636,12 @@
       {
         "lambda": 0.08,
         "timeDecayFloor": 0.35,
-        "precisionAt1": 1,
+        "precisionAt1": 0.95,
         "rPrecision": 0.95,
-        "jpSavedSearchTop1": "saved-new",
-        "timeDecayTop1": "saved-new",
+        "jpSavedSearchTop1": "jp-search",
+        "timeDecayTop1": "jp-search",
         "parserAmbiguityTop1": "sqlite-bm25",
-        "bothPass": true,
+        "bothPass": false,
         "fullQualityPass": true
       },
       {
@@ -9043,11 +9043,11 @@
       {
         "lambda": 0.06,
         "timeDecayFloor": 0.4,
-        "precisionAt1": 0.95,
-        "rPrecision": 0.9,
+        "precisionAt1": 1,
+        "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
         "timeDecayTop1": "saved-new",
-        "parserAmbiguityTop1": "saved-new",
+        "parserAmbiguityTop1": "sqlite-bm25",
         "bothPass": true,
         "fullQualityPass": true
       },
@@ -9065,12 +9065,12 @@
       {
         "lambda": 0.07,
         "timeDecayFloor": 0.4,
-        "precisionAt1": 1,
+        "precisionAt1": 0.95,
         "rPrecision": 0.95,
-        "jpSavedSearchTop1": "saved-new",
-        "timeDecayTop1": "saved-new",
+        "jpSavedSearchTop1": "jp-search",
+        "timeDecayTop1": "jp-search",
         "parserAmbiguityTop1": "sqlite-bm25",
-        "bothPass": true,
+        "bothPass": false,
         "fullQualityPass": true
       },
       {
@@ -9428,8 +9428,8 @@
       {
         "lambda": 0.03,
         "timeDecayFloor": 0.45,
-        "precisionAt1": 0.9,
-        "rPrecision": 0.85,
+        "precisionAt1": 0.95,
+        "rPrecision": 0.9,
         "jpSavedSearchTop1": "saved-new",
         "timeDecayTop1": "saved-new",
         "parserAmbiguityTop1": "saved-new",
@@ -9472,11 +9472,11 @@
       {
         "lambda": 0.05,
         "timeDecayFloor": 0.45,
-        "precisionAt1": 0.95,
-        "rPrecision": 0.9,
+        "precisionAt1": 1,
+        "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
         "timeDecayTop1": "saved-new",
-        "parserAmbiguityTop1": "saved-new",
+        "parserAmbiguityTop1": "sqlite-bm25",
         "bothPass": true,
         "fullQualityPass": true
       },
@@ -9901,11 +9901,11 @@
       {
         "lambda": 0.04,
         "timeDecayFloor": 0.5,
-        "precisionAt1": 0.95,
-        "rPrecision": 0.9,
+        "precisionAt1": 1,
+        "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
         "timeDecayTop1": "saved-new",
-        "parserAmbiguityTop1": "saved-new",
+        "parserAmbiguityTop1": "sqlite-bm25",
         "bothPass": true,
         "fullQualityPass": true
       },
@@ -10264,8 +10264,8 @@
     ],
     "passingRange": {
       "minLambda": 0.005,
-      "maxLambda": 0.11,
-      "lambdaWidth": 0.105,
+      "maxLambda": 0.105,
+      "lambdaWidth": 0.1,
       "minFloor": 0.25,
       "maxFloor": 0.5,
       "floorWidth": 0.25,
@@ -10380,7 +10380,7 @@
           },
           {
             "lambda": 0.085,
-            "precisionAt1": 0.9,
+            "precisionAt1": 0.95,
             "bothPass": true,
             "fullQualityPass": true
           },
@@ -10398,20 +10398,20 @@
           },
           {
             "lambda": 0.1,
-            "precisionAt1": 0.95,
+            "precisionAt1": 1,
             "bothPass": true,
             "fullQualityPass": true
           },
           {
             "lambda": 0.105,
-            "precisionAt1": 0.95,
+            "precisionAt1": 1,
             "bothPass": true,
             "fullQualityPass": true
           },
           {
             "lambda": 0.11,
-            "precisionAt1": 1,
-            "bothPass": true,
+            "precisionAt1": 0.95,
+            "bothPass": false,
             "fullQualityPass": true
           },
           {
@@ -10525,9 +10525,9 @@
         ],
         "passingRange": {
           "minLambda": 0.005,
-          "maxLambda": 0.11,
-          "lambdaWidth": 0.105,
-          "count": 22
+          "maxLambda": 0.105,
+          "lambdaWidth": 0.1,
+          "count": 21
         }
       },
       {
@@ -10619,7 +10619,7 @@
           },
           {
             "lambda": 0.07,
-            "precisionAt1": 0.9,
+            "precisionAt1": 0.95,
             "bothPass": true,
             "fullQualityPass": true
           },
@@ -10637,7 +10637,7 @@
           },
           {
             "lambda": 0.085,
-            "precisionAt1": 0.95,
+            "precisionAt1": 1,
             "bothPass": true,
             "fullQualityPass": true
           },
@@ -10649,8 +10649,8 @@
           },
           {
             "lambda": 0.095,
-            "precisionAt1": 1,
-            "bothPass": true,
+            "precisionAt1": 0.95,
+            "bothPass": false,
             "fullQualityPass": true
           },
           {
@@ -10782,9 +10782,9 @@
         ],
         "passingRange": {
           "minLambda": 0.005,
-          "maxLambda": 0.095,
-          "lambdaWidth": 0.09,
-          "count": 19
+          "maxLambda": 0.09,
+          "lambdaWidth": 0.085,
+          "count": 18
         }
       },
       {
@@ -10858,7 +10858,7 @@
           },
           {
             "lambda": 0.055,
-            "precisionAt1": 0.9,
+            "precisionAt1": 0.95,
             "bothPass": true,
             "fullQualityPass": true
           },
@@ -10876,7 +10876,7 @@
           },
           {
             "lambda": 0.07,
-            "precisionAt1": 0.95,
+            "precisionAt1": 1,
             "bothPass": true,
             "fullQualityPass": true
           },
@@ -10888,8 +10888,8 @@
           },
           {
             "lambda": 0.08,
-            "precisionAt1": 1,
-            "bothPass": true,
+            "precisionAt1": 0.95,
+            "bothPass": false,
             "fullQualityPass": true
           },
           {
@@ -11039,9 +11039,9 @@
         ],
         "passingRange": {
           "minLambda": 0.005,
-          "maxLambda": 0.08,
-          "lambdaWidth": 0.075,
-          "count": 16
+          "maxLambda": 0.075,
+          "lambdaWidth": 0.07,
+          "count": 15
         }
       },
       {
@@ -11121,7 +11121,7 @@
           },
           {
             "lambda": 0.06,
-            "precisionAt1": 0.95,
+            "precisionAt1": 1,
             "bothPass": true,
             "fullQualityPass": true
           },
@@ -11133,8 +11133,8 @@
           },
           {
             "lambda": 0.07,
-            "precisionAt1": 1,
-            "bothPass": true,
+            "precisionAt1": 0.95,
+            "bothPass": false,
             "fullQualityPass": true
           },
           {
@@ -11296,9 +11296,9 @@
         ],
         "passingRange": {
           "minLambda": 0.005,
-          "maxLambda": 0.07,
-          "lambdaWidth": 0.065,
-          "count": 14
+          "maxLambda": 0.065,
+          "lambdaWidth": 0.06,
+          "count": 13
         }
       },
       {
@@ -11342,7 +11342,7 @@
           },
           {
             "lambda": 0.03,
-            "precisionAt1": 0.9,
+            "precisionAt1": 0.95,
             "bothPass": true,
             "fullQualityPass": true
           },
@@ -11366,7 +11366,7 @@
           },
           {
             "lambda": 0.05,
-            "precisionAt1": 0.95,
+            "precisionAt1": 1,
             "bothPass": true,
             "fullQualityPass": true
           },
@@ -11611,7 +11611,7 @@
           },
           {
             "lambda": 0.04,
-            "precisionAt1": 0.95,
+            "precisionAt1": 1,
             "bothPass": true,
             "fullQualityPass": true
           },
@@ -11818,8 +11818,30 @@
     ],
     "productionCandidates": [
       {
-        "lambda": 0.11,
+        "lambda": 0.1,
         "timeDecayFloor": 0.25,
+        "precisionAt1": 1,
+        "rPrecision": 0.95,
+        "jpSavedSearchTop1": "saved-new",
+        "timeDecayTop1": "saved-new",
+        "parserAmbiguityTop1": "sqlite-bm25",
+        "bothPass": true,
+        "fullQualityPass": true
+      },
+      {
+        "lambda": 0.105,
+        "timeDecayFloor": 0.25,
+        "precisionAt1": 1,
+        "rPrecision": 0.95,
+        "jpSavedSearchTop1": "saved-new",
+        "timeDecayTop1": "saved-new",
+        "parserAmbiguityTop1": "sqlite-bm25",
+        "bothPass": true,
+        "fullQualityPass": true
+      },
+      {
+        "lambda": 0.085,
+        "timeDecayFloor": 0.3,
         "precisionAt1": 1,
         "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
@@ -11840,8 +11862,8 @@
         "fullQualityPass": true
       },
       {
-        "lambda": 0.095,
-        "timeDecayFloor": 0.3,
+        "lambda": 0.07,
+        "timeDecayFloor": 0.35,
         "precisionAt1": 1,
         "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
@@ -11862,8 +11884,8 @@
         "fullQualityPass": true
       },
       {
-        "lambda": 0.08,
-        "timeDecayFloor": 0.35,
+        "lambda": 0.06,
+        "timeDecayFloor": 0.4,
         "precisionAt1": 1,
         "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
@@ -11884,8 +11906,8 @@
         "fullQualityPass": true
       },
       {
-        "lambda": 0.07,
-        "timeDecayFloor": 0.4,
+        "lambda": 0.05,
+        "timeDecayFloor": 0.45,
         "precisionAt1": 1,
         "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
@@ -11897,6 +11919,17 @@
       {
         "lambda": 0.055,
         "timeDecayFloor": 0.45,
+        "precisionAt1": 1,
+        "rPrecision": 0.95,
+        "jpSavedSearchTop1": "saved-new",
+        "timeDecayTop1": "saved-new",
+        "parserAmbiguityTop1": "sqlite-bm25",
+        "bothPass": true,
+        "fullQualityPass": true
+      },
+      {
+        "lambda": 0.04,
+        "timeDecayFloor": 0.5,
         "precisionAt1": 1,
         "rPrecision": 0.95,
         "jpSavedSearchTop1": "saved-new",
@@ -11918,8 +11951,8 @@
       }
     ],
     "selected": {
-      "lambda": 0.08,
-      "timeDecayFloor": 0.35,
+      "lambda": 0.06,
+      "timeDecayFloor": 0.4,
       "precisionAt1": 1,
       "rPrecision": 0.95,
       "jpSavedSearchTop1": "saved-new",
@@ -12001,58 +12034,58 @@
         {
           "documentId": "saved-new",
           "rank": 2,
-          "finalScore": 65.277291,
+          "finalScore": 61.86567,
           "bm25Score": 89.110932,
           "contextBonus": 1.8,
-          "timeDecayFactor": 0.406966,
+          "timeDecayFactor": 0.385697,
           "matchedTerms": [
             {
               "term": "再発見",
-              "contribution": 4.323237
+              "contribution": 4.09729
             },
             {
               "term": "保存",
-              "contribution": 6.484856
+              "contribution": 6.145934
             },
             {
               "term": "済み",
-              "contribution": 6.484856
+              "contribution": 6.145934
             },
             {
               "term": "カード",
-              "contribution": 5.545804
+              "contribution": 5.255961
             },
             {
               "term": "カー",
-              "contribution": 5.545804
+              "contribution": 5.255961
             },
             {
               "term": "ード",
-              "contribution": 4.840474
+              "contribution": 4.587494
             },
             {
               "term": "ローカル",
-              "contribution": 5.545804
+              "contribution": 5.255961
             },
             {
               "term": "ロー",
-              "contribution": 5.545804
+              "contribution": 5.255961
             },
             {
               "term": "ーカ",
-              "contribution": 5.545804
+              "contribution": 5.255961
             },
             {
               "term": "カル",
-              "contribution": 5.545804
+              "contribution": 5.255961
             },
             {
               "term": "検索",
-              "contribution": 5.545804
+              "contribution": 5.255961
             },
             {
               "term": "発見",
-              "contribution": 4.323237
+              "contribution": 4.09729
             }
           ],
           "isExpected": true

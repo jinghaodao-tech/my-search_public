@@ -8,7 +8,7 @@ This change polishes My Search App as a local-first portfolio project by alignin
 
 - Updated package metadata to match My Search App.
 - Added design decision documentation for local-first architecture and technology trade-offs.
-- Added search-quality evaluation with Precision@3 and MRR.
+- Added search-quality evaluation with R-Precision and MRR.
 - Improved `getCards()` and added paged SQL-backed card listing with total counts and partial relation hydration.
 - Added README links to design and search-quality docs.
 - Added UTF-8/mojibake detection for portfolio-facing files and API-adjacent code.
@@ -30,7 +30,7 @@ Latest local verification (2026-08-05):
 - [x] npm run check:encoding
 - [x] npm audit --audit-level=high
 - [x] docker build -t my-search-public:test .
-- [x] Verification suites (38 unit, 72 acceptance, 9 E2E tests; benchmark and audit passed; Docker build not rerun because Docker Engine was unavailable)
+- [x] Verification suites (38 unit, 74 acceptance, 9 E2E tests; benchmark and audit passed; Docker build not rerun because Docker Engine was unavailable)
 
 ## Notes
 

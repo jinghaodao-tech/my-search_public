@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+
+type Fixture = { version?: string; privacy?: { rawIds?: boolean; rawText?: boolean; rawUrls?: boolean }; documents?: Array<{ id: string; title: string; body: string; url: string; publishedAt: string; tokens: string[]; docLength: number }> };
+const fixturePath = process.env.SEARCH_FIXTURE_PATH ?? path.join(process.cwd(), 'data', 'search-evaluation', 'anonymized-corpus.json');
+assert.ok(fs.existsSync(fixturePath), `fixture missing: ${fixturePath}`);
+const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as Fixture;
+const documents = fixture.documents ?? [];
+assert.ok(documents.length >= 100, 'fixture must represent at least one hundred local documents');
+assert.equal(fixture.privacy?.rawIds, false);
+assert.equal(fixture.privacy?.rawText, false);
+assert.equal(fixture.privacy?.rawUrls, false);
+assert.ok(documents.every(document => /^anon-[0-9a-f]{16}$/.test(document.id)), 'raw card ids leaked');
+assert.ok(documents.every(document => /^匿名カード \d+$/.test(document.title) && document.body === '匿名化済みローカルカード'), 'raw card text leaked');
+assert.ok(documents.every(document => /^https:\/\/example\.invalid\/anon-[0-9a-f]{16}$/.test(document.url)), 'raw URL leaked');
+assert.ok(documents.every(document => /^(1999|2000)-/.test(document.publishedAt)), 'unshifted source date leaked');
+assert.ok(documents.every(document => document.tokens.length === document.docLength && document.tokens.length > 0), 'token difficulty was discarded');
+const vocabulary = new Set(documents.flatMap(document => document.tokens));
+const averageLength = documents.reduce((sum, document) => sum + document.tokens.length, 0) / documents.length;
+const japaneseDocuments = documents.filter(document => document.tokens.some(token => /[\u3040-\u30ff\u4e00-\u9fff]/.test(token))).length;
+assert.ok(vocabulary.size >= 100, 'fixture vocabulary was over-normalized');
+assert.ok(averageLength >= 5, 'fixture documents became unrealistically short');
+assert.ok(japaneseDocuments > 0, 'fixture lost Japanese search difficulty');
+console.log(JSON.stringify({ ok: true, version: fixture.version, documents: documents.length, vocabulary: vocabulary.size, averageTokenLength: Number(averageLength.toFixed(2)), japaneseDocuments }, null, 2));

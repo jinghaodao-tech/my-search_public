@@ -1,6 +1,6 @@
 # Test Coverage
 
-Last verified: 2026-08-05
+Last verified: 2026-08-09
 
 ## Commands
 
@@ -22,11 +22,14 @@ npm run verify
 |---|---:|
 | `npm run typecheck` | passed |
 | `npm test` | passed 38/38 |
-| `npm run acceptance:test` | passed 72/72 |
+| `npm run acceptance:test` | passed 76/76 |
 | `npm run test:e2e` | passed 9/9 |
 | `npm run benchmark` | passed: ranking-only, production-like, API, cold-start, warm-search |
 | `npm run benchmark:http` | passed: HTTP cold-start and warm-search |
-| `npm run evaluate:search` | passed: ranking P@1 0.818, MRR 0.882, Recall@5 1.000, nDCG@5 0.896; end-to-end P@1 0.818, MRR 0.894, Recall@5 1.000, nDCG@5 0.906 |
+| `npm run evaluate:search` | passed: ranking diagnostic P@1 0.950, R-Precision 0.900, MRR 0.950, Recall@5 0.950, nDCG@5 0.942; end-to-end release gate P@1 1.000, R-Precision 0.950, MRR 1.000, Recall@5 1.000, nDCG@5 0.990; real manual-query corpus P@1 0.900, R-Precision 0.633, MRR 0.900, Recall@5 0.750, nDCG@5 0.762 |
+| `npm run build:search-fixture` | passed: 233 anonymized local-card documents, 18,138 tokens |
+| `npm run benchmark:tokenization` | passed: 74 active documents; morphological 3,715 tokens -> expanded 4,209 tokens (1.13x), token payload 1.09x, fresh tokenization 769.086 ms |
+| `npm run check:search-fixture` | passed: 233 documents, vocabulary 6,482, Japanese documents 60, privacy/difficulty checks |
 | `npm run check:encoding` | passed |
 | `npm audit --audit-level=high` | passed: 0 vulnerabilities |
 | `docker build -t my-search-public:test .` | passed |
@@ -57,3 +60,4 @@ npm run verify
 - Optional SQLite FTS5 card search path and synchronized tag triggers.
 - Frontend legacy JavaScript syntax check and runtime configuration tests.
 - Runtime configuration validation, request metrics, and hardened non-root Docker image.
+- Search-quality artifacts include dataset-specific theoretical metric upper bounds, reject measured values above those bounds, and record floor-by-floor P@1 decay-window profiles. Ranking-only is diagnostic; end-to-end is the primary quality gate.

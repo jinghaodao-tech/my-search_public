@@ -4,11 +4,11 @@
 
 ## データセット
 
-50文書・11ケース（dataset version: v4-50-docs-11-query-cases）で構成し、日本語と英語、表記揺れ、短文・長文、関連文書、無関係文書を含みます。
+57文書・20ケース（dataset version: v5-57-docs-20-query-cases）で構成し、10件の専用日本語ケース、日本語の未知語、短文・長文、関連文書、無関係文書を含みます。
 
 ## 指標
 
-- Precision@1 / Precision@3
+- Precision@1 / R-Precision（期待文書数Rに対する上位R件の精度）
 - MRR
 - Recall@5
 - nDCG@5

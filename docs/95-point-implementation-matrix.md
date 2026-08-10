@@ -18,7 +18,7 @@ Compared with My_Search_App_95_point_system_refactor_prompt.md on 2026-07-31.
 | Candidate API and saved-card HTTP benchmarks | Done | scripts/benchmark_http.ts |
 | Cold-start and warm-request benchmarks | Done | scripts/benchmark_http.ts |
 | Benchmark performance gates | Done | benchmark artifacts and thresholds |
-| Search quality dataset | Done | 50 documents, 11 cases, v4 artifact |
+| Search quality dataset | Done | 57 documents, 20 cases including 10 Japanese cases, v5 artifact |
 | Search quality CI gate | Done | scripts/evaluate_search_quality.ts |
 | Fixture collection | Done | POST /api/collect fixture portfolio-demo |
 | Full browser E2E without direct article INSERT | Done | e2e/core-flows.spec.ts |

@@ -212,6 +212,35 @@ type KuromojiTokenizer = {
 const KEEP_POS = new Set(["名詞", "動詞", "形容詞", "感動詞"]);
 
 // kuromoji は非同期初期化が必要なためシングルトンで保持
+const JAPANESE_CHAR = /[\u3040-\u30ff\u3400-\u9fff]/u;
+const MOJIBAKE_PATTERNS = [/\uFFFD/u, /Ã./u, /Â./u, /ã./u, /繧/u, /縺/u, /譁/u];
+
+export function looksLikeMojibake(value: string): boolean {
+  return MOJIBAKE_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+type KeywordGroup = string[];
+
+export function expandJapaneseTokens(tokens: string[]): string[] {
+  const expanded = new Set<string>();
+  for (const rawToken of tokens) {
+    const token = rawToken.normalize("NFKC").toLowerCase().trim();
+    if (!token) continue;
+    expanded.add(token);
+    if (!JAPANESE_CHAR.test(token) || Array.from(token).length < 2) continue;
+    const chars = Array.from(token);
+    for (let index = 0; index < chars.length - 1; index += 1) {
+      expanded.add(chars.slice(index, index + 2).join(""));
+    }
+  }
+  return [...expanded];
+}
+
+export function computeJapanesePhraseWeight(baseWeight: number, tokenCount: number): number {
+  if (tokenCount <= 1) return baseWeight;
+  return Math.min(baseWeight * (1 + Math.min(tokenCount - 1, 4) * 0.125), 3);
+}
+
 let _tokenizer: KuromojiTokenizer | null = null;
 let _tokenizerPromise: Promise<KuromojiTokenizer> | null = null;
 
@@ -241,15 +270,20 @@ async function getTokenizer(): Promise<KuromojiTokenizer> {
  * - base_form（基本形）に正規化することで活用ゆれを吸収
  * - NFKC 正規化で全角→半角統一
  */
-export async function tokenize(text: string): Promise<string[]> {
+export async function tokenizeMorphological(text: string): Promise<string[]> {
   const tokenizer = await getTokenizer();
   const normalized = text.normalize("NFKC").toLowerCase();
   const tokens = tokenizer.tokenize(normalized);
 
-  return tokens
+  const morphologicalTokens = tokens
     .filter((t) => KEEP_POS.has(t.pos))
     .map((t) => (t.base_form ?? t.surface_form).toLowerCase())
     .filter((t) => t.length > 1);
+  return morphologicalTokens;
+}
+
+export async function tokenize(text: string): Promise<string[]> {
+  return expandJapaneseTokens(await tokenizeMorphological(text));
 }
 
 /**
@@ -279,17 +313,24 @@ async function buildSynonymMap(
 
 async function buildKeywordWeightMap(
   keywords: KeywordWeight[],
-  synonymMap: Map<string, string>
+  synonymMap: Map<string, string>,
+  corpus: CorpusStats
 ): Promise<Map<string, number>> {
   const weights = new Map<string, number>();
   for (const kw of keywords) {
     const terms = [kw.term, ...(kw.synonyms ?? [])];
     for (const term of terms) {
       const tokens = await tokenize(term);
-      const candidates = tokens.length ? tokens : [term.toLowerCase()];
+      const normalizedTerm = term.normalize("NFKC").toLowerCase().trim();
+      const candidates = [...new Set([normalizedTerm, ...tokens])].filter(Boolean);
+      const phraseWeight = tokens.length > 1 && tokens.some((token) => JAPANESE_CHAR.test(token))
+        ? computeJapanesePhraseWeight(kw.weight, tokens.length)
+        : kw.weight;
       for (const token of candidates) {
         const canonical = synonymMap.get(token) ?? token;
-        weights.set(canonical, Math.max(weights.get(canonical) ?? 0, kw.weight));
+        const documentFrequency = corpus.termDocFreq.get(canonical) ?? 0;
+        const rarityWeight = Math.log((corpus.docCount + 1) / (documentFrequency + 1)) + 1;
+        weights.set(canonical, Math.max(weights.get(canonical) ?? 0, phraseWeight * rarityWeight));
       }
     }
   }
@@ -307,11 +348,11 @@ async function normalizeTokens(
 async function buildQueryTokens(keywords: KeywordWeight[]): Promise<string[]> {
   const queryText = keywords.map((keyword) => keyword.term).join(" ");
   const tokens = await tokenize(queryText);
-  if (tokens.length > 0) return tokens;
-  return keywords
+  const rawTerms = keywords
     .flatMap((keyword) => [keyword.term, ...(keyword.synonyms ?? [])])
     .map((term) => term.normalize("NFKC").toLowerCase().trim())
     .filter(Boolean);
+  return [...new Set([...rawTerms, ...tokens])];
 }
 
 function computeTF(tokens: string[]): Map<string, number> {
@@ -375,7 +416,9 @@ class BM25Engine {
     mode: ModeConfig,
     synonymMap: Map<string, string>,
     keywordWeights: Map<string, number>,
-    queryTokens: string[]
+    queryTokens: string[],
+    keywordGroups: KeywordGroup[],
+    timeDecayFloor: number
   ): ScoredArticle {
     // タイトルを 2 回結合して重みを 2 倍にする
     const tokens = (article.tokens ?? []).map(
@@ -421,14 +464,19 @@ class BM25Engine {
       mode.contextBonus
     );
 
+    const matchedGroupCount = keywordGroups.filter((group) => group.length > 0 && group.every((term) => (tf.get(term) ?? 0) > 0)).length;
+    const groupCoverage = keywordGroups.length > 0 ? matchedGroupCount / keywordGroups.length : 0;
+    const groupBonus = 1 + 0.5 * groupCoverage;
+
     const elapsedDays = (Date.now() - article.publishedAt.getTime()) / 86_400_000;
-    const decay = Math.exp(-mode.lambda * elapsedDays);
-    const finalScore = bm25Sum * ctx * decay;
+    // Freshness must not erase a relevant older document; keep a small floor for local archives.
+    const decay = Math.max(timeDecayFloor, Math.exp(-mode.lambda * elapsedDays));
+    const finalScore = bm25Sum * ctx * groupBonus * decay;
 
     return {
       article,
       score: finalScore,
-      breakdown: { bm25Raw: bm25Sum, contextBonus: ctx, timeDecay: decay, finalScore, matchedTerms },
+      breakdown: { bm25Raw: bm25Sum, contextBonus: ctx * groupBonus, timeDecay: decay, finalScore, matchedTerms },
     };
   }
 
@@ -437,9 +485,11 @@ class BM25Engine {
     mode: ModeConfig,
     synonymMap: Map<string, string>,
     keywordWeights: Map<string, number>,
-    queryTokens: string[]
+    queryTokens: string[],
+    keywordGroups: KeywordGroup[],
+    timeDecayFloor: number
   ): ScoredArticle[] {
-    return articles.map((a) => this.score(a, mode, synonymMap, keywordWeights, queryTokens));
+    return articles.map((a) => this.score(a, mode, synonymMap, keywordWeights, queryTokens, keywordGroups, timeDecayFloor));
   }
 }
 
@@ -474,13 +524,11 @@ function resolveArticleTokens(articles: Article[]): {
   const resolved: Article[] = [];
 
   for (const article of articles) {
-    const tokens = Array.isArray(article.tokens) ? article.tokens : [];
+    const tokens = expandJapaneseTokens(Array.isArray(article.tokens) ? article.tokens : []);
     resolved.push({
       ...article,
       tokens,
-      docLength: article.docLength && article.docLength > 0
-        ? article.docLength
-        : tokens.length,
+      docLength: tokens.length,
     });
   }
 
@@ -567,6 +615,7 @@ export async function runPipeline(
     dedupThreshold?: number;
     archiveScoreThreshold?: number;
     resultLimit?: number;
+    timeDecayFloor?: number;
   } = {}
 ): Promise<PipelineResult> {
   const totalStart = nowMs();
@@ -580,6 +629,7 @@ export async function runPipeline(
     dedupThreshold = 0.8,
     archiveScoreThreshold = 0.5,
     resultLimit = 50,
+    timeDecayFloor = 0.35,
   } = options;
 
   // Layer 1: LSH 重複排除
@@ -606,8 +656,12 @@ export async function runPipeline(
   const prepStart = nowMs();
   const resolved = resolveArticleTokens(deduped);
   const synonymMap = await buildSynonymMap(mode.keywords);
-  const keywordWeights = await buildKeywordWeightMap(mode.keywords, synonymMap);
+  const keywordGroups = await Promise.all(mode.keywords.map(async (keyword) => {
+    const tokens = await tokenize(keyword.term);
+    return [...new Set(tokens.map((token) => synonymMap.get(token) ?? token))];
+  }));
   const corpus = await buildCorpusStats(resolved.articles, mode, synonymMap);
+  const keywordWeights = await buildKeywordWeightMap(mode.keywords, synonymMap, corpus);
   timings.tokenPreparationMs = Number((nowMs() - prepStart).toFixed(3));
   const engine = new BM25Engine(corpus);
   const scoreStart = nowMs();
@@ -616,7 +670,9 @@ export async function runPipeline(
     mode,
     synonymMap,
     keywordWeights,
-    queryTokens
+    queryTokens,
+    keywordGroups,
+    timeDecayFloor
   ).filter((item) => item.score > 0);
   timings.scoringMs = Number((nowMs() - scoreStart).toFixed(3));
 

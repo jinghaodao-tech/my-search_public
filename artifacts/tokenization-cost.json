@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-08-09T03:40:38.182Z",
+  "corpus": {
+    "activeDocuments": 74,
+    "storedTokenCount": 0,
+    "morphologicalTokenCount": 3715,
+    "expandedTokenCount": 4209,
+    "tokenCountMultiplier": 1.13,
+    "morphologicalTokenBytes": 36977,
+    "expandedTokenBytes": 40430,
+    "indexPayloadMultiplier": 1.09
+  },
+  "storedTokenRead": {
+    "elapsedMs": 0.528,
+    "meaning": "SQLite tokens_json parse baseline"
+  },
+  "freshTokenization": {
+    "elapsedMs": 769.086,
+    "meaning": "current kuromoji plus Japanese bigram path"
+  },
+  "multiplier": 1455.5,
+  "limitation": "This is a reproducible stored-token versus fresh-tokenization cost comparison; no pre-bigram historical implementation is reconstructed."
+}

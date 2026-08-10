@@ -12,7 +12,7 @@ My Search Appは、カード型の知識をSQLiteへ保存し、BM25でローカ
 
 ## 検索品質評価
 
-評価datasetは `v4-50-docs-11-query-cases`（50文書、11ケース）です。ランキングのみの評価と、raw queryからQuery Parserを通るend-to-end評価を別々に保存します。
+評価datasetは `v5-57-docs-20-query-cases`（57文書、20ケース）です。ランキングのみの評価と、raw queryからQuery Parserを通るend-to-end評価を別々に保存します。
 
 - `artifacts/ranking-engine-quality.json`
 - `artifacts/end-to-end-query-quality.json`

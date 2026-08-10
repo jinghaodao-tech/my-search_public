@@ -11,4 +11,5 @@ test('query parser preserves raw query, phrases, Japanese terms, synonyms and ex
   expect(parsed.parsedKeywords.find((item) => item.term === 'bm25')?.synonyms).toEqual(['ranking']);
   expect(excludesArticle({ title: 'BM25 UI memo', body: 'colors', tokens: ['ui'] }, parsed.excludedTerms)).toBe(true);
   expect(excludesArticle({ title: 'SQLite BM25', body: 'token cache', tokens: ['sqlite', 'bm25'] }, parsed.excludedTerms)).toBe(false);
+  expect(excludesArticle({ title: 'Suite memo', body: 'user interface notes', tokens: ['suite', 'memo'] }, parsed.excludedTerms)).toBe(false);
 });
