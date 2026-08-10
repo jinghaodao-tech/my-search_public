@@ -3,13 +3,14 @@ import { computeJapanesePhraseWeight, expandJapaneseTokens, looksLikeMojibake } 
 
 describe('Japanese tokenizer safeguards', () => {
   it('adds character bigrams to unknown Japanese terms', () => {
-    expect(expandJapaneseTokens(['再発見'])).toEqual(expect.arrayContaining(['再発', '発見']));
+    const unknownJapanese = '\u672A\u77E5\u8A9E\u691C\u7D22';
+    expect(expandJapaneseTokens([unknownJapanese])).toEqual(expect.arrayContaining(['\u672A\u77E5', '\u77E5\u8A9E', '\u8A9E\u691C', '\u691C\u7D22']));
   });
 
   it('detects mojibake signals without flagging valid Japanese', () => {
-    expect(looksLikeMojibake('保存済みカードの検索')).toBe(false);
+    expect(looksLikeMojibake('\u65E5\u672C\u8A9E\u691C\u7D22')).toBe(false);
     expect(looksLikeMojibake('\uFFFD')).toBe(true);
-    expect(looksLikeMojibake('Ã¦\u2013\u2022')).toBe(true);
+    expect(looksLikeMojibake('\u00C3\u00A6\u2013\u2022')).toBe(true);
   });
 
   it('caps Japanese compound-word amplification at the English phrase weight ceiling', () => {
