@@ -1,5 +1,9 @@
 node_modules/
-data/
+data/*
+!data/search-evaluation/
+data/search-evaluation/*
+!data/search-evaluation/real-queries.json
+!data/search-evaluation/anonymized-corpus.json
 backups/
 .env
 *.db
