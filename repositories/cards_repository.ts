@@ -55,6 +55,19 @@ type CardRow = {
   updated_at: string;
 };
 
+const CARD_COLUMNS = `
+  id, title, body, summary, url, type, color, tags_json, links_json,
+  kj_group_id, archived, archived_at, tokens_json, doc_length,
+  morphological_tokens_json, ngram_tokens_json,
+  morphological_doc_length, ngram_doc_length, created_at, updated_at
+`;
+const CARD_COLUMNS_WITH_TABLE = `
+  cards.id, cards.title, cards.body, cards.summary, cards.url, cards.type, cards.color,
+  cards.tags_json, cards.links_json, cards.kj_group_id, cards.archived, cards.archived_at,
+  cards.tokens_json, cards.doc_length, cards.morphological_tokens_json, cards.ngram_tokens_json,
+  cards.morphological_doc_length, cards.ngram_doc_length, cards.created_at, cards.updated_at
+`;
+
 function rowToCard(row: CardRow): Card {
   return {
     id: row.id,
@@ -286,9 +299,7 @@ function syncStoredRelations(id: string, tags: string[], links: string[], create
 export function loadCards(): Card[] {
   const startTime = performance.now();
   try {
-    const rows = db.prepare(`
-      SELECT * FROM cards
-    `).all() as CardRow[];
+    const rows = db.prepare(`SELECT ${CARD_COLUMNS} FROM cards`).all() as CardRow[];
     const tagsMap = loadCardTagsMap();
     const linksMap = loadCardLinksMap();
 
@@ -400,7 +411,7 @@ export function getCards(filters: CardListFilters = {}): Card[] {
   const orderBy = cardListOrderBy(filters.sort);
   const limit = normalizeCardLimit(filters.limit, undefined, 500);
   const offset = normalizeCardOffset(filters.offset);
-  let sql = `SELECT cards.* FROM cards ${whereSql} ORDER BY ${orderBy}`;
+  let sql = `SELECT ${CARD_COLUMNS_WITH_TABLE} FROM cards ${whereSql} ORDER BY ${orderBy}`;
   const queryParams = [...params];
 
   if (typeof limit === 'number') {
@@ -428,7 +439,7 @@ export function getCardsPage(filters: CardListFilters = {}): CardListPage {
   `).get(...params) as { total: number };
 
   const rows = db.prepare(`
-    SELECT cards.*
+    SELECT ${CARD_COLUMNS_WITH_TABLE}
     FROM cards
     ${whereSql}
     ORDER BY ${orderBy}
@@ -635,7 +646,7 @@ export function bulkDeleteCards(ids: string[]): string[] {
 }
 
 export function getCard(id: string): Card | null {
-  const row = db.prepare(`SELECT * FROM cards WHERE id = ?`).get(id) as CardRow | undefined;
+  const row = db.prepare(`SELECT ${CARD_COLUMNS} FROM cards WHERE id = ?`).get(id) as CardRow | undefined;
   if (!row) return null;
   return hydrateCardRelations(rowToCard(row), row, loadCardTagsMap(), loadCardLinksMap());
 }
@@ -653,10 +664,11 @@ export function linkCards(sourceId: string, targetId: string): void {
   updateStoredLinks(sourceId, links, new Date().toISOString());
 }
 
-export function unlinkCards(sourceId: string, targetId: string): void {
+export function unlinkCards(sourceId: string, targetId: string): boolean {
   const source = getCard(sourceId);
-  if (!source) return;
+  if (!source || !source.links.includes(targetId)) return false;
   updateStoredLinks(sourceId, source.links.filter(linkId => linkId !== targetId), new Date().toISOString());
+  return true;
 }
 export function getBacklinks(id: string): Card[] {
   return loadCards().filter(c => c.links.includes(id) && c.id !== id);

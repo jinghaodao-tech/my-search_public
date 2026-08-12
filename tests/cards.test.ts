@@ -19,7 +19,10 @@ describe("card workflows", () => {
 
   it("creates, reads, updates, and deletes cards", async () => {
     const created = await cardsEngine.createCard({ title: "CRUD card", body: "initial body", tags: ["crud"] });
-    expect(cardsEngine.getCard(created.id)?.title).toBe("CRUD card");
+    const loaded = cardsEngine.getCard(created.id);
+    expect(loaded?.title).toBe("CRUD card");
+    expect(Number.isNaN(Date.parse(loaded?.createdAt ?? ""))).toBe(false);
+    expect(Number.isNaN(Date.parse(loaded?.updatedAt ?? ""))).toBe(false);
 
     const updated = await cardsEngine.updateCard(created.id, { title: "CRUD card updated" });
     expect(updated?.title).toBe("CRUD card updated");
