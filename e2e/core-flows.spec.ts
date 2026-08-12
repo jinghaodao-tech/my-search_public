@@ -160,7 +160,14 @@ test.describe("core user flows", () => {
   const candidate = page.locator("#candidate-grid .candidate-card", { hasText: title });
   await expect(candidate).toBeVisible();
   await candidate.locator(".candidate-actions button").first().click();
+  await expect(candidate).toContainText("確認済み");
+  const saveResponse = page.waitForResponse(response =>
+    response.url().includes("/api/candidates/fixture-portfolio-ops/save") && response.request().method() === "POST",
+  );
   await candidate.locator(".candidate-actions button").first().click();
+  const saved = await saveResponse;
+  expect(saved.status()).toBe(201);
+  await expect(candidate).toContainText("保存済み");
   await page.locator('button[onclick="switchView(\'cards\')"]').click();
   await page.locator("#search-input").fill(title);
   await expect(page.locator("#card-grid")).toContainText(title);
