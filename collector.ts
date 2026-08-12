@@ -8,7 +8,7 @@
 import RSSParser from 'rss-parser';
 import cron      from 'node-cron';
 import https     from 'https';
-import { tokenize, type Article } from './bm25_engine.js';
+import { buildStoredTokenSet, type Article } from './bm25_engine.js';
 import {
   loadArticlesFromDb,
   loadArticleStats,
@@ -44,20 +44,21 @@ export function loadArticles(): CollectResult | null {
   }
 }
 
-export async function ensureArticleTokens(result: CollectResult): Promise<CollectResult> {
-  const cachedArticles = reuseArticleTokenCache(result.articles);
+export async function ensureArticleTokens(result: CollectResult, forceRebuild = false): Promise<CollectResult> {
+  const cachedArticles = forceRebuild ? result.articles : reuseArticleTokenCache(result.articles);
   const articles = await Promise.all(cachedArticles.map(async (article) => {
-    if (Array.isArray(article.tokens) && article.tokens.length > 0) {
+    if (Array.isArray(article.morphologicalTokens) && article.morphologicalTokens.length > 0 && Array.isArray(article.ngramTokens) && article.ngramTokens.length > 0) {
       return {
         ...article,
+        tokens: article.ngramTokens,
         docLength: article.docLength && article.docLength > 0
           ? article.docLength
-          : article.tokens.length,
+          : article.ngramTokens.length,
       };
     }
 
-    const tokens = await tokenize(`${article.title} ${article.body}`);
-    return { ...article, tokens, docLength: tokens.length };
+    const stored = await buildStoredTokenSet(`${article.title} ${article.body}`);
+    return { ...article, tokens: stored.ngramTokens, docLength: stored.ngramDocLength, ...stored };
   }));
 
   return { ...result, articles };

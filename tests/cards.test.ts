@@ -28,6 +28,15 @@ describe("card workflows", () => {
     expect(cardsEngine.getCard(created.id)).toBeNull();
   });
 
+  it("persists both token signals and their document lengths", async () => {
+    const created = await cardsEngine.createCard({ title: "未知語検索", body: "日本語の複合語を保存する" });
+    const loaded = cardsEngine.getCard(created.id);
+    expect(loaded?.morphologicalTokens?.length).toBeGreaterThan(0);
+    expect(loaded?.ngramTokens).toEqual(expect.arrayContaining(["未知"]));
+    expect(loaded?.morphologicalDocLength).toBe(loaded?.morphologicalTokens?.length);
+    expect(loaded?.ngramDocLength).toBe(loaded?.ngramTokens?.length);
+  });
+
   it("archives and restores cards", async () => {
     const card = await cardsEngine.createCard({ title: "Archive card", body: "body" });
     cardsEngine.bulkArchiveCards([card.id]);

@@ -26,7 +26,7 @@ npm run verify
 | `npm run test:e2e` | passed 9/9 |
 | `npm run benchmark` | passed: ranking-only, production-like, API, cold-start, warm-search |
 | `npm run benchmark:http` | passed: HTTP cold-start and warm-search |
-| `npm run evaluate:search` | passed: ranking diagnostic P@1 0.950, R-Precision 0.900, MRR 0.950, Recall@5 0.950, nDCG@5 0.942; end-to-end release gate P@1 1.000, R-Precision 0.950, MRR 1.000, Recall@5 1.000, nDCG@5 0.990; real manual-query corpus P@1 0.900, R-Precision 0.633, MRR 0.900, Recall@5 0.750, nDCG@5 0.762 |
+| `npm run evaluate:search` | passed: ranking diagnostic P@1 0.900, R-Precision 0.900, MRR 0.925, Recall@5 0.950, nDCG@5 0.931; end-to-end release gate P@1 0.950, R-Precision 0.950, MRR 0.975, Recall@5 1.000, nDCG@5 0.979; real 50-case manual-query corpus P@1 0.840, R-Precision 0.782, MRR 0.895, Recall@5 0.902, nDCG@5 0.854 |
 | `npm run build:search-fixture` | passed: 233 anonymized local-card documents, 18,138 tokens |
 | `npm run benchmark:tokenization` | passed: 74 active documents; morphological 3,715 tokens -> expanded 4,209 tokens (1.13x), token payload 1.09x, fresh tokenization 769.086 ms |
 | `npm run check:search-fixture` | passed: 233 documents, vocabulary 6,482, Japanese documents 60, privacy/difficulty checks |

@@ -4,7 +4,7 @@ type Column = { name: string };
 const requiredTables = ['cards', 'articles', 'card_tags', 'card_links', 'kj_groups', 'schema_migrations', 'jobs', 'cards_fts'];
 const requiredColumns: Record<string, string[]> = {
   articles: ['candidate_status', 'first_seen_at', 'reviewed_at', 'saved_at', 'expired_at', 'candidate_score', 'candidate_match_reason', 'saved_card_id'],
-  cards: ['tokens_json', 'doc_length', 'kj_group_id'],
+  cards: ['tokens_json', 'doc_length', 'morphological_tokens_json', 'ngram_tokens_json', 'morphological_doc_length', 'ngram_doc_length', 'kj_group_id'],
   card_tags: ['card_id', 'tag'],
   card_links: ['source_card_id', 'target_card_id'],
 };

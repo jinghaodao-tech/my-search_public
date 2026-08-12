@@ -4,7 +4,7 @@
 
 ## データセット
 
-57文書・20ケース（dataset version: v5-57-docs-20-query-cases）で構成し、10件の専用日本語ケース、日本語の未知語、短文・長文、関連文書、無関係文書を含みます。
+合成評価は57文書・20ケース（dataset version: v5-57-docs-20-query-cases）です。realのリリースシグナルは233文書の匿名化コーパスと、手書き50ケース（dataset version: anonymized-card-corpus-v2-50-manual-queries）で構成します。realケースには話題、難易度、言語、正解文書数（単数・複数）のラベルを持たせています。
 
 ## 指標
 

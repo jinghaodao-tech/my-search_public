@@ -6,7 +6,7 @@ The artifact keeps three scopes separate: `ranking-only` is a synthetic ranking 
 
 ## Dataset
 
-The evaluation uses 57 documents and 20 hand-labeled English/Japanese queries (dataset version v5-57-docs-20-query-cases), including 10 dedicated Japanese cases. It includes clear positives, near-negatives, title/body conflicts, time-decay traps, parser ambiguity, short and long text, unknown Japanese compounds, and mojibake detection samples.
+The synthetic evaluation uses 57 documents and 20 curated English/Japanese queries (dataset version v5-57-docs-20-query-cases). The real release signal uses 233 anonymized documents and 50 manually authored queries (dataset version anonymized-card-corpus-v2-50-manual-queries). Real cases carry topic, difficulty, language, and single/multiple-relevance labels in the versioned query files.
 
 ## Metrics
 
@@ -40,11 +40,16 @@ The evaluator also assesses dataset discrimination. If every aggregate metric re
 
 This is a deterministic regression fixture, not a general web-search benchmark. Relevance labels are intentionally small and curated for portfolio-level regression detection.
 
-The real release signal currently has 20 manually authored queries over an
+The real release signal currently has 50 manually authored queries over an
 anonymized local corpus. It detects meaningful regressions at P@1 >= 0.70, but
 it cannot establish production-wide relevance, coverage of every user intent,
 or statistical confidence for individual query families. Growing the corpus
 and labels is still required before tightening the gate.
+
+The current real-corpus token comparison reports P@1 0.840 for the standard
+0.30 morphological / 0.70 N-gram blend, 0.880 for morphological-only, and
+0.860 for N-gram-only. These are evaluation variants, not a license to change
+production mode weights without another reviewed dataset run.
 
 The tokenizer uses kuromoji morphological tokens plus Japanese character bigrams as an unknown-word fallback. This improves recall but increases token and index size; the deterministic fixture keeps ranking metrics visible so that the trade-off remains reviewable.
 
@@ -52,7 +57,7 @@ The tokenizer uses kuromoji morphological tokens plus Japanese character bigrams
 
 `npm run benchmark:tokenization` compares the real database's stored-token read cost with fresh kuromoji plus Japanese-bigram tokenization and writes `artifacts/tokenization-cost.json`. This is a current cost baseline; an old pre-bigram implementation is not reconstructed as a false historical comparison.
 
-The fixture evaluates user-visible candidates with an archive score threshold of `2.0`, making low-confidence shared-token matches visible as below-threshold results instead of counting them as retrieved results.
+The quality evaluator disables archive filtering (`archiveScoreThreshold: 0`) so the normalized 0-to-1 blended scores do not hide candidates; production archive thresholds remain a separate operational setting.
 
 The evaluation also sweeps `lambda` from `0.000` to `0.200` in `0.005` steps and floors from `0.25` to `0.50` for `jp-saved-search` and `time-decay`. `artifacts/search-quality.json` records plot-ready `pAt1ByLambda` points for every floor, plus the passing-window width. The evaluator requires the production floor `0.35` to retain a non-zero passing window, so a narrow decay window becomes a regression signal rather than an undocumented tuning detail. `jp-saved-search` intentionally accepts `jp-search`, `saved-new`, and `saved-old`, because the query does not contain a term that distinguishes those three records. `time-decay` accepts the two saved-record variants, so the sweep can evaluate freshness without treating a semantically relevant saved record as a false failure.
 

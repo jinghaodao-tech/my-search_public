@@ -14,6 +14,10 @@ export interface ArticleRow {
   tags_json: string;
   tokens_json: string | null;
   doc_length: number;
+  morphological_tokens_json: string | null;
+  ngram_tokens_json: string | null;
+  morphological_doc_length: number;
+  ngram_doc_length: number;
   content_hash: string | null;
   created_at: string;
   first_seen_at: string | null;
@@ -76,6 +80,10 @@ function rowToArticle(row: ArticleRow): Article & { source?: string | null; last
     url: row.url,
     tokens: parseJsonArray(row.tokens_json),
     docLength: row.doc_length,
+    morphologicalTokens: parseJsonArray(row.morphological_tokens_json),
+    ngramTokens: parseJsonArray(row.ngram_tokens_json),
+    morphologicalDocLength: row.morphological_doc_length,
+    ngramDocLength: row.ngram_doc_length,
     summary: row.summary ?? undefined,
     tags: parseJsonArray(row.tags_json),
     source: row.source,
@@ -105,25 +113,28 @@ export function getArticleByUrl(url: string): Article | null {
   return row ? rowToArticle(row) : null;
 }
 
-export function findArticleTokenCache(article: Article): Pick<Article, "tokens" | "docLength"> | null {
+export function findArticleTokenCache(article: Article): Pick<Article, "tokens" | "docLength" | "morphologicalTokens" | "ngramTokens" | "morphologicalDocLength" | "ngramDocLength"> | null {
   const hash = articleContentHash(article);
   const row = db.prepare(`
-    SELECT tokens_json, doc_length, content_hash
+    SELECT tokens_json, doc_length, morphological_tokens_json, ngram_tokens_json, morphological_doc_length, ngram_doc_length, content_hash
     FROM articles
     WHERE id = ? OR url = ?
     ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END
     LIMIT 1
-  `).get(article.id, article.url, article.id) as Pick<ArticleRow, "tokens_json" | "doc_length" | "content_hash"> | undefined;
+  `).get(article.id, article.url, article.id) as Pick<ArticleRow, "tokens_json" | "doc_length" | "morphological_tokens_json" | "ngram_tokens_json" | "morphological_doc_length" | "ngram_doc_length" | "content_hash"> | undefined;
 
   if (!row || row.content_hash !== hash) return null;
   const tokens = parseJsonArray(row.tokens_json);
   if (!tokens.length) return null;
-  return { tokens, docLength: row.doc_length || tokens.length };
+  const storedNgramTokens = parseJsonArray(row.ngram_tokens_json);
+  const ngramTokens = storedNgramTokens.length ? storedNgramTokens : tokens;
+  const morphologicalTokens = parseJsonArray(row.morphological_tokens_json);
+  return { tokens: ngramTokens, docLength: row.ngram_doc_length || row.doc_length || ngramTokens.length, ngramTokens, morphologicalTokens: morphologicalTokens.length ? morphologicalTokens : tokens, ngramDocLength: row.ngram_doc_length || ngramTokens.length, morphologicalDocLength: row.morphological_doc_length || morphologicalTokens.length || tokens.length };
 }
 
 export function reuseArticleTokenCache(articles: Article[]): Article[] {
   return articles.map((article) => {
-    if (Array.isArray(article.tokens) && article.tokens.length > 0) return article;
+    if (Array.isArray(article.morphologicalTokens) && article.morphologicalTokens.length > 0 && Array.isArray(article.ngramTokens) && article.ngramTokens.length > 0) return article;
     const cache = findArticleTokenCache(article);
     return cache ? { ...article, ...cache } : article;
   });
@@ -145,6 +156,10 @@ export function saveArticlesToDb(articles: Article[], fetchedAt = new Date().toI
       tags_json,
       tokens_json,
       doc_length,
+      morphological_tokens_json,
+      ngram_tokens_json,
+      morphological_doc_length,
+      ngram_doc_length,
       content_hash,
       created_at,
       first_seen_at,
@@ -163,6 +178,10 @@ export function saveArticlesToDb(articles: Article[], fetchedAt = new Date().toI
       @tags_json,
       @tokens_json,
       @doc_length,
+      @morphological_tokens_json,
+      @ngram_tokens_json,
+      @morphological_doc_length,
+      @ngram_doc_length,
       @content_hash,
       @created_at,
       @first_seen_at,
@@ -180,6 +199,10 @@ export function saveArticlesToDb(articles: Article[], fetchedAt = new Date().toI
       tags_json = excluded.tags_json,
       tokens_json = excluded.tokens_json,
       doc_length = excluded.doc_length,
+      morphological_tokens_json = excluded.morphological_tokens_json,
+      ngram_tokens_json = excluded.ngram_tokens_json,
+      morphological_doc_length = excluded.morphological_doc_length,
+      ngram_doc_length = excluded.ngram_doc_length,
       content_hash = excluded.content_hash,
       updated_at = excluded.updated_at,
       last_fetched_at = excluded.last_fetched_at
@@ -213,6 +236,10 @@ export function saveArticlesToDb(articles: Article[], fetchedAt = new Date().toI
         tags_json: jsonArray(article.tags),
         tokens_json: jsonArray(article.tokens),
         doc_length: article.docLength ?? article.tokens?.length ?? 0,
+        morphological_tokens_json: jsonArray(article.morphologicalTokens ?? article.tokens),
+        ngram_tokens_json: jsonArray(article.ngramTokens ?? article.tokens),
+        morphological_doc_length: article.morphologicalDocLength ?? article.tokens?.length ?? 0,
+        ngram_doc_length: article.ngramDocLength ?? article.docLength ?? article.tokens?.length ?? 0,
         content_hash: articleContentHash(article),
         created_at: existingId ? now : article.createdAt ?? now,
         first_seen_at: existingId ? null : article.firstSeenAt ?? article.createdAt ?? now,

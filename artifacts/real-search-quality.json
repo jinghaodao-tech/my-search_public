@@ -13,17 +13,21 @@
     "ranking_engine"
   ],
   "dataset": {
-    "version": "anonymized-card-corpus-v1-manual-queries",
+    "version": "anonymized-card-corpus-v2-50-manual-queries",
     "documents": 74,
-    "queries": 20,
+    "queries": 50,
     "caseKinds": [
-      "real-manual"
+      "real-manual",
+      "ambiguous-topic",
+      "clear-positive",
+      "specialized-term",
+      "comparison"
     ],
     "languages": [
       "English",
       "Japanese"
     ],
-    "labelSource": "manual relevance labels from data/search-evaluation/real-queries.json"
+    "labelSource": "manual relevance labels from data/search-evaluation/real-queries.json and real-queries-v2.json"
   },
   "rows": [
     {
@@ -52,24 +56,32 @@
       "precisionAt1": 1,
       "rPrecision": 0.3333333333333333,
       "reciprocalRank": 1,
-      "recallAt5": 0.3333333333333333,
-      "ndcgAt5": 0.46927872602275644,
+      "recallAt5": 0.6666666666666666,
+      "ndcgAt5": 0.6713860725233041,
       "sensitivity": {
         "runnerUpId": "anon-c649aaf312877b1b",
-        "finalScoreGap": 0.340671,
-        "finalScoreGapRatio": 0.03831,
-        "bm25ScoreGap": -0.693286,
+        "finalScoreGap": 0.096696,
+        "finalScoreGapRatio": 0.158686,
+        "bm25ScoreGap": 0.079509,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 15.39831,
-        "runnerUpDecayToTie": 0.363943,
-        "winnerDecayToLose": 0.336592
+        "runnerUpBm25ToTie": 1.055158,
+        "runnerUpDecayToTie": 0.416016,
+        "winnerDecayToLose": 0.29446
       },
       "rankingDetails": [
         {
           "documentId": "anon-b4d7a50098a9e923",
           "rank": 1,
-          "finalScore": 8.892524,
-          "bm25Score": 14.115118,
+          "finalScore": 0.609354,
+          "bm25Score": 0.967228,
+          "bm25Morphological": 27.681819,
+          "bm25Ngram": 14.115118,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 0.953183,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -87,8 +99,16 @@
         {
           "documentId": "anon-c649aaf312877b1b",
           "rank": 2,
-          "finalScore": 8.551853,
-          "bm25Score": 14.808404,
+          "finalScore": 0.512658,
+          "bm25Score": 0.887719,
+          "bm25Morphological": 17.32139,
+          "bm25Ngram": 14.808404,
+          "normalizedMorphological": 0.625732,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.65,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -99,6 +119,75 @@
             {
               "term": "agents",
               "contribution": 7.349292
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-327eb960ae6e55d1",
+          "rank": 3,
+          "finalScore": 0.101169,
+          "bm25Score": 0.192704,
+          "bm25Morphological": 3.939466,
+          "bm25Ngram": 3.173437,
+          "normalizedMorphological": 0.142312,
+          "normalizedNgram": 0.2143,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 1.666054
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-afa29b53576888e0",
+          "rank": 4,
+          "finalScore": 0.08921,
+          "bm25Score": 0.169924,
+          "bm25Morphological": 4.664368,
+          "bm25Ngram": 2.525345,
+          "normalizedMorphological": 0.168499,
+          "normalizedNgram": 0.170535,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 1.325806
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-97bc38a9a9db4722",
+          "rank": 5,
+          "finalScore": 0.086279,
+          "bm25Score": 0.16434,
+          "bm25Morphological": 4.511715,
+          "bm25Ngram": 2.442218,
+          "normalizedMorphological": 0.162985,
+          "normalizedNgram": 0.164921,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 1.282165
             }
           ],
           "isExpected": false
@@ -141,8 +230,16 @@
         {
           "documentId": "anon-867b585c1cceeee6",
           "rank": 1,
-          "finalScore": 35.273437,
-          "bm25Score": 55.989583,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 54.370373,
+          "bm25Ngram": 55.989583,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -191,20 +288,28 @@
       "ndcgAt5": 0,
       "sensitivity": {
         "runnerUpId": "anon-dba5e688c6ccdeae",
-        "finalScoreGap": 0.626086,
-        "finalScoreGapRatio": 0.100284,
-        "bm25ScoreGap": 1.192546,
+        "finalScoreGap": 0.049125,
+        "finalScoreGapRatio": 0.093571,
+        "bm25ScoreGap": 0.093571,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 11.89165,
-        "runnerUpDecayToTie": 0.389012,
-        "winnerDecayToLose": 0.314901
+        "runnerUpBm25ToTie": 1,
+        "runnerUpDecayToTie": 0.386131,
+        "winnerDecayToLose": 0.31725
       },
       "rankingDetails": [
         {
           "documentId": "anon-96820a91571db08b",
           "rank": 1,
-          "finalScore": 6.243116,
-          "bm25Score": 11.89165,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 13.525159,
+          "bm25Ngram": 11.89165,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -218,8 +323,16 @@
         {
           "documentId": "anon-dba5e688c6ccdeae",
           "rank": 2,
-          "finalScore": 5.61703,
-          "bm25Score": 10.699104,
+          "finalScore": 0.475875,
+          "bm25Score": 0.906429,
+          "bm25Morphological": 12.471461,
+          "bm25Ngram": 10.699104,
+          "normalizedMorphological": 0.922093,
+          "normalizedNgram": 0.899716,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -259,21 +372,29 @@
       "recallAt5": 1,
       "ndcgAt5": 1,
       "sensitivity": {
-        "runnerUpId": "anon-4580f9ec514b42b9",
-        "finalScoreGap": 1.568921,
-        "finalScoreGapRatio": 0.167965,
-        "bm25ScoreGap": 2.98842,
+        "runnerUpId": "anon-51c91ff6ed3d6187",
+        "finalScoreGap": 0.130036,
+        "finalScoreGapRatio": 0.247688,
+        "bm25ScoreGap": 0.247689,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 17.791884,
-        "runnerUpDecayToTie": 0.420656,
-        "winnerDecayToLose": 0.291212
+        "runnerUpBm25ToTie": 1,
+        "runnerUpDecayToTie": 0.465233,
+        "winnerDecayToLose": 0.263309
       },
       "rankingDetails": [
         {
           "documentId": "anon-4eedb18cff407cb0",
           "rank": 1,
-          "finalScore": 9.340739,
-          "bm25Score": 17.791883,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 29.447393,
+          "bm25Ngram": 17.791883,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -285,31 +406,47 @@
           "isExpected": true
         },
         {
-          "documentId": "anon-4580f9ec514b42b9",
-          "rank": 2,
-          "finalScore": 7.771818,
-          "bm25Score": 14.803463,
-          "contextBonus": 1.5,
-          "timeDecayFactor": 0.35,
-          "matchedTerms": [
-            {
-              "term": "development",
-              "contribution": 7.771818
-            }
-          ],
-          "isExpected": false
-        },
-        {
           "documentId": "anon-51c91ff6ed3d6187",
-          "rank": 3,
-          "finalScore": 6.924094,
-          "bm25Score": 13.188751,
+          "rank": 2,
+          "finalScore": 0.394964,
+          "bm25Score": 0.752311,
+          "bm25Morphological": 22.911649,
+          "bm25Ngram": 13.188751,
+          "normalizedMorphological": 0.778054,
+          "normalizedNgram": 0.741279,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
             {
               "term": "development",
               "contribution": 6.924094
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-4580f9ec514b42b9",
+          "rank": 3,
+          "finalScore": 0.384788,
+          "bm25Score": 0.73293,
+          "bm25Morphological": 14.773342,
+          "bm25Ngram": 14.803463,
+          "normalizedMorphological": 0.501686,
+          "normalizedNgram": 0.832035,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "development",
+              "contribution": 7.771818
             }
           ],
           "isExpected": false
@@ -346,20 +483,28 @@
       "ndcgAt5": 0.6508205185601091,
       "sensitivity": {
         "runnerUpId": "anon-7f113a889802baa7",
-        "finalScoreGap": 8.525589,
-        "finalScoreGapRatio": 0.543101,
-        "bm25ScoreGap": 11.255729,
+        "finalScoreGap": 0.369748,
+        "finalScoreGapRatio": 0.586902,
+        "bm25ScoreGap": 0.504282,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 29.900926,
-        "runnerUpDecayToTie": 0.766033,
-        "winnerDecayToLose": 0.159915
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 0.847256,
+        "winnerDecayToLose": 0.144584
       },
       "rankingDetails": [
         {
           "documentId": "anon-c175b8c79f910465",
           "rank": 1,
-          "finalScore": 15.697986,
-          "bm25Score": 24.917438,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 31.397209,
+          "bm25Ngram": 24.917438,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -377,8 +522,16 @@
         {
           "documentId": "anon-7f113a889802baa7",
           "rank": 2,
-          "finalScore": 7.172397,
-          "bm25Score": 13.661709,
+          "finalScore": 0.260252,
+          "bm25Score": 0.495718,
+          "bm25Morphological": 11.713501,
+          "bm25Ngram": 13.661709,
+          "normalizedMorphological": 0.373075,
+          "normalizedNgram": 0.548279,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -390,25 +543,18 @@
           "isExpected": false
         },
         {
-          "documentId": "anon-9e6476b2517b4898",
-          "rank": 3,
-          "finalScore": 5.744084,
-          "bm25Score": 10.941112,
-          "contextBonus": 1.5,
-          "timeDecayFactor": 0.35,
-          "matchedTerms": [
-            {
-              "term": "security",
-              "contribution": 5.744084
-            }
-          ],
-          "isExpected": false
-        },
-        {
           "documentId": "anon-48e8f046eb0314ab",
-          "rank": 4,
-          "finalScore": 5.428767,
-          "bm25Score": 10.340508,
+          "rank": 3,
+          "finalScore": 0.237667,
+          "bm25Score": 0.452699,
+          "bm25Morphological": 16.975948,
+          "bm25Ngram": 10.340508,
+          "normalizedMorphological": 0.540683,
+          "normalizedNgram": 0.414991,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -420,10 +566,41 @@
           "isExpected": false
         },
         {
+          "documentId": "anon-9e6476b2517b4898",
+          "rank": 4,
+          "finalScore": 0.221334,
+          "bm25Score": 0.421588,
+          "bm25Morphological": 11.954127,
+          "bm25Ngram": 10.941112,
+          "normalizedMorphological": 0.380739,
+          "normalizedNgram": 0.439095,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 5.744084
+            }
+          ],
+          "isExpected": false
+        },
+        {
           "documentId": "anon-cbe88a9b44e0fc8b",
           "rank": 5,
-          "finalScore": 4.327665,
-          "bm25Score": 8.243171,
+          "finalScore": 0.170683,
+          "bm25Score": 0.32511,
+          "bm25Morphological": 9.789301,
+          "bm25Ngram": 8.243171,
+          "normalizedMorphological": 0.311789,
+          "normalizedNgram": 0.330819,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -453,47 +630,40 @@
           "synonyms": []
         }
       ],
-      "top1": "anon-4580f9ec514b42b9",
+      "top1": "anon-51c91ff6ed3d6187",
       "expected": [
         "anon-4580f9ec514b42b9",
         "anon-4eedb18cff407cb0"
       ],
-      "precisionAt1": 1,
+      "precisionAt1": 0,
       "rPrecision": 0.5,
-      "reciprocalRank": 1,
+      "reciprocalRank": 0.5,
       "recallAt5": 0.5,
-      "ndcgAt5": 0.6131471927654584,
+      "ndcgAt5": 0.38685280723454163,
       "sensitivity": {
-        "runnerUpId": "anon-51c91ff6ed3d6187",
-        "finalScoreGap": 0.847724,
-        "finalScoreGapRatio": 0.109077,
-        "bm25ScoreGap": 1.614712,
+        "runnerUpId": "anon-4580f9ec514b42b9",
+        "finalScoreGap": 0.015859,
+        "finalScoreGapRatio": 0.032705,
+        "bm25ScoreGap": 0.030207,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 14.803463,
-        "runnerUpDecayToTie": 0.392851,
-        "winnerDecayToLose": 0.311823
+        "runnerUpBm25ToTie": 0.923646,
+        "runnerUpDecayToTie": 0.361833,
+        "winnerDecayToLose": 0.338553
       },
       "rankingDetails": [
         {
-          "documentId": "anon-4580f9ec514b42b9",
-          "rank": 1,
-          "finalScore": 7.771818,
-          "bm25Score": 14.803463,
-          "contextBonus": 1.5,
-          "timeDecayFactor": 0.35,
-          "matchedTerms": [
-            {
-              "term": "development",
-              "contribution": 7.771818
-            }
-          ],
-          "isExpected": true
-        },
-        {
           "documentId": "anon-51c91ff6ed3d6187",
-          "rank": 2,
-          "finalScore": 6.924094,
-          "bm25Score": 13.188751,
+          "rank": 1,
+          "finalScore": 0.484914,
+          "bm25Score": 0.923646,
+          "bm25Morphological": 22.911649,
+          "bm25Ngram": 13.188751,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 0.890923,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -503,6 +673,29 @@
             }
           ],
           "isExpected": false
+        },
+        {
+          "documentId": "anon-4580f9ec514b42b9",
+          "rank": 2,
+          "finalScore": 0.469055,
+          "bm25Score": 0.893439,
+          "bm25Morphological": 14.773342,
+          "bm25Ngram": 14.803463,
+          "normalizedMorphological": 0.644796,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "development",
+              "contribution": 7.771818
+            }
+          ],
+          "isExpected": true
         }
       ]
     },
@@ -532,23 +725,31 @@
       "rPrecision": 0.5,
       "reciprocalRank": 1,
       "recallAt5": 1,
-      "ndcgAt5": 0.9197207891481876,
+      "ndcgAt5": 0.8772153153380493,
       "sensitivity": {
         "runnerUpId": "anon-14afb4986e072aed",
-        "finalScoreGap": 6.146793,
-        "finalScoreGapRatio": 0.473729,
-        "bm25ScoreGap": 11.708177,
+        "finalScoreGap": 0.245374,
+        "finalScoreGapRatio": 0.467379,
+        "bm25ScoreGap": 0.467378,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 24.714943,
-        "runnerUpDecayToTie": 0.665056,
-        "winnerDecayToLose": 0.184195
+        "runnerUpBm25ToTie": 1,
+        "runnerUpDecayToTie": 0.657126,
+        "winnerDecayToLose": 0.186417
       },
       "rankingDetails": [
         {
           "documentId": "anon-818b67f999b44206",
           "rank": 1,
-          "finalScore": 12.975345,
-          "bm25Score": 24.714943,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 33.338945,
+          "bm25Ngram": 24.714943,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -562,8 +763,16 @@
         {
           "documentId": "anon-14afb4986e072aed",
           "rank": 2,
-          "finalScore": 6.828552,
-          "bm25Score": 13.006766,
+          "finalScore": 0.279626,
+          "bm25Score": 0.532622,
+          "bm25Morphological": 18.251062,
+          "bm25Ngram": 13.006766,
+          "normalizedMorphological": 0.54744,
+          "normalizedNgram": 0.526271,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -575,25 +784,18 @@
           "isExpected": false
         },
         {
-          "documentId": "anon-fd82501338adbd3b",
-          "rank": 3,
-          "finalScore": 6.399614,
-          "bm25Score": 12.189741,
-          "contextBonus": 1.5,
-          "timeDecayFactor": 0.35,
-          "matchedTerms": [
-            {
-              "term": "search",
-              "contribution": 6.399614
-            }
-          ],
-          "isExpected": true
-        },
-        {
           "documentId": "anon-f8418e969864c8e8",
-          "rank": 4,
-          "finalScore": 6.399614,
-          "bm25Score": 12.189741,
+          "rank": 3,
+          "finalScore": 0.263812,
+          "bm25Score": 0.5025,
+          "bm25Morphological": 17.47519,
+          "bm25Ngram": 12.189741,
+          "normalizedMorphological": 0.524167,
+          "normalizedNgram": 0.493213,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -605,10 +807,41 @@
           "isExpected": false
         },
         {
+          "documentId": "anon-fd82501338adbd3b",
+          "rank": 4,
+          "finalScore": 0.246547,
+          "bm25Score": 0.469614,
+          "bm25Morphological": 13.820602,
+          "bm25Ngram": 12.189741,
+          "normalizedMorphological": 0.414548,
+          "normalizedNgram": 0.493213,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 6.399614
+            }
+          ],
+          "isExpected": true
+        },
+        {
           "documentId": "anon-066f70e555b534d6",
           "rank": 5,
-          "finalScore": 6.14239,
-          "bm25Score": 11.69979,
+          "finalScore": 0.223331,
+          "bm25Score": 0.425392,
+          "bm25Morphological": 10.448313,
+          "bm25Ngram": 11.69979,
+          "normalizedMorphological": 0.313397,
+          "normalizedNgram": 0.473389,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -647,26 +880,34 @@
         "anon-066f70e555b534d6"
       ],
       "precisionAt1": 1,
-      "rPrecision": 0.6666666666666666,
+      "rPrecision": 1,
       "reciprocalRank": 1,
       "recallAt5": 1,
-      "ndcgAt5": 0.9674679834891693,
+      "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "anon-cbe88a9b44e0fc8b",
-        "finalScoreGap": 14.350869,
-        "finalScoreGapRatio": 0.610966,
-        "bm25ScoreGap": 20.48906,
+        "finalScoreGap": 0.331203,
+        "finalScoreGapRatio": 0.556644,
+        "bm25ScoreGap": 0.451851,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 48.807934,
-        "runnerUpDecayToTie": 0.899664,
-        "winnerDecayToLose": 0.136162
+        "runnerUpBm25ToTie": 1.236364,
+        "runnerUpDecayToTie": 0.789434,
+        "winnerDecayToLose": 0.155175
       },
       "rankingDetails": [
         {
           "documentId": "anon-c175b8c79f910465",
           "rank": 1,
-          "finalScore": 23.488818,
-          "bm25Score": 39.477005,
+          "finalScore": 0.595,
+          "bm25Score": 1,
+          "bm25Morphological": 39.287303,
+          "bm25Ngram": 39.477005,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.7,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -684,8 +925,16 @@
         {
           "documentId": "anon-cbe88a9b44e0fc8b",
           "rank": 2,
-          "finalScore": 9.137949,
-          "bm25Score": 18.987945,
+          "finalScore": 0.263797,
+          "bm25Score": 0.548149,
+          "bm25Morphological": 27.691969,
+          "bm25Ngram": 18.987945,
+          "normalizedMorphological": 0.704858,
+          "normalizedNgram": 0.480987,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.375,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -697,25 +946,18 @@
           "isExpected": true
         },
         {
-          "documentId": "anon-5f5ee445d308117c",
-          "rank": 3,
-          "finalScore": 8.641391,
-          "bm25Score": 16.459792,
-          "contextBonus": 1.5,
-          "timeDecayFactor": 0.35,
-          "matchedTerms": [
-            {
-              "term": "tests",
-              "contribution": 8.641391
-            }
-          ],
-          "isExpected": false
-        },
-        {
           "documentId": "anon-066f70e555b534d6",
-          "rank": 4,
-          "finalScore": 8.033564,
-          "bm25Score": 15.302027,
+          "rank": 3,
+          "finalScore": 0.217821,
+          "bm25Score": 0.414897,
+          "bm25Morphological": 18.800729,
+          "bm25Ngram": 15.302027,
+          "normalizedMorphological": 0.478545,
+          "normalizedNgram": 0.387619,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -725,6 +967,29 @@
             }
           ],
           "isExpected": true
+        },
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 4,
+          "finalScore": 0.208011,
+          "bm25Score": 0.396211,
+          "bm25Morphological": 13.665234,
+          "bm25Ngram": 16.459792,
+          "normalizedMorphological": 0.347828,
+          "normalizedNgram": 0.416946,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "tests",
+              "contribution": 8.641391
+            }
+          ],
+          "isExpected": false
         }
       ]
     },
@@ -763,20 +1028,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "anon-1e1c862b8d1710c9",
-        "finalScoreGap": 12.505455,
-        "finalScoreGapRatio": 0.404323,
-        "bm25ScoreGap": 16.194388,
+        "finalScoreGap": 0.249271,
+        "finalScoreGapRatio": 0.395668,
+        "bm25ScoreGap": 0.320126,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 55.231038,
-        "runnerUpDecayToTie": 0.587567,
-        "winnerDecayToLose": 0.208487
+        "runnerUpBm25ToTie": 1.125,
+        "runnerUpDecayToTie": 0.579151,
+        "winnerDecayToLose": 0.211516
       },
       "rankingDetails": [
         {
           "documentId": "anon-f8e0961922a25375",
           "rank": 1,
-          "finalScore": 30.929381,
-          "bm25Score": 49.094255,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 50.53133,
+          "bm25Ngram": 49.094255,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -798,8 +1071,16 @@
         {
           "documentId": "anon-1e1c862b8d1710c9",
           "rank": 2,
-          "finalScore": 18.423926,
-          "bm25Score": 32.899867,
+          "finalScore": 0.380729,
+          "bm25Score": 0.679874,
+          "bm25Morphological": 35.503024,
+          "bm25Ngram": 32.899867,
+          "normalizedMorphological": 0.702594,
+          "normalizedNgram": 0.670137,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.6,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -817,8 +1098,16 @@
         {
           "documentId": "anon-a1e4d0de42dc44cf",
           "rank": 3,
-          "finalScore": 15.028931,
-          "bm25Score": 26.837378,
+          "finalScore": 0.316202,
+          "bm25Score": 0.564646,
+          "bm25Morphological": 30.65423,
+          "bm25Ngram": 26.837378,
+          "normalizedMorphological": 0.606638,
+          "normalizedNgram": 0.54665,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.6,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -836,8 +1125,16 @@
         {
           "documentId": "anon-f8418e969864c8e8",
           "rank": 4,
-          "finalScore": 6.764321,
-          "bm25Score": 13.804737,
+          "finalScore": 0.129851,
+          "bm25Score": 0.265002,
+          "bm25Morphological": 11.482372,
+          "bm25Ngram": 13.804737,
+          "normalizedMorphological": 0.227233,
+          "normalizedNgram": 0.281188,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -851,8 +1148,16 @@
         {
           "documentId": "anon-5f5ee445d308117c",
           "rank": 5,
-          "finalScore": 6.166653,
-          "bm25Score": 12.585007,
+          "finalScore": 0.118321,
+          "bm25Score": 0.241471,
+          "bm25Morphological": 10.448313,
+          "bm25Ngram": 12.585007,
+          "normalizedMorphological": 0.206769,
+          "normalizedNgram": 0.256344,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -894,20 +1199,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "anon-f8418e969864c8e8",
-        "finalScoreGap": 1.316513,
-        "finalScoreGapRatio": 0.062815,
-        "bm25ScoreGap": 2.089703,
+        "finalScoreGap": 0.040934,
+        "finalScoreGapRatio": 0.064975,
+        "bm25ScoreGap": 0.064975,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 33.267389,
-        "runnerUpDecayToTie": 0.373459,
-        "winnerDecayToLose": 0.328015
+        "runnerUpBm25ToTie": 1,
+        "runnerUpDecayToTie": 0.374322,
+        "winnerDecayToLose": 0.327259
       },
       "rankingDetails": [
         {
           "documentId": "anon-14afb4986e072aed",
           "rank": 1,
-          "finalScore": 20.958455,
-          "bm25Score": 33.267389,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 35.773418,
+          "bm25Ngram": 33.267389,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -925,8 +1238,16 @@
         {
           "documentId": "anon-f8418e969864c8e8",
           "rank": 2,
-          "finalScore": 19.641942,
-          "bm25Score": 31.177686,
+          "finalScore": 0.589066,
+          "bm25Score": 0.935025,
+          "bm25Morphological": 33.268801,
+          "bm25Ngram": 31.177686,
+          "normalizedMorphological": 0.929987,
+          "normalizedNgram": 0.937185,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -944,8 +1265,16 @@
         {
           "documentId": "anon-fd82501338adbd3b",
           "rank": 3,
-          "finalScore": 6.399614,
-          "bm25Score": 12.189741,
+          "finalScore": 0.195506,
+          "bm25Score": 0.372393,
+          "bm25Morphological": 13.820602,
+          "bm25Ngram": 12.189741,
+          "normalizedMorphological": 0.386337,
+          "normalizedNgram": 0.366417,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -959,8 +1288,16 @@
         {
           "documentId": "anon-066f70e555b534d6",
           "rank": 4,
-          "finalScore": 6.14239,
-          "bm25Score": 11.69979,
+          "finalScore": 0.175247,
+          "bm25Score": 0.333803,
+          "bm25Morphological": 10.448313,
+          "bm25Ngram": 11.69979,
+          "normalizedMorphological": 0.292069,
+          "normalizedNgram": 0.351689,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -974,8 +1311,16 @@
         {
           "documentId": "anon-54a7852ffd299f21",
           "rank": 5,
-          "finalScore": 2.810243,
-          "bm25Score": 5.352843,
+          "finalScore": 0.093154,
+          "bm25Score": 0.177436,
+          "bm25Morphological": 7.727428,
+          "bm25Ngram": 5.352843,
+          "normalizedMorphological": 0.21601,
+          "normalizedNgram": 0.160904,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1018,20 +1363,28 @@
       "ndcgAt5": 0.46927872602275644,
       "sensitivity": {
         "runnerUpId": "anon-c649aaf312877b1b",
-        "finalScoreGap": 4.278503,
-        "finalScoreGapRatio": 0.390386,
-        "bm25ScoreGap": 4.670267,
+        "finalScoreGap": 0.29686,
+        "finalScoreGapRatio": 0.471206,
+        "bm25ScoreGap": 0.365448,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 20.875575,
-        "runnerUpDecayToTie": 0.574134,
-        "winnerDecayToLose": 0.213365
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 0.661884,
+        "winnerDecayToLose": 0.185078
       },
       "rankingDetails": [
         {
           "documentId": "anon-b4d7a50098a9e923",
           "rank": 1,
-          "finalScore": 10.959677,
-          "bm25Score": 17.396313,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 31.031771,
+          "bm25Ngram": 17.396313,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1049,8 +1402,16 @@
         {
           "documentId": "anon-c649aaf312877b1b",
           "rank": 2,
-          "finalScore": 6.681174,
-          "bm25Score": 12.726046,
+          "finalScore": 0.33314,
+          "bm25Score": 0.634552,
+          "bm25Morphological": 12.668858,
+          "bm25Ngram": 12.726046,
+          "normalizedMorphological": 0.408254,
+          "normalizedNgram": 0.731537,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1064,8 +1425,16 @@
         {
           "documentId": "anon-c175b8c79f910465",
           "rank": 3,
-          "finalScore": 4.890909,
-          "bm25Score": 9.316018,
+          "finalScore": 0.256381,
+          "bm25Score": 0.488345,
+          "bm25Morphological": 11.738645,
+          "bm25Ngram": 9.316018,
+          "normalizedMorphological": 0.378278,
+          "normalizedNgram": 0.535517,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1079,8 +1448,16 @@
         {
           "documentId": "anon-cbe88a9b44e0fc8b",
           "rank": 4,
-          "finalScore": 4.327665,
-          "bm25Score": 8.243171,
+          "finalScore": 0.223823,
+          "bm25Score": 0.42633,
+          "bm25Morphological": 9.789301,
+          "bm25Ngram": 8.243171,
+          "normalizedMorphological": 0.315461,
+          "normalizedNgram": 0.473846,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1094,8 +1471,16 @@
         {
           "documentId": "anon-066f70e555b534d6",
           "rank": 5,
-          "finalScore": 4.15372,
-          "bm25Score": 7.911847,
+          "finalScore": 0.216477,
+          "bm25Score": 0.412336,
+          "bm25Morphological": 9.720836,
+          "bm25Ngram": 7.911847,
+          "normalizedMorphological": 0.313254,
+          "normalizedNgram": 0.4548,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1139,8 +1524,16 @@
         {
           "documentId": "anon-867b585c1cceeee6",
           "rank": 1,
-          "finalScore": 23.515625,
-          "bm25Score": 37.326388,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 36.246915,
+          "bm25Ngram": 37.326388,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1188,8 +1581,16 @@
         {
           "documentId": "anon-4eedb18cff407cb0",
           "rank": 1,
-          "finalScore": 9.340739,
-          "bm25Score": 17.791883,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 29.447393,
+          "bm25Ngram": 17.791883,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1234,8 +1635,16 @@
         {
           "documentId": "anon-c175b8c79f910465",
           "rank": 1,
-          "finalScore": 34.088444,
-          "bm25Score": 54.108641,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 45.682065,
+          "bm25Ngram": 54.108641,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1280,20 +1689,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "anon-23fa60b7577d1c72",
-        "finalScoreGap": 20.45363,
-        "finalScoreGapRatio": 0.732561,
-        "bm25ScoreGap": 30.095577,
+        "finalScoreGap": 0.463614,
+        "finalScoreGapRatio": 0.735895,
+        "bm25ScoreGap": 0.683075,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 53.182312,
-        "runnerUpDecayToTie": 1.30871,
-        "winnerDecayToLose": 0.093604
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 1.325235,
+        "winnerDecayToLose": 0.092437
       },
       "rankingDetails": [
         {
           "documentId": "anon-5f5ee445d308117c",
           "rank": 1,
-          "finalScore": 27.920714,
-          "bm25Score": 44.318594,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 62.334538,
+          "bm25Ngram": 44.318594,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1311,8 +1728,16 @@
         {
           "documentId": "anon-23fa60b7577d1c72",
           "rank": 2,
-          "finalScore": 7.467084,
-          "bm25Score": 14.223017,
+          "finalScore": 0.166386,
+          "bm25Score": 0.316925,
+          "bm25Morphological": 19.173423,
+          "bm25Ngram": 14.223017,
+          "normalizedMorphological": 0.307589,
+          "normalizedNgram": 0.320927,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1342,7 +1767,7 @@
           "synonyms": []
         }
       ],
-      "top1": "anon-f8e0961922a25375",
+      "top1": "anon-a1e4d0de42dc44cf",
       "expected": [
         "anon-f8e0961922a25375",
         "anon-a1e4d0de42dc44cf"
@@ -1353,50 +1778,66 @@
       "recallAt5": 1,
       "ndcgAt5": 1,
       "sensitivity": {
-        "runnerUpId": "anon-a1e4d0de42dc44cf",
-        "finalScoreGap": 1.411172,
-        "finalScoreGapRatio": 0.054044,
-        "bm25ScoreGap": 2.239956,
+        "runnerUpId": "anon-f8e0961922a25375",
+        "finalScoreGap": 0.038173,
+        "finalScoreGapRatio": 0.062974,
+        "bm25ScoreGap": 0.060592,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 41.447257,
-        "runnerUpDecayToTie": 0.369996,
-        "winnerDecayToLose": 0.331085
+        "runnerUpBm25ToTie": 0.96217,
+        "runnerUpDecayToTie": 0.373522,
+        "winnerDecayToLose": 0.327959
       },
       "rankingDetails": [
         {
-          "documentId": "anon-f8e0961922a25375",
+          "documentId": "anon-a1e4d0de42dc44cf",
           "rank": 1,
-          "finalScore": 26.111772,
-          "bm25Score": 41.447257,
+          "finalScore": 0.606167,
+          "bm25Score": 0.96217,
+          "bm25Morphological": 56.483327,
+          "bm25Ngram": 39.207301,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 0.945956,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
             {
               "term": "backup",
-              "contribution": 13.055886
+              "contribution": 12.3503
             },
             {
               "term": "restore",
-              "contribution": 13.055886
+              "contribution": 12.3503
             }
           ],
           "isExpected": true
         },
         {
-          "documentId": "anon-a1e4d0de42dc44cf",
+          "documentId": "anon-f8e0961922a25375",
           "rank": 2,
-          "finalScore": 24.7006,
-          "bm25Score": 39.207301,
+          "finalScore": 0.567994,
+          "bm25Score": 0.901578,
+          "bm25Morphological": 37.952681,
+          "bm25Ngram": 41.447257,
+          "normalizedMorphological": 0.671927,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
             {
               "term": "backup",
-              "contribution": 12.3503
+              "contribution": 13.055886
             },
             {
               "term": "restore",
-              "contribution": 12.3503
+              "contribution": 13.055886
             }
           ],
           "isExpected": true
@@ -1431,20 +1872,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "anon-b4d7a50098a9e923",
-        "finalScoreGap": 21.552333,
-        "finalScoreGapRatio": 0.771912,
-        "bm25ScoreGap": 32.188344,
+        "finalScoreGap": 0.487728,
+        "finalScoreGapRatio": 0.774171,
+        "bm25ScoreGap": 0.729006,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 53.182312,
-        "runnerUpDecayToTie": 1.534495,
-        "winnerDecayToLose": 0.079831
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 1.54985,
+        "winnerDecayToLose": 0.07904
       },
       "rankingDetails": [
         {
           "documentId": "anon-818b67f999b44206",
           "rank": 1,
-          "finalScore": 27.920714,
-          "bm25Score": 44.318594,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 39.184438,
+          "bm25Ngram": 44.318594,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1462,8 +1911,16 @@
         {
           "documentId": "anon-b4d7a50098a9e923",
           "rank": 2,
-          "finalScore": 6.368381,
-          "bm25Score": 12.13025,
+          "finalScore": 0.142272,
+          "bm25Score": 0.270994,
+          "bm25Morphological": 10.370784,
+          "bm25Ngram": 12.13025,
+          "normalizedMorphological": 0.264666,
+          "normalizedNgram": 0.273706,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1506,20 +1963,28 @@
       "ndcgAt5": 0.9674679834891693,
       "sensitivity": {
         "runnerUpId": "anon-066f70e555b534d6",
-        "finalScoreGap": 2.595554,
-        "finalScoreGapRatio": 0.150726,
-        "bm25ScoreGap": 4.119928,
+        "finalScoreGap": 0.056059,
+        "finalScoreGapRatio": 0.090478,
+        "bm25ScoreGap": 0.088983,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 27.333802,
-        "runnerUpDecayToTie": 0.412117,
-        "winnerDecayToLose": 0.297246
+        "runnerUpBm25ToTie": 0.983475,
+        "runnerUpDecayToTie": 0.384818,
+        "winnerDecayToLose": 0.318333
       },
       "rankingDetails": [
         {
           "documentId": "anon-c175b8c79f910465",
           "rank": 1,
-          "finalScore": 17.220295,
-          "bm25Score": 27.333802,
+          "finalScore": 0.619589,
+          "bm25Score": 0.983474,
+          "bm25Morphological": 26.95044,
+          "bm25Ngram": 27.333802,
+          "normalizedMorphological": 0.944914,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1537,8 +2002,16 @@
         {
           "documentId": "anon-066f70e555b534d6",
           "rank": 2,
-          "finalScore": 14.624741,
-          "bm25Score": 23.213874,
+          "finalScore": 0.56353,
+          "bm25Score": 0.894491,
+          "bm25Morphological": 28.521565,
+          "bm25Ngram": 23.213874,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 0.849274,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1556,8 +2029,16 @@
         {
           "documentId": "anon-5f5ee445d308117c",
           "rank": 3,
-          "finalScore": 8.641391,
-          "bm25Score": 16.459792,
+          "finalScore": 0.296761,
+          "bm25Score": 0.56526,
+          "bm25Morphological": 13.665234,
+          "bm25Ngram": 16.459792,
+          "normalizedMorphological": 0.479119,
+          "normalizedNgram": 0.602177,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1571,8 +2052,16 @@
         {
           "documentId": "anon-cbe88a9b44e0fc8b",
           "rank": 4,
-          "finalScore": 4.327665,
-          "bm25Score": 8.243171,
+          "finalScore": 0.164886,
+          "bm25Score": 0.314069,
+          "bm25Morphological": 9.789301,
+          "bm25Ngram": 8.243171,
+          "normalizedMorphological": 0.343225,
+          "normalizedNgram": 0.301574,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1584,10 +2073,18 @@
           "isExpected": true
         },
         {
-          "documentId": "anon-afa29b53576888e0",
+          "documentId": "anon-703a36248a9070b6",
           "rank": 5,
-          "finalScore": 3.517503,
-          "bm25Score": 6.700006,
+          "finalScore": 0.150801,
+          "bm25Score": 0.28724,
+          "bm25Morphological": 10.995725,
+          "bm25Ngram": 6.700006,
+          "normalizedMorphological": 0.385523,
+          "normalizedNgram": 0.245118,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1628,20 +2125,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "anon-f8e0961922a25375",
-        "finalScoreGap": 17.033578,
-        "finalScoreGapRatio": 0.709195,
-        "bm25ScoreGap": 24.820092,
+        "finalScoreGap": 0.447454,
+        "finalScoreGapRatio": 0.710244,
+        "bm25ScoreGap": 0.652294,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 45.748912,
-        "runnerUpDecayToTie": 1.203557,
-        "winnerDecayToLose": 0.101782
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 1.207917,
+        "winnerDecayToLose": 0.101414
       },
       "rankingDetails": [
         {
           "documentId": "anon-1e1c862b8d1710c9",
           "rank": 1,
-          "finalScore": 24.018179,
-          "bm25Score": 38.124094,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 51.509333,
+          "bm25Ngram": 38.124094,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1659,8 +2164,16 @@
         {
           "documentId": "anon-f8e0961922a25375",
           "rank": 2,
-          "finalScore": 6.984601,
-          "bm25Score": 13.304002,
+          "finalScore": 0.182546,
+          "bm25Score": 0.347706,
+          "bm25Morphological": 17.75869,
+          "bm25Ngram": 13.304002,
+          "normalizedMorphological": 0.344766,
+          "normalizedNgram": 0.348966,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1672,10 +2185,18 @@
           "isExpected": false
         },
         {
-          "documentId": "anon-5f5ee445d308117c",
+          "documentId": "anon-a1e4d0de42dc44cf",
           "rank": 3,
-          "finalScore": 6.607129,
-          "bm25Score": 12.585007,
+          "finalScore": 0.165268,
+          "bm25Score": 0.314796,
+          "bm25Morphological": 14.374865,
+          "bm25Ngram": 12.585007,
+          "normalizedMorphological": 0.279073,
+          "normalizedNgram": 0.330106,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1687,10 +2208,18 @@
           "isExpected": false
         },
         {
-          "documentId": "anon-a1e4d0de42dc44cf",
+          "documentId": "anon-5f5ee445d308117c",
           "rank": 4,
-          "finalScore": 6.607129,
-          "bm25Score": 12.585007,
+          "finalScore": 0.153262,
+          "bm25Score": 0.291927,
+          "bm25Morphological": 10.448313,
+          "bm25Ngram": 12.585007,
+          "normalizedMorphological": 0.202843,
+          "normalizedNgram": 0.330106,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1704,8 +2233,16 @@
         {
           "documentId": "anon-54a7852ffd299f21",
           "rank": 5,
-          "finalScore": 2.810243,
-          "bm25Score": 5.352843,
+          "finalScore": 0.075227,
+          "bm25Score": 0.14329,
+          "bm25Morphological": 7.727428,
+          "bm25Ngram": 5.352843,
+          "normalizedMorphological": 0.15002,
+          "normalizedNgram": 0.140406,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1746,20 +2283,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "anon-c175b8c79f910465",
-        "finalScoreGap": 15.34126,
-        "finalScoreGapRatio": 0.651932,
-        "bm25ScoreGap": 21.75097,
+        "finalScoreGap": 0.405836,
+        "finalScoreGapRatio": 0.644184,
+        "bm25ScoreGap": 0.573021,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 44.822869,
-        "runnerUpDecayToTie": 1.00555,
-        "winnerDecayToLose": 0.121824
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 0.983655,
+        "winnerDecayToLose": 0.124536
       },
       "rankingDetails": [
         {
           "documentId": "anon-7f113a889802baa7",
           "rank": 1,
-          "finalScore": 23.532006,
-          "bm25Score": 37.35239,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 43.815105,
+          "bm25Ngram": 37.35239,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1777,8 +2322,16 @@
         {
           "documentId": "anon-c175b8c79f910465",
           "rank": 2,
-          "finalScore": 8.190746,
-          "bm25Score": 15.60142,
+          "finalScore": 0.224164,
+          "bm25Score": 0.426979,
+          "bm25Morphological": 19.658564,
+          "bm25Ngram": 15.60142,
+          "normalizedMorphological": 0.448671,
+          "normalizedNgram": 0.417682,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1790,25 +2343,18 @@
           "isExpected": false
         },
         {
-          "documentId": "anon-9e6476b2517b4898",
-          "rank": 3,
-          "finalScore": 5.744084,
-          "bm25Score": 10.941112,
-          "contextBonus": 1.5,
-          "timeDecayFactor": 0.35,
-          "matchedTerms": [
-            {
-              "term": "security",
-              "contribution": 5.744084
-            }
-          ],
-          "isExpected": false
-        },
-        {
           "documentId": "anon-48e8f046eb0314ab",
-          "rank": 4,
-          "finalScore": 5.428767,
-          "bm25Score": 10.340508,
+          "rank": 3,
+          "finalScore": 0.16276,
+          "bm25Score": 0.310019,
+          "bm25Morphological": 16.975948,
+          "bm25Ngram": 10.340508,
+          "normalizedMorphological": 0.387445,
+          "normalizedNgram": 0.276837,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1818,16 +2364,4325 @@
             }
           ],
           "isExpected": false
+        },
+        {
+          "documentId": "anon-9e6476b2517b4898",
+          "rank": 4,
+          "finalScore": 0.150618,
+          "bm25Score": 0.286891,
+          "bm25Morphological": 11.954127,
+          "bm25Ngram": 10.941112,
+          "normalizedMorphological": 0.272831,
+          "normalizedNgram": 0.292916,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 5.744084
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-agent-coding",
+      "kind": "ambiguous-topic",
+      "query": "agent coding",
+      "rawQuery": "agent coding",
+      "parsedKeywords": [
+        {
+          "term": "agent",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "coding",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-dba5e688c6ccdeae",
+      "expected": [
+        "anon-095beb091817ee25",
+        "anon-114dfd8cc491a974",
+        "anon-83be1869a044b841",
+        "anon-a8ea8e0608224f56"
+      ],
+      "precisionAt1": 0,
+      "rPrecision": 0.25,
+      "reciprocalRank": 0.5,
+      "recallAt5": 0.25,
+      "ndcgAt5": 0.24630238874073,
+      "sensitivity": {
+        "runnerUpId": "anon-a8ea8e0608224f56",
+        "finalScoreGap": 0.276293,
+        "finalScoreGapRatio": 0.43856,
+        "bm25ScoreGap": 0.326273,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 0.623398,
+        "winnerDecayToLose": 0.196504
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-dba5e688c6ccdeae",
+          "rank": 1,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 34.5408,
+          "bm25Ngram": 21.398208,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "agent",
+              "contribution": 6.740435
+            },
+            {
+              "term": "coding",
+              "contribution": 6.740435
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-a8ea8e0608224f56",
+          "rank": 2,
+          "finalScore": 0.353707,
+          "bm25Score": 0.673727,
+          "bm25Morphological": 22.709361,
+          "bm25Ngram": 14.56569,
+          "normalizedMorphological": 0.657465,
+          "normalizedNgram": 0.680697,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "agent",
+              "contribution": 7.646987
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-96820a91571db08b",
+          "rank": 3,
+          "finalScore": 0.265904,
+          "bm25Score": 0.506483,
+          "bm25Morphological": 13.525159,
+          "bm25Ngram": 11.89165,
+          "normalizedMorphological": 0.391571,
+          "normalizedNgram": 0.555731,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "coding",
+              "contribution": 6.243116
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-webassembly",
+      "kind": "clear-positive",
+      "query": "webassembly component",
+      "rawQuery": "webassembly component",
+      "parsedKeywords": [
+        {
+          "term": "webassembly",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "component",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-867b585c1cceeee6",
+      "expected": [
+        "anon-867b585c1cceeee6"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": null,
+      "rankingDetails": [
+        {
+          "documentId": "anon-867b585c1cceeee6",
+          "rank": 1,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 54.32644,
+          "bm25Ngram": 37.326388,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "webassembly",
+              "contribution": 11.757812
+            },
+            {
+              "term": "component",
+              "contribution": 11.757812
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-container-linux",
+      "kind": "ambiguous-topic",
+      "query": "linux container",
+      "rawQuery": "linux container",
+      "parsedKeywords": [
+        {
+          "term": "linux",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "container",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-4eedb18cff407cb0",
+      "expected": [
+        "anon-4eedb18cff407cb0",
+        "anon-6e9928c2d3fd55a0",
+        "anon-23fa60b7577d1c72"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.6666666666666666,
+      "reciprocalRank": 1,
+      "recallAt5": 0.6666666666666666,
+      "ndcgAt5": 0.7039180890341347,
+      "sensitivity": {
+        "runnerUpId": "anon-6745c15f6637e2f3",
+        "finalScoreGap": 0.401923,
+        "finalScoreGapRatio": 0.637973,
+        "bm25ScoreGap": 0.565567,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 0.966777,
+        "winnerDecayToLose": 0.126709
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-4eedb18cff407cb0",
+          "rank": 1,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 46.145961,
+          "bm25Ngram": 29.641018,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "linux",
+              "contribution": 7.464955
+            },
+            {
+              "term": "container",
+              "contribution": 11.208886
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-6745c15f6637e2f3",
+          "rank": 2,
+          "finalScore": 0.228077,
+          "bm25Score": 0.434433,
+          "bm25Morphological": 25.080456,
+          "bm25Ngram": 11.491474,
+          "normalizedMorphological": 0.543503,
+          "normalizedNgram": 0.387688,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "linux",
+              "contribution": 6.033024
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-6e9928c2d3fd55a0",
+          "rank": 3,
+          "finalScore": 0.22438,
+          "bm25Score": 0.42739,
+          "bm25Morphological": 21.315185,
+          "bm25Ngram": 12.229775,
+          "normalizedMorphological": 0.461908,
+          "normalizedNgram": 0.412596,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "linux",
+              "contribution": 6.420632
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-cloudflare-limits",
+      "kind": "clear-positive",
+      "query": "cloudflare ai limits",
+      "rawQuery": "cloudflare ai limits",
+      "parsedKeywords": [
+        {
+          "term": "cloudflare",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "ai",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "limits",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-afa29b53576888e0",
+      "expected": [
+        "anon-afa29b53576888e0"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-c649aaf312877b1b",
+        "finalScoreGap": 0.394567,
+        "finalScoreGapRatio": 0.626297,
+        "bm25ScoreGap": 0.579584,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.125,
+        "runnerUpDecayToTie": 0.936572,
+        "winnerDecayToLose": 0.130796
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-afa29b53576888e0",
+          "rank": 1,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 50.527527,
+          "bm25Ngram": 34.940842,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "cloudflare",
+              "contribution": 8.163695
+            },
+            {
+              "term": "ai",
+              "contribution": 1.590967
+            },
+            {
+              "term": "limits",
+              "contribution": 12.258068
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-c649aaf312877b1b",
+          "rank": 2,
+          "finalScore": 0.235433,
+          "bm25Score": 0.420416,
+          "bm25Morphological": 27.728346,
+          "bm25Ngram": 12.767515,
+          "normalizedMorphological": 0.548777,
+          "normalizedNgram": 0.365404,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "cloudflare",
+              "contribution": 5.983688
+            },
+            {
+              "term": "ai",
+              "contribution": 1.166121
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-4bca7ed24cdfe8e6",
+          "rank": 3,
+          "finalScore": 0.20008,
+          "bm25Score": 0.408327,
+          "bm25Morphological": 23.105774,
+          "bm25Ngram": 13.534076,
+          "normalizedMorphological": 0.457291,
+          "normalizedNgram": 0.387343,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "cloudflare",
+              "contribution": 6.631697
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-327eb960ae6e55d1",
+          "rank": 4,
+          "finalScore": 0.042613,
+          "bm25Score": 0.086966,
+          "bm25Morphological": 3.939466,
+          "bm25Ngram": 3.173437,
+          "normalizedMorphological": 0.077967,
+          "normalizedNgram": 0.090823,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 1.554984
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-97bc38a9a9db4722",
+          "rank": 5,
+          "finalScore": 0.0371,
+          "bm25Score": 0.075715,
+          "bm25Morphological": 4.511715,
+          "bm25Ngram": 2.442218,
+          "normalizedMorphological": 0.089292,
+          "normalizedNgram": 0.069896,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 1.196687
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-ubuntu-sandbox-tools",
+      "kind": "clear-positive",
+      "query": "ubuntu sandbox",
+      "rawQuery": "ubuntu sandbox",
+      "parsedKeywords": [
+        {
+          "term": "ubuntu",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "sandbox",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-4580f9ec514b42b9",
+      "expected": [
+        "anon-4580f9ec514b42b9"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-6745c15f6637e2f3",
+        "finalScoreGap": 0.096073,
+        "finalScoreGapRatio": 0.182996,
+        "bm25ScoreGap": 0.182997,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1,
+        "runnerUpDecayToTie": 0.428395,
+        "winnerDecayToLose": 0.285951
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-4580f9ec514b42b9",
+          "rank": 1,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 20.405491,
+          "bm25Ngram": 12.429416,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ubuntu",
+              "contribution": 6.525443
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-6745c15f6637e2f3",
+          "rank": 2,
+          "finalScore": 0.428927,
+          "bm25Score": 0.817003,
+          "bm25Morphological": 11.551307,
+          "bm25Ngram": 11.491474,
+          "normalizedMorphological": 0.566088,
+          "normalizedNgram": 0.924539,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ubuntu",
+              "contribution": 6.033024
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-98c8a08e57ac9f39",
+          "rank": 3,
+          "finalScore": 0.424477,
+          "bm25Score": 0.808528,
+          "bm25Morphological": 15.450856,
+          "bm25Ngram": 10.322992,
+          "normalizedMorphological": 0.757191,
+          "normalizedNgram": 0.830529,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ubuntu",
+              "contribution": 5.419571
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-rust-bundler",
+      "kind": "clear-positive",
+      "query": "rust javascript bundler",
+      "rawQuery": "rust javascript bundler",
+      "parsedKeywords": [
+        {
+          "term": "rust",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "javascript",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "bundler",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-80265033e8c6593e",
+      "expected": [
+        "anon-80265033e8c6593e"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-e3912755d2ee67ee",
+        "finalScoreGap": 0.285818,
+        "finalScoreGapRatio": 0.510389,
+        "bm25ScoreGap": 0.440445,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.142857,
+        "runnerUpDecayToTie": 0.714854,
+        "winnerDecayToLose": 0.171364
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-80265033e8c6593e",
+          "rank": 1,
+          "finalScore": 0.56,
+          "bm25Score": 1,
+          "bm25Morphological": 28.426396,
+          "bm25Ngram": 23.998924,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "rust",
+              "contribution": 7.781814
+            },
+            {
+              "term": "javascript",
+              "contribution": 5.657584
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-e3912755d2ee67ee",
+          "rank": 2,
+          "finalScore": 0.274182,
+          "bm25Score": 0.559555,
+          "bm25Morphological": 15.193999,
+          "bm25Ngram": 13.686372,
+          "normalizedMorphological": 0.534503,
+          "normalizedNgram": 0.570291,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "rust",
+              "contribution": 6.706322
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-4bca7ed24cdfe8e6",
+          "rank": 3,
+          "finalScore": 0.221057,
+          "bm25Score": 0.451137,
+          "bm25Morphological": 10.358241,
+          "bm25Ngram": 11.719022,
+          "normalizedMorphological": 0.364388,
+          "normalizedNgram": 0.488314,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "javascript",
+              "contribution": 5.742321
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-ed00901641eb9fa3",
+          "rank": 4,
+          "finalScore": 0.181572,
+          "bm25Score": 0.370555,
+          "bm25Morphological": 13.61348,
+          "bm25Ngram": 7.778531,
+          "normalizedMorphological": 0.478903,
+          "normalizedNgram": 0.32412,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "javascript",
+              "contribution": 3.81148
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-4eff09e60730a829",
+          "rank": 5,
+          "finalScore": 0.181112,
+          "bm25Score": 0.369616,
+          "bm25Morphological": 13.005,
+          "bm25Ngram": 7.966511,
+          "normalizedMorphological": 0.457497,
+          "normalizedNgram": 0.331953,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "javascript",
+              "contribution": 3.90359
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-local-llm",
+      "kind": "clear-positive",
+      "query": "local llm analysis",
+      "rawQuery": "local llm analysis",
+      "parsedKeywords": [
+        {
+          "term": "local",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "llm",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "analysis",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-dba5e688c6ccdeae",
+      "expected": [
+        "anon-dba5e688c6ccdeae"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-a1e4d0de42dc44cf",
+        "finalScoreGap": 0.348284,
+        "finalScoreGapRatio": 0.585351,
+        "bm25ScoreGap": 0.496498,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.214286,
+        "runnerUpDecayToTie": 0.844088,
+        "winnerDecayToLose": 0.145127
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-dba5e688c6ccdeae",
+          "rank": 1,
+          "finalScore": 0.595,
+          "bm25Score": 1,
+          "bm25Morphological": 32.796582,
+          "bm25Ngram": 28.135762,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.7,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "local",
+              "contribution": 4.628226
+            },
+            {
+              "term": "llm",
+              "contribution": 4.086776
+            },
+            {
+              "term": "analysis",
+              "contribution": 8.025776
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-a1e4d0de42dc44cf",
+          "rank": 2,
+          "finalScore": 0.246716,
+          "bm25Score": 0.503502,
+          "bm25Morphological": 16.279365,
+          "bm25Ngram": 14.252371,
+          "normalizedMorphological": 0.496374,
+          "normalizedNgram": 0.506557,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "local",
+              "contribution": 6.983662
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-f8e0961922a25375",
+          "rank": 3,
+          "finalScore": 0.245513,
+          "bm25Score": 0.501047,
+          "bm25Morphological": 13.7963,
+          "bm25Ngram": 15.066624,
+          "normalizedMorphological": 0.420663,
+          "normalizedNgram": 0.535497,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "local",
+              "contribution": 7.382646
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-f8418e969864c8e8",
+          "rank": 4,
+          "finalScore": 0.219758,
+          "bm25Score": 0.448486,
+          "bm25Morphological": 11.482372,
+          "bm25Ngram": 13.804737,
+          "normalizedMorphological": 0.350109,
+          "normalizedNgram": 0.490647,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "local",
+              "contribution": 6.764321
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-a8ea8e0608224f56",
+          "rank": 5,
+          "finalScore": 0.161797,
+          "bm25Score": 0.330199,
+          "bm25Morphological": 10.665176,
+          "bm25Ngram": 9.350774,
+          "normalizedMorphological": 0.325192,
+          "normalizedNgram": 0.332345,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "llm",
+              "contribution": 4.581879
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-docker-kubernetes",
+      "kind": "clear-positive",
+      "query": "docker kubernetes runtime",
+      "rawQuery": "docker kubernetes runtime",
+      "parsedKeywords": [
+        {
+          "term": "docker",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "kubernetes",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "runtime",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-23fa60b7577d1c72",
+      "expected": [
+        "anon-23fa60b7577d1c72"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-5f5ee445d308117c",
+        "finalScoreGap": 0.217923,
+        "finalScoreGapRatio": 0.389148,
+        "bm25ScoreGap": 0.301883,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.142857,
+        "runnerUpDecayToTie": 0.57297,
+        "winnerDecayToLose": 0.213798
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-23fa60b7577d1c72",
+          "rank": 1,
+          "finalScore": 0.56,
+          "bm25Score": 1,
+          "bm25Morphological": 38.346845,
+          "bm25Ngram": 28.446033,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "docker",
+              "contribution": 7.964889
+            },
+            {
+              "term": "kubernetes",
+              "contribution": 7.964889
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 2,
+          "finalScore": 0.342077,
+          "bm25Score": 0.698117,
+          "bm25Morphological": 27.572727,
+          "bm25Ngram": 19.60365,
+          "normalizedMorphological": 0.719035,
+          "normalizedNgram": 0.689152,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "docker",
+              "contribution": 9.605789
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-f9968e413cd1f3a7",
+          "rank": 3,
+          "finalScore": 0.197361,
+          "bm25Score": 0.402778,
+          "bm25Morphological": 12.28012,
+          "bm25Ngram": 12.463686,
+          "normalizedMorphological": 0.320238,
+          "normalizedNgram": 0.438152,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "kubernetes",
+              "contribution": 6.107206
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-claude-loop",
+      "kind": "clear-positive",
+      "query": "claude code loop",
+      "rawQuery": "claude code loop",
+      "parsedKeywords": [
+        {
+          "term": "claude",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "code",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "loop",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-977f5accdd5e6888",
+      "expected": [
+        "anon-281b5171df5e3779"
+      ],
+      "precisionAt1": 0,
+      "rPrecision": 0,
+      "reciprocalRank": 0.25,
+      "recallAt5": 1,
+      "ndcgAt5": 0.43067655807339306,
+      "sensitivity": {
+        "runnerUpId": "anon-75145e5d4b0a3029",
+        "finalScoreGap": 0.022341,
+        "finalScoreGapRatio": 0.04024,
+        "bm25ScoreGap": 0.039895,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 0.991418,
+        "runnerUpDecayToTie": 0.364675,
+        "winnerDecayToLose": 0.335916
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-977f5accdd5e6888",
+          "rank": 1,
+          "finalScore": 0.555194,
+          "bm25Score": 0.991418,
+          "bm25Morphological": 18.771946,
+          "bm25Ngram": 14.735208,
+          "normalizedMorphological": 0.971392,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "claude",
+              "contribution": 4.472757
+            },
+            {
+              "term": "code",
+              "contribution": 3.778959
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-75145e5d4b0a3029",
+          "rank": 2,
+          "finalScore": 0.532853,
+          "bm25Score": 0.951523,
+          "bm25Morphological": 19.324785,
+          "bm25Ngram": 13.714747,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 0.930747,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "claude",
+              "contribution": 4.163004
+            },
+            {
+              "term": "code",
+              "contribution": 3.517254
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-114dfd8cc491a974",
+          "rank": 3,
+          "finalScore": 0.481375,
+          "bm25Score": 0.859598,
+          "bm25Morphological": 15.475571,
+          "bm25Ngram": 13.037576,
+          "normalizedMorphological": 0.800815,
+          "normalizedNgram": 0.884791,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "claude",
+              "contribution": 3.957454
+            },
+            {
+              "term": "code",
+              "contribution": 3.343588
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-281b5171df5e3779",
+          "rank": 4,
+          "finalScore": 0.42598,
+          "bm25Score": 0.760679,
+          "bm25Morphological": 16.356608,
+          "bm25Ngram": 10.667395,
+          "normalizedMorphological": 0.846406,
+          "normalizedNgram": 0.723939,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "claude",
+              "contribution": 3.238004
+            },
+            {
+              "term": "code",
+              "contribution": 2.735737
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-83be1869a044b841",
+          "rank": 5,
+          "finalScore": 0.412756,
+          "bm25Score": 0.737064,
+          "bm25Morphological": 10.894105,
+          "bm25Ngram": 11.955358,
+          "normalizedMorphological": 0.563737,
+          "normalizedNgram": 0.811346,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "claude",
+              "contribution": 3.628956
+            },
+            {
+              "term": "code",
+              "contribution": 3.066045
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-pageindex",
+      "kind": "specialized-term",
+      "query": "pageindex reasoning",
+      "rawQuery": "pageindex reasoning",
+      "parsedKeywords": [
+        {
+          "term": "pageindex",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "reasoning",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-7023e82ca3ee1478",
+      "expected": [
+        "anon-7023e82ca3ee1478"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": null,
+      "rankingDetails": [
+        {
+          "documentId": "anon-7023e82ca3ee1478",
+          "rank": 1,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 27.076937,
+          "bm25Ngram": 13.254138,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "pageindex",
+              "contribution": 6.958422
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-copilot-alternatives",
+      "kind": "ambiguous-topic",
+      "query": "github copilot alternative",
+      "rawQuery": "github copilot alternative",
+      "parsedKeywords": [
+        {
+          "term": "github",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "copilot",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "alternative",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-cb35d5e9791ceb4f",
+      "expected": [
+        "anon-a8d8ed61b0afc030",
+        "anon-c5b36e79d7bcd29c"
+      ],
+      "precisionAt1": 0,
+      "rPrecision": 0.5,
+      "reciprocalRank": 0.5,
+      "recallAt5": 1,
+      "ndcgAt5": 0.6509209298071326,
+      "sensitivity": {
+        "runnerUpId": "anon-a8d8ed61b0afc030",
+        "finalScoreGap": 0.010466,
+        "finalScoreGapRatio": 0.020644,
+        "bm25ScoreGap": 0.01869,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 0.905307,
+        "runnerUpDecayToTie": 0.357378,
+        "winnerDecayToLose": 0.342775
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-cb35d5e9791ceb4f",
+          "rank": 1,
+          "finalScore": 0.506972,
+          "bm25Score": 0.905307,
+          "bm25Morphological": 16.39748,
+          "bm25Ngram": 15.655691,
+          "normalizedMorphological": 0.684358,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "github",
+              "contribution": 3.277836
+            },
+            {
+              "term": "copilot",
+              "contribution": 5.489351
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-a8d8ed61b0afc030",
+          "rank": 2,
+          "finalScore": 0.496506,
+          "bm25Score": 0.886617,
+          "bm25Morphological": 23.960395,
+          "bm25Ngram": 13.119851,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 0.838024,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "github",
+              "contribution": 2.746906
+            },
+            {
+              "term": "copilot",
+              "contribution": 4.60021
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-51c91ff6ed3d6187",
+          "rank": 3,
+          "finalScore": 0.491734,
+          "bm25Score": 0.878096,
+          "bm25Morphological": 15.443813,
+          "bm25Ngram": 15.314157,
+          "normalizedMorphological": 0.644556,
+          "normalizedNgram": 0.978185,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "github",
+              "contribution": 3.206329
+            },
+            {
+              "term": "copilot",
+              "contribution": 5.369599
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-c5b36e79d7bcd29c",
+          "rank": 4,
+          "finalScore": 0.488827,
+          "bm25Score": 0.872905,
+          "bm25Morphological": 23.724808,
+          "bm25Ngram": 12.879146,
+          "normalizedMorphological": 0.990168,
+          "normalizedNgram": 0.82265,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "github",
+              "contribution": 2.69651
+            },
+            {
+              "term": "copilot",
+              "contribution": 4.515812
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 5,
+          "finalScore": 0.229804,
+          "bm25Score": 0.468987,
+          "bm25Morphological": 7.065551,
+          "bm25Ngram": 8.510465,
+          "normalizedMorphological": 0.294885,
+          "normalizedNgram": 0.543602,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "github",
+              "contribution": 4.170128
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-llm-context",
+      "kind": "specialized-term",
+      "query": "llm long text middle",
+      "rawQuery": "llm long text middle",
+      "parsedKeywords": [
+        {
+          "term": "llm",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "long",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "text",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "middle",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-143a28eb854497a6",
+      "expected": [
+        "anon-143a28eb854497a6"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-7f113a889802baa7",
+        "finalScoreGap": 0.217519,
+        "finalScoreGapRatio": 0.398812,
+        "bm25ScoreGap": 0.306035,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.154322,
+        "runnerUpDecayToTie": 0.58218,
+        "winnerDecayToLose": 0.210416
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-143a28eb854497a6",
+          "rank": 1,
+          "finalScore": 0.545417,
+          "bm25Score": 1,
+          "bm25Morphological": 50.191107,
+          "bm25Ngram": 34.046775,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.558333,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "llm",
+              "contribution": 3.768442
+            },
+            {
+              "term": "long",
+              "contribution": 7.400618
+            },
+            {
+              "term": "middle",
+              "contribution": 7.400618
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-7f113a889802baa7",
+          "rank": 2,
+          "finalScore": 0.327898,
+          "bm25Score": 0.693965,
+          "bm25Morphological": 34.612767,
+          "bm25Ngram": 23.690681,
+          "normalizedMorphological": 0.68962,
+          "normalizedNgram": 0.695827,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "text",
+              "contribution": 11.193847
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-a8ea8e0608224f56",
+          "rank": 3,
+          "finalScore": 0.120959,
+          "bm25Score": 0.255999,
+          "bm25Morphological": 10.665176,
+          "bm25Ngram": 9.350774,
+          "normalizedMorphological": 0.212491,
+          "normalizedNgram": 0.274645,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "llm",
+              "contribution": 4.418241
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-fb0a92476de42ae9",
+          "rank": 4,
+          "finalScore": 0.114076,
+          "bm25Score": 0.24143,
+          "bm25Morphological": 12.091577,
+          "bm25Ngram": 8.227503,
+          "normalizedMorphological": 0.240911,
+          "normalizedNgram": 0.241653,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "llm",
+              "contribution": 3.887495
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-dba5e688c6ccdeae",
+          "rank": 5,
+          "finalScore": 0.089336,
+          "bm25Score": 0.189072,
+          "bm25Morphological": 8.006336,
+          "bm25Ngram": 6.868532,
+          "normalizedMorphological": 0.159517,
+          "normalizedNgram": 0.201738,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "llm",
+              "contribution": 3.245381
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-cvss-vulnerability",
+      "kind": "specialized-term",
+      "query": "cvss vulnerability",
+      "rawQuery": "cvss vulnerability",
+      "parsedKeywords": [
+        {
+          "term": "cvss",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "vulnerability",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-4b707fd40dd250bc",
+      "expected": [
+        "anon-4b707fd40dd250bc"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": null,
+      "rankingDetails": [
+        {
+          "documentId": "anon-4b707fd40dd250bc",
+          "rank": 1,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 32.797166,
+          "bm25Ngram": 19.29308,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "cvss",
+              "contribution": 10.128867
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-agent-business",
+      "kind": "ambiguous-topic",
+      "query": "ai agent business",
+      "rawQuery": "ai agent business",
+      "parsedKeywords": [
+        {
+          "term": "ai",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "agent",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "business",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-a8ea8e0608224f56",
+      "expected": [
+        "anon-83be1869a044b841",
+        "anon-a8ea8e0608224f56"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.5,
+      "reciprocalRank": 1,
+      "recallAt5": 0.5,
+      "ndcgAt5": 0.6131471927654584,
+      "sensitivity": {
+        "runnerUpId": "anon-b144293c0c8c9c15",
+        "finalScoreGap": 0.077156,
+        "finalScoreGapRatio": 0.147245,
+        "bm25ScoreGap": 0.023788,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.069382,
+        "runnerUpDecayToTie": 0.410435,
+        "winnerDecayToLose": 0.298465
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-a8ea8e0608224f56",
+          "rank": 1,
+          "finalScore": 0.523997,
+          "bm25Score": 0.935708,
+          "bm25Morphological": 25.427762,
+          "bm25Ngram": 16.949069,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 0.908155,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 1.334692
+            },
+            {
+              "term": "agent",
+              "contribution": 8.156787
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-b144293c0c8c9c15",
+          "rank": 2,
+          "finalScore": 0.446841,
+          "bm25Score": 0.91192,
+          "bm25Morphological": 17.962158,
+          "bm25Ngram": 18.663194,
+          "normalizedMorphological": 0.706399,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "business",
+              "contribution": 9.144965
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-dba5e688c6ccdeae",
+          "rank": 3,
+          "finalScore": 0.427315,
+          "bm25Score": 0.763062,
+          "bm25Morphological": 25.09786,
+          "bm25Ngram": 12.449794,
+          "normalizedMorphological": 0.987026,
+          "normalizedNgram": 0.667077,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 0.980387
+            },
+            {
+              "term": "agent",
+              "contribution": 5.991498
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-327eb960ae6e55d1",
+          "rank": 4,
+          "finalScore": 0.081097,
+          "bm25Score": 0.165504,
+          "bm25Morphological": 3.939466,
+          "bm25Ngram": 3.173437,
+          "normalizedMorphological": 0.154928,
+          "normalizedNgram": 0.170037,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 1.554984
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-afa29b53576888e0",
+          "rank": 5,
+          "finalScore": 0.073377,
+          "bm25Score": 0.149749,
+          "bm25Morphological": 4.664368,
+          "bm25Ngram": 2.525345,
+          "normalizedMorphological": 0.183436,
+          "normalizedNgram": 0.135312,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ai",
+              "contribution": 1.237419
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-openapi-docs",
+      "kind": "specialized-term",
+      "query": "openapi api documentation",
+      "rawQuery": "openapi api documentation",
+      "parsedKeywords": [
+        {
+          "term": "openapi",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "api",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "documentation",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-703a36248a9070b6",
+      "expected": [
+        "anon-703a36248a9070b6"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-c175b8c79f910465",
+        "finalScoreGap": 0.393407,
+        "finalScoreGapRatio": 0.702513,
+        "bm25ScoreGap": 0.660014,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.142857,
+        "runnerUpDecayToTie": 1.176519,
+        "winnerDecayToLose": 0.104121
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-703a36248a9070b6",
+          "rank": 1,
+          "finalScore": 0.56,
+          "bm25Score": 1,
+          "bm25Morphological": 38.836242,
+          "bm25Ngram": 26.157256,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "openapi",
+              "contribution": 10.896061
+            },
+            {
+              "term": "api",
+              "contribution": 3.752003
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 2,
+          "finalScore": 0.166593,
+          "bm25Score": 0.339986,
+          "bm25Morphological": 11.738645,
+          "bm25Ngram": 9.316018,
+          "normalizedMorphological": 0.30226,
+          "normalizedNgram": 0.356154,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 4.564849
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-cbe88a9b44e0fc8b",
+          "rank": 3,
+          "finalScore": 0.145146,
+          "bm25Score": 0.296217,
+          "bm25Morphological": 9.789301,
+          "bm25Ngram": 8.243171,
+          "normalizedMorphological": 0.252066,
+          "normalizedNgram": 0.315139,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 4.039154
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-066f70e555b534d6",
+          "rank": 4,
+          "finalScore": 0.140543,
+          "bm25Score": 0.286822,
+          "bm25Morphological": 9.720836,
+          "bm25Ngram": 7.911847,
+          "normalizedMorphological": 0.250303,
+          "normalizedNgram": 0.302472,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 3.876805
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-afa29b53576888e0",
+          "rank": 5,
+          "finalScore": 0.108841,
+          "bm25Score": 0.222124,
+          "bm25Morphological": 5.543761,
+          "bm25Ngram": 6.700006,
+          "normalizedMorphological": 0.142747,
+          "normalizedNgram": 0.256143,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 3.283003
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-react-typescript",
+      "kind": "clear-positive",
+      "query": "react typescript personal development",
+      "rawQuery": "react typescript personal development",
+      "parsedKeywords": [
+        {
+          "term": "react",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "typescript",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "personal",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "development",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-d39913816ddff349",
+      "expected": [
+        "anon-d39913816ddff349"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-51c91ff6ed3d6187",
+        "finalScoreGap": 0.278534,
+        "finalScoreGapRatio": 0.530541,
+        "bm25ScoreGap": 0.478379,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.111111,
+        "runnerUpDecayToTie": 0.745539,
+        "winnerDecayToLose": 0.164311
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-d39913816ddff349",
+          "rank": 1,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 31.612829,
+          "bm25Ngram": 30.349467,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "react",
+              "contribution": 6.369479
+            },
+            {
+              "term": "typescript",
+              "contribution": 9.563991
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-51c91ff6ed3d6187",
+          "rank": 2,
+          "finalScore": 0.246466,
+          "bm25Score": 0.521621,
+          "bm25Morphological": 22.911649,
+          "bm25Ngram": 13.188751,
+          "normalizedMorphological": 0.724758,
+          "normalizedNgram": 0.434563,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "development",
+              "contribution": 6.231685
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-4580f9ec514b42b9",
+          "rank": 3,
+          "finalScore": 0.227572,
+          "bm25Score": 0.481633,
+          "bm25Morphological": 14.773342,
+          "bm25Ngram": 14.803463,
+          "normalizedMorphological": 0.467321,
+          "normalizedNgram": 0.487767,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "development",
+              "contribution": 6.994636
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-89e936371098867a",
+          "rank": 4,
+          "finalScore": 0.18312,
+          "bm25Score": 0.387555,
+          "bm25Morphological": 13.5277,
+          "bm25Ngram": 11.237084,
+          "normalizedMorphological": 0.427918,
+          "normalizedNgram": 0.370256,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "react",
+              "contribution": 5.309522
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-ed00901641eb9fa3",
+          "rank": 5,
+          "finalScore": 0.145596,
+          "bm25Score": 0.308141,
+          "bm25Morphological": 10.63714,
+          "bm25Ngram": 8.983277,
+          "normalizedMorphological": 0.336482,
+          "normalizedNgram": 0.295995,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "react",
+              "contribution": 4.244599
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-qwen-vram",
+      "kind": "specialized-term",
+      "query": "qwen vram gpu",
+      "rawQuery": "qwen vram gpu",
+      "parsedKeywords": [
+        {
+          "term": "qwen",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "vram",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "gpu",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-d95014df6469a75c",
+      "expected": [
+        "anon-d95014df6469a75c"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": null,
+      "rankingDetails": [
+        {
+          "documentId": "anon-d95014df6469a75c",
+          "rank": 1,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 67.47282,
+          "bm25Ngram": 57.394967,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "qwen",
+              "contribution": 12.052943
+            },
+            {
+              "term": "vram",
+              "contribution": 12.052943
+            },
+            {
+              "term": "gpu",
+              "contribution": 12.052943
+            }
+          ],
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "case": "manual-aws-bastion",
+      "kind": "clear-positive",
+      "query": "aws bastion server",
+      "rawQuery": "aws bastion server",
+      "parsedKeywords": [
+        {
+          "term": "aws",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "bastion",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "server",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-881ee4b462cee68e",
+      "expected": [
+        "anon-881ee4b462cee68e"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-cf863db60c511435",
+        "finalScoreGap": 0.364489,
+        "finalScoreGapRatio": 0.650873,
+        "bm25ScoreGap": 0.600998,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.142857,
+        "runnerUpDecayToTie": 1.002501,
+        "winnerDecayToLose": 0.122194
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-881ee4b462cee68e",
+          "rank": 1,
+          "finalScore": 0.56,
+          "bm25Score": 1,
+          "bm25Morphological": 49.451659,
+          "bm25Ngram": 32.14199,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "aws",
+              "contribution": 7.19539
+            },
+            {
+              "term": "bastion",
+              "contribution": 10.804125
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-cf863db60c511435",
+          "rank": 2,
+          "finalScore": 0.195511,
+          "bm25Score": 0.399002,
+          "bm25Morphological": 25.130829,
+          "bm25Ngram": 11.32062,
+          "normalizedMorphological": 0.50819,
+          "normalizedNgram": 0.352207,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "aws",
+              "contribution": 5.547104
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-af6bd8a03643fa66",
+          "rank": 3,
+          "finalScore": 0.193399,
+          "bm25Score": 0.394691,
+          "bm25Morphological": 18.541379,
+          "bm25Ngram": 12.958246,
+          "normalizedMorphological": 0.374939,
+          "normalizedNgram": 0.403156,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "aws",
+              "contribution": 6.34954
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-f6b27922f06ea61f",
+          "rank": 4,
+          "finalScore": 0.18927,
+          "bm25Score": 0.386266,
+          "bm25Morphological": 14.078011,
+          "bm25Ngram": 13.814675,
+          "normalizedMorphological": 0.284682,
+          "normalizedNgram": 0.429801,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "server",
+              "contribution": 6.769191
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-rag-security",
+      "kind": "specialized-term",
+      "query": "rag data security",
+      "rawQuery": "rag data security",
+      "parsedKeywords": [
+        {
+          "term": "rag",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "data",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "security",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-9e6476b2517b4898",
+      "expected": [
+        "anon-9e6476b2517b4898"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-f8e0961922a25375",
+        "finalScoreGap": 0.401534,
+        "finalScoreGapRatio": 0.637356,
+        "bm25ScoreGap": 0.533744,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.285714,
+        "runnerUpDecayToTie": 0.965135,
+        "winnerDecayToLose": 0.126926
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-9e6476b2517b4898",
+          "rank": 1,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 42.153742,
+          "bm25Ngram": 34.517906,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "rag",
+              "contribution": 6.8929
+            },
+            {
+              "term": "data",
+              "contribution": 7.96048
+            },
+            {
+              "term": "security",
+              "contribution": 6.8929
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-f8e0961922a25375",
+          "rank": 2,
+          "finalScore": 0.228466,
+          "bm25Score": 0.466256,
+          "bm25Morphological": 15.933085,
+          "bm25Ngram": 17.400158,
+          "normalizedMorphological": 0.377976,
+          "normalizedNgram": 0.504091,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "data",
+              "contribution": 8.526078
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 3,
+          "finalScore": 0.223583,
+          "bm25Score": 0.456293,
+          "bm25Morphological": 19.658564,
+          "bm25Ngram": 15.60142,
+          "normalizedMorphological": 0.466354,
+          "normalizedNgram": 0.45198,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 7.644696
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-c7414e47ebfec297",
+          "rank": 4,
+          "finalScore": 0.184929,
+          "bm25Score": 0.377407,
+          "bm25Morphological": 20.220237,
+          "bm25Ngram": 11.514355,
+          "normalizedMorphological": 0.479678,
+          "normalizedNgram": 0.333576,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "rag",
+              "contribution": 5.642034
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-7f113a889802baa7",
+          "rank": 5,
+          "finalScore": 0.176602,
+          "bm25Score": 0.360413,
+          "bm25Morphological": 11.713501,
+          "bm25Ngram": 13.661709,
+          "normalizedMorphological": 0.277876,
+          "normalizedNgram": 0.395786,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 6.694238
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-editor-comparison",
+      "kind": "comparison",
+      "query": "zed cursor vscode",
+      "rawQuery": "zed cursor vscode",
+      "parsedKeywords": [
+        {
+          "term": "zed",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "cursor",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "vscode",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-ca37d45252705b41",
+      "expected": [
+        "anon-ca37d45252705b41"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-a8d8ed61b0afc030",
+        "finalScoreGap": 0.391502,
+        "finalScoreGapRatio": 0.699111,
+        "bm25ScoreGap": 0.656127,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.142857,
+        "runnerUpDecayToTie": 1.16322,
+        "winnerDecayToLose": 0.105311
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-ca37d45252705b41",
+          "rank": 1,
+          "finalScore": 0.56,
+          "bm25Score": 1,
+          "bm25Morphological": 64.891314,
+          "bm25Ngram": 42.141897,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "zed",
+              "contribution": 11.799731
+            },
+            {
+              "term": "cursor",
+              "contribution": 11.799731
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-a8d8ed61b0afc030",
+          "rank": 2,
+          "finalScore": 0.168498,
+          "bm25Score": 0.343873,
+          "bm25Morphological": 23.19999,
+          "bm25Ngram": 14.24499,
+          "normalizedMorphological": 0.357521,
+          "normalizedNgram": 0.338024,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "vscode",
+              "contribution": 6.980045
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-laravel-local",
+      "kind": "clear-positive",
+      "query": "laravel local development",
+      "rawQuery": "laravel local development",
+      "parsedKeywords": [
+        {
+          "term": "laravel",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "local",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "development",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-d99d8ce0cf15a7d2",
+      "expected": [
+        "anon-d99d8ce0cf15a7d2"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-51c91ff6ed3d6187",
+        "finalScoreGap": 0.154874,
+        "finalScoreGapRatio": 0.316069,
+        "bm25ScoreGap": 0.31607,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1,
+        "runnerUpDecayToTie": 0.511748,
+        "winnerDecayToLose": 0.239376
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-d99d8ce0cf15a7d2",
+          "rank": 1,
+          "finalScore": 0.49,
+          "bm25Score": 1,
+          "bm25Morphological": 31.59899,
+          "bm25Ngram": 19.79412,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "laravel",
+              "contribution": 9.699119
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-51c91ff6ed3d6187",
+          "rank": 2,
+          "finalScore": 0.335126,
+          "bm25Score": 0.68393,
+          "bm25Morphological": 22.911649,
+          "bm25Ngram": 13.188751,
+          "normalizedMorphological": 0.725075,
+          "normalizedNgram": 0.666296,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "development",
+              "contribution": 6.462488
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-f8e0961922a25375",
+          "rank": 3,
+          "finalScore": 0.325261,
+          "bm25Score": 0.663798,
+          "bm25Morphological": 13.7963,
+          "bm25Ngram": 15.066624,
+          "normalizedMorphological": 0.436606,
+          "normalizedNgram": 0.761167,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "local",
+              "contribution": 7.382646
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-4580f9ec514b42b9",
+          "rank": 4,
+          "finalScore": 0.325246,
+          "bm25Score": 0.663768,
+          "bm25Morphological": 14.773342,
+          "bm25Ngram": 14.803463,
+          "normalizedMorphological": 0.467526,
+          "normalizedNgram": 0.747872,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "development",
+              "contribution": 7.253697
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-a1e4d0de42dc44cf",
+          "rank": 5,
+          "finalScore": 0.322703,
+          "bm25Score": 0.658577,
+          "bm25Morphological": 16.279365,
+          "bm25Ngram": 14.252371,
+          "normalizedMorphological": 0.515186,
+          "normalizedNgram": 0.720031,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "local",
+              "contribution": 6.983662
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-search-engine",
+      "kind": "clear-positive",
+      "query": "search engine saved cards",
+      "rawQuery": "search engine saved cards",
+      "parsedKeywords": [
+        {
+          "term": "search",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "engine",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "saved",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "cards",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-f8418e969864c8e8",
+      "expected": [
+        "anon-54a7852ffd299f21"
+      ],
+      "precisionAt1": 0,
+      "rPrecision": 0,
+      "reciprocalRank": 0.25,
+      "recallAt5": 1,
+      "ndcgAt5": 0.43067655807339306,
+      "sensitivity": {
+        "runnerUpId": "anon-818b67f999b44206",
+        "finalScoreGap": 0.264369,
+        "finalScoreGapRatio": 0.50356,
+        "bm25ScoreGap": 0.448399,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.111111,
+        "runnerUpDecayToTie": 0.705018,
+        "winnerDecayToLose": 0.173754
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-f8418e969864c8e8",
+          "rank": 1,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 30.735963,
+          "bm25Ngram": 28.132569,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 6.399614
+            },
+            {
+              "term": "cards",
+              "contribution": 8.369985
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-818b67f999b44206",
+          "rank": 2,
+          "finalScore": 0.260631,
+          "bm25Score": 0.551601,
+          "bm25Morphological": 14.552982,
+          "bm25Ngram": 16.459792,
+          "normalizedMorphological": 0.473484,
+          "normalizedNgram": 0.58508,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "cards",
+              "contribution": 7.777252
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-14afb4986e072aed",
+          "rank": 3,
+          "finalScore": 0.23709,
+          "bm25Score": 0.501777,
+          "bm25Morphological": 18.251062,
+          "bm25Ngram": 13.006766,
+          "normalizedMorphological": 0.593802,
+          "normalizedNgram": 0.462338,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 6.145697
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-54a7852ffd299f21",
+          "rank": 4,
+          "finalScore": 0.232092,
+          "bm25Score": 0.442079,
+          "bm25Morphological": 13.799455,
+          "bm25Ngram": 12.353769,
+          "normalizedMorphological": 0.448968,
+          "normalizedNgram": 0.439127,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 2.810243
+            },
+            {
+              "term": "cards",
+              "contribution": 3.675486
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-fd82501338adbd3b",
+          "rank": 5,
+          "finalScore": 0.207051,
+          "bm25Score": 0.438204,
+          "bm25Morphological": 13.820602,
+          "bm25Ngram": 12.189741,
+          "normalizedMorphological": 0.449656,
+          "normalizedNgram": 0.433296,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 5.759653
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-grouping-board",
+      "kind": "clear-positive",
+      "query": "grouping board search",
+      "rawQuery": "grouping board search",
+      "parsedKeywords": [
+        {
+          "term": "grouping",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "board",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "search",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-818b67f999b44206",
+      "expected": [
+        "anon-fd82501338adbd3b"
+      ],
+      "precisionAt1": 0,
+      "rPrecision": 0,
+      "reciprocalRank": 0.25,
+      "recallAt5": 1,
+      "ndcgAt5": 0.43067655807339306,
+      "sensitivity": {
+        "runnerUpId": "anon-14afb4986e072aed",
+        "finalScoreGap": 0.421133,
+        "finalScoreGapRatio": 0.752023,
+        "bm25ScoreGap": 0.716598,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.142857,
+        "runnerUpDecayToTie": 1.411423,
+        "winnerDecayToLose": 0.086792
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-818b67f999b44206",
+          "rank": 1,
+          "finalScore": 0.56,
+          "bm25Score": 1,
+          "bm25Morphological": 55.190748,
+          "bm25Ngram": 49.429886,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "grouping",
+              "contribution": 13.840368
+            },
+            {
+              "term": "board",
+              "contribution": 13.840368
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-14afb4986e072aed",
+          "rank": 2,
+          "finalScore": 0.138867,
+          "bm25Score": 0.283402,
+          "bm25Morphological": 18.251062,
+          "bm25Ngram": 13.006766,
+          "normalizedMorphological": 0.330691,
+          "normalizedNgram": 0.263136,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 6.373315
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-f8418e969864c8e8",
+          "rank": 3,
+          "finalScore": 0.131131,
+          "bm25Score": 0.267614,
+          "bm25Morphological": 17.47519,
+          "bm25Ngram": 12.189741,
+          "normalizedMorphological": 0.316633,
+          "normalizedNgram": 0.246607,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 5.972973
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-fd82501338adbd3b",
+          "rank": 4,
+          "finalScore": 0.121397,
+          "bm25Score": 0.247749,
+          "bm25Morphological": 13.820602,
+          "bm25Ngram": 12.189741,
+          "normalizedMorphological": 0.250415,
+          "normalizedNgram": 0.246607,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 5.972973
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-066f70e555b534d6",
+          "rank": 5,
+          "finalScore": 0.109015,
+          "bm25Score": 0.22248,
+          "bm25Morphological": 10.448313,
+          "bm25Ngram": 11.69979,
+          "normalizedMorphological": 0.189313,
+          "normalizedNgram": 0.236695,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "search",
+              "contribution": 5.732897
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-highlight-explanation",
+      "kind": "ambiguous-topic",
+      "query": "bm25 highlights explanation",
+      "rawQuery": "bm25 highlights explanation",
+      "parsedKeywords": [
+        {
+          "term": "bm25",
+          "weight": 1,
+          "synonyms": [
+            "ranking"
+          ]
+        },
+        {
+          "term": "highlights",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "explanation",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-14afb4986e072aed",
+      "expected": [
+        "anon-14afb4986e072aed",
+        "anon-f8418e969864c8e8"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-f8418e969864c8e8",
+        "finalScoreGap": 0.026182,
+        "finalScoreGapRatio": 0.048786,
+        "bm25ScoreGap": 0.048786,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.000001,
+        "runnerUpDecayToTie": 0.367951,
+        "winnerDecayToLose": 0.332925
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-14afb4986e072aed",
+          "rank": 1,
+          "finalScore": 0.536667,
+          "bm25Score": 1,
+          "bm25Morphological": 53.92478,
+          "bm25Ngram": 47.997397,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.533333,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "bm",
+              "contribution": 7.905104
+            },
+            {
+              "term": "highlights",
+              "contribution": 10.873201
+            },
+            {
+              "term": "25",
+              "contribution": 6.980298
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-f8418e969864c8e8",
+          "rank": 2,
+          "finalScore": 0.510485,
+          "bm25Score": 0.951214,
+          "bm25Morphological": 53.059247,
+          "bm25Ngram": 44.982423,
+          "normalizedMorphological": 0.983949,
+          "normalizedNgram": 0.937185,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.533333,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "bm",
+              "contribution": 7.408542
+            },
+            {
+              "term": "highlights",
+              "contribution": 10.190197
+            },
+            {
+              "term": "25",
+              "contribution": 6.541828
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-1a46090aaa5deec7",
+          "rank": 3,
+          "finalScore": 0.284634,
+          "bm25Score": 0.615056,
+          "bm25Morphological": 28.700328,
+          "bm25Ngram": 31.224885,
+          "normalizedMorphological": 0.532229,
+          "normalizedNgram": 0.650554,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.322222,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "bm",
+              "contribution": 7.673975
+            },
+            {
+              "term": "25",
+              "contribution": 6.776208
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-54a7852ffd299f21",
+          "rank": 4,
+          "finalScore": 0.119467,
+          "bm25Score": 0.258152,
+          "bm25Morphological": 16.478649,
+          "bm25Ngram": 11.414875,
+          "normalizedMorphological": 0.305586,
+          "normalizedNgram": 0.237823,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.322222,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "bm",
+              "contribution": 2.805374
+            },
+            {
+              "term": "25",
+              "contribution": 2.477177
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-4eedb18cff407cb0",
+          "rank": 5,
+          "finalScore": 0.076131,
+          "bm25Score": 0.181264,
+          "bm25Morphological": 8.832023,
+          "bm25Ngram": 9.05974,
+          "normalizedMorphological": 0.163784,
+          "normalizedNgram": 0.188755,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.2,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "25",
+              "contribution": 3.805091
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-api-security-tests",
+      "kind": "ambiguous-topic",
+      "query": "api security validation tests",
+      "rawQuery": "api security validation tests",
+      "parsedKeywords": [
+        {
+          "term": "api",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "security",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "validation",
+          "weight": 1,
+          "synonyms": [
+            "validate"
+          ]
+        },
+        {
+          "term": "tests",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-c175b8c79f910465",
+      "expected": [
+        "anon-c175b8c79f910465",
+        "anon-cbe88a9b44e0fc8b",
+        "anon-066f70e555b534d6"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-cbe88a9b44e0fc8b",
+        "finalScoreGap": 0.383349,
+        "finalScoreGapRatio": 0.629473,
+        "bm25ScoreGap": 0.544906,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.228235,
+        "runnerUpDecayToTie": 0.944601,
+        "winnerDecayToLose": 0.129684
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 1,
+          "finalScore": 0.609,
+          "bm25Score": 1,
+          "bm25Morphological": 70.684512,
+          "bm25Ngram": 64.394443,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.74,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 5.673455
+            },
+            {
+              "term": "security",
+              "contribution": 9.501265
+            },
+            {
+              "term": "validation",
+              "contribution": 13.068666
+            },
+            {
+              "term": "tests",
+              "contribution": 10.97283
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-cbe88a9b44e0fc8b",
+          "rank": 2,
+          "finalScore": 0.225651,
+          "bm25Score": 0.455094,
+          "bm25Morphological": 37.48127,
+          "bm25Ngram": 27.231116,
+          "normalizedMorphological": 0.530261,
+          "normalizedNgram": 0.42288,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.416667,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 4.087239
+            },
+            {
+              "term": "validation",
+              "contribution": 9.414856
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-066f70e555b534d6",
+          "rank": 3,
+          "finalScore": 0.196034,
+          "bm25Score": 0.373398,
+          "bm25Morphological": 28.521565,
+          "bm25Ngram": 23.213874,
+          "normalizedMorphological": 0.403505,
+          "normalizedNgram": 0.360495,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 4.15372
+            },
+            {
+              "term": "tests",
+              "contribution": 8.033564
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 4,
+          "finalScore": 0.111947,
+          "bm25Score": 0.236924,
+          "bm25Morphological": 13.665234,
+          "bm25Ngram": 16.459792,
+          "normalizedMorphological": 0.193327,
+          "normalizedNgram": 0.255609,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "tests",
+              "contribution": 7.777252
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-7f113a889802baa7",
+          "rank": 5,
+          "finalScore": 0.093661,
+          "bm25Score": 0.198224,
+          "bm25Morphological": 11.713501,
+          "bm25Ngram": 13.661709,
+          "normalizedMorphological": 0.165715,
+          "normalizedNgram": 0.212157,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "security",
+              "contribution": 6.455158
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-backup-workflow",
+      "kind": "ambiguous-topic",
+      "query": "sqlite backup restore workflow",
+      "rawQuery": "sqlite backup restore workflow",
+      "parsedKeywords": [
+        {
+          "term": "sqlite",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "backup",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "restore",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "workflow",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-a1e4d0de42dc44cf",
+      "expected": [
+        "anon-f8e0961922a25375",
+        "anon-a1e4d0de42dc44cf"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-f8e0961922a25375",
+        "finalScoreGap": 0.235076,
+        "finalScoreGapRatio": 0.373137,
+        "bm25ScoreGap": 0.316149,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.090909,
+        "runnerUpDecayToTie": 0.558335,
+        "winnerDecayToLose": 0.219402
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-a1e4d0de42dc44cf",
+          "rank": 1,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 91.377011,
+          "bm25Ngram": 76.507251,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 7.928554
+            },
+            {
+              "term": "backup",
+              "contribution": 12.3503
+            },
+            {
+              "term": "restore",
+              "contribution": 12.3503
+            },
+            {
+              "term": "workflow",
+              "contribution": 15.570414
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-f8e0961922a25375",
+          "rank": 2,
+          "finalScore": 0.394924,
+          "bm25Score": 0.683851,
+          "bm25Morphological": 55.711371,
+          "bm25Ngram": 54.751259,
+          "normalizedMorphological": 0.609687,
+          "normalizedNgram": 0.715635,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.65,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 7.683061
+            },
+            {
+              "term": "backup",
+              "contribution": 11.967895
+            },
+            {
+              "term": "restore",
+              "contribution": 11.967895
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-1e1c862b8d1710c9",
+          "rank": 3,
+          "finalScore": 0.083796,
+          "bm25Score": 0.177345,
+          "bm25Morphological": 18.170389,
+          "bm25Ngram": 12.863073,
+          "normalizedMorphological": 0.198851,
+          "normalizedNgram": 0.168129,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 6.077802
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 4,
+          "finalScore": 0.070615,
+          "bm25Score": 0.149449,
+          "bm25Morphological": 10.448313,
+          "bm25Ngram": 12.585007,
+          "normalizedMorphological": 0.114343,
+          "normalizedNgram": 0.164494,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 5.946416
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-54a7852ffd299f21",
+          "rank": 5,
+          "finalScore": 0.035128,
+          "bm25Score": 0.074346,
+          "bm25Morphological": 7.727428,
+          "bm25Ngram": 5.352843,
+          "normalizedMorphological": 0.084566,
+          "normalizedNgram": 0.069965,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 2.529218
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-json-sqlite-migration",
+      "kind": "specialized-term",
+      "query": "json sqlite migration",
+      "rawQuery": "json sqlite migration",
+      "parsedKeywords": [
+        {
+          "term": "json",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "sqlite",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "migration",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-1e1c862b8d1710c9",
+      "expected": [
+        "anon-1e1c862b8d1710c9"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-54a7852ffd299f21",
+        "finalScoreGap": 0.493382,
+        "finalScoreGapRatio": 0.783146,
+        "bm25ScoreGap": 0.756039,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.125,
+        "runnerUpDecayToTie": 1.613987,
+        "winnerDecayToLose": 0.075899
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-1e1c862b8d1710c9",
+          "rank": 1,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 74.881822,
+          "bm25Ngram": 58.160888,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "json",
+              "contribution": 12.62318
+            },
+            {
+              "term": "sqlite",
+              "contribution": 8.103736
+            },
+            {
+              "term": "migration",
+              "contribution": 15.914443
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-54a7852ffd299f21",
+          "rank": 2,
+          "finalScore": 0.136618,
+          "bm25Score": 0.243961,
+          "bm25Morphological": 19.764435,
+          "bm25Ngram": 13.690961,
+          "normalizedMorphological": 0.263942,
+          "normalizedNgram": 0.235398,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "json",
+              "contribution": 4.669346
+            },
+            {
+              "term": "sqlite",
+              "contribution": 2.997592
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-f8e0961922a25375",
+          "rank": 3,
+          "finalScore": 0.113321,
+          "bm25Score": 0.231268,
+          "bm25Morphological": 17.75869,
+          "bm25Ngram": 13.304002,
+          "normalizedMorphological": 0.237156,
+          "normalizedNgram": 0.228745,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 6.518961
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-a1e4d0de42dc44cf",
+          "rank": 4,
+          "finalScore": 0.102438,
+          "bm25Score": 0.209058,
+          "bm25Morphological": 14.374865,
+          "bm25Ngram": 12.585007,
+          "normalizedMorphological": 0.191967,
+          "normalizedNgram": 0.216383,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 6.166653
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 5,
+          "finalScore": 0.09473,
+          "bm25Score": 0.193327,
+          "bm25Morphological": 10.448313,
+          "bm25Ngram": 12.585007,
+          "normalizedMorphological": 0.139531,
+          "normalizedNgram": 0.216383,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "sqlite",
+              "contribution": 6.166653
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-docker-actions",
+      "kind": "ambiguous-topic",
+      "query": "docker github actions tests",
+      "rawQuery": "docker github actions tests",
+      "parsedKeywords": [
+        {
+          "term": "docker",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "github",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "actions",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "tests",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-5f5ee445d308117c",
+      "expected": [
+        "anon-5f5ee445d308117c",
+        "anon-066f70e555b534d6"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 0.5,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 0.8772153153380493,
+      "sensitivity": {
+        "runnerUpId": "anon-23fa60b7577d1c72",
+        "finalScoreGap": 0.458886,
+        "finalScoreGapRatio": 0.72839,
+        "bm25ScoreGap": 0.674069,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 1.288616,
+        "winnerDecayToLose": 0.095063
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-5f5ee445d308117c",
+          "rank": 1,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 68.822331,
+          "bm25Ngram": 69.288851,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "docker",
+              "contribution": 12.3503
+            },
+            {
+              "term": "github",
+              "contribution": 5.361593
+            },
+            {
+              "term": "actions",
+              "contribution": 15.570414
+            },
+            {
+              "term": "tests",
+              "contribution": 10.369669
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-23fa60b7577d1c72",
+          "rank": 2,
+          "finalScore": 0.171114,
+          "bm25Score": 0.325931,
+          "bm25Morphological": 27.497114,
+          "bm25Ngram": 20.397606,
+          "normalizedMorphological": 0.399538,
+          "normalizedNgram": 0.294385,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "docker",
+              "contribution": 7.467084
+            },
+            {
+              "term": "github",
+              "contribution": 3.241659
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 3,
+          "finalScore": 0.117339,
+          "bm25Score": 0.248336,
+          "bm25Morphological": 15.211795,
+          "bm25Ngram": 18.017784,
+          "normalizedMorphological": 0.22103,
+          "normalizedNgram": 0.260039,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "tests",
+              "contribution": 8.513403
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-066f70e555b534d6",
+          "rank": 4,
+          "finalScore": 0.111767,
+          "bm25Score": 0.236544,
+          "bm25Morphological": 18.800729,
+          "bm25Ngram": 15.302027,
+          "normalizedMorphological": 0.273178,
+          "normalizedNgram": 0.220844,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "tests",
+              "contribution": 7.230208
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-d39913816ddff349",
+          "rank": 5,
+          "finalScore": 0.043402,
+          "bm25Score": 0.091856,
+          "bm25Morphological": 6.534101,
+          "bm25Ngram": 6.272975,
+          "normalizedMorphological": 0.094942,
+          "normalizedNgram": 0.090534,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.35,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "github",
+              "contribution": 2.963981
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-knowledge-board",
+      "kind": "specialized-term",
+      "query": "knowledge board clusters",
+      "rawQuery": "knowledge board clusters",
+      "parsedKeywords": [
+        {
+          "term": "knowledge",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "board",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "clusters",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-818b67f999b44206",
+      "expected": [
+        "anon-818b67f999b44206"
+      ],
+      "precisionAt1": 1,
+      "rPrecision": 1,
+      "reciprocalRank": 1,
+      "recallAt5": 1,
+      "ndcgAt5": 1,
+      "sensitivity": {
+        "runnerUpId": "anon-b4d7a50098a9e923",
+        "finalScoreGap": 0.544753,
+        "finalScoreGapRatio": 0.864687,
+        "bm25ScoreGap": 0.826026,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.285714,
+        "runnerUpDecayToTie": 2.586593,
+        "winnerDecayToLose": 0.047359
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-818b67f999b44206",
+          "rank": 1,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 61.036241,
+          "bm25Ngram": 69.033537,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "knowledge",
+              "contribution": 12.3503
+            },
+            {
+              "term": "board",
+              "contribution": 15.570414
+            },
+            {
+              "term": "clusters",
+              "contribution": 15.570414
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-b4d7a50098a9e923",
+          "rank": 2,
+          "finalScore": 0.085247,
+          "bm25Score": 0.173974,
+          "bm25Morphological": 10.370784,
+          "bm25Ngram": 12.13025,
+          "normalizedMorphological": 0.169912,
+          "normalizedNgram": 0.175715,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "knowledge",
+              "contribution": 5.943822
+            }
+          ],
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "case": "manual-api-schema",
+      "kind": "ambiguous-topic",
+      "query": "zod api schema",
+      "rawQuery": "zod api schema",
+      "parsedKeywords": [
+        {
+          "term": "zod",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "api",
+          "weight": 1,
+          "synonyms": []
+        },
+        {
+          "term": "schema",
+          "weight": 1,
+          "synonyms": []
+        }
+      ],
+      "top1": "anon-c175b8c79f910465",
+      "expected": [
+        "anon-703a36248a9070b6",
+        "anon-cbe88a9b44e0fc8b"
+      ],
+      "precisionAt1": 0,
+      "rPrecision": 0.5,
+      "reciprocalRank": 0.5,
+      "recallAt5": 1,
+      "ndcgAt5": 0.6934264036172708,
+      "sensitivity": {
+        "runnerUpId": "anon-cbe88a9b44e0fc8b",
+        "finalScoreGap": 0.021347,
+        "finalScoreGapRatio": 0.039811,
+        "bm25ScoreGap": 0.038121,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 0.957507,
+        "runnerUpDecayToTie": 0.364512,
+        "winnerDecayToLose": 0.336066
+      },
+      "rankingDetails": [
+        {
+          "documentId": "anon-c175b8c79f910465",
+          "rank": 1,
+          "finalScore": 0.536204,
+          "bm25Score": 0.957508,
+          "bm25Morphological": 26.95044,
+          "bm25Ngram": 27.333802,
+          "normalizedMorphological": 0.858359,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "zod",
+              "contribution": 10.089959
+            },
+            {
+              "term": "api",
+              "contribution": 5.21697
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-cbe88a9b44e0fc8b",
+          "rank": 2,
+          "finalScore": 0.514857,
+          "bm25Score": 0.919387,
+          "bm25Morphological": 31.397636,
+          "bm25Ngram": 24.186,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 0.884838,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "zod",
+              "contribution": 8.927984
+            },
+            {
+              "term": "api",
+              "contribution": 4.616176
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-703a36248a9070b6",
+          "rank": 3,
+          "finalScore": 0.41242,
+          "bm25Score": 0.736464,
+          "bm25Morphological": 24.388632,
+          "bm25Ngram": 19.658251,
+          "normalizedMorphological": 0.776766,
+          "normalizedNgram": 0.719192,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.6,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "zod",
+              "contribution": 7.256618
+            },
+            {
+              "term": "api",
+              "contribution": 3.752003
+            }
+          ],
+          "isExpected": true
+        },
+        {
+          "documentId": "anon-066f70e555b534d6",
+          "rank": 4,
+          "finalScore": 0.144794,
+          "bm25Score": 0.295498,
+          "bm25Morphological": 9.720836,
+          "bm25Ngram": 7.911847,
+          "normalizedMorphological": 0.309604,
+          "normalizedNgram": 0.289453,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 3.876805
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "anon-afa29b53576888e0",
+          "rank": 5,
+          "finalScore": 0.110031,
+          "bm25Score": 0.224552,
+          "bm25Morphological": 5.543761,
+          "bm25Ngram": 6.700006,
+          "normalizedMorphological": 0.176566,
+          "normalizedNgram": 0.245118,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "api",
+              "contribution": 3.283003
+            }
+          ],
+          "isExpected": false
         }
       ]
     }
   ],
   "metrics": {
-    "precisionAt1": 0.95,
-    "rPrecision": 0.742,
-    "mrr": 0.95,
-    "recallAt5": 0.817,
-    "ndcgAt5": 0.834
+    "precisionAt1": 0.84,
+    "rPrecision": 0.782,
+    "mrr": 0.895,
+    "recallAt5": 0.902,
+    "ndcgAt5": 0.854
   },
   "theoretical": {
     "precisionAt1": 1,
@@ -1842,9 +6697,9 @@
     "allMetricsAtUpperBound": false,
     "duplicateQueryGroups": [],
     "degenerateQueryCount": 0,
-    "zeroRecallRate": 0.05,
+    "zeroRecallRate": 0.02,
     "scope": "real",
-    "labelSource": "manual relevance labels from data/search-evaluation/real-queries.json",
+    "labelSource": "manual relevance labels from data/search-evaluation/real-queries.json and real-queries-v2.json",
     "warning": null
   },
   "thresholds": {
@@ -1854,5 +6709,51 @@
     "recallAt5": 0.8,
     "ndcgAt5": 0.75
   },
-  "variants": []
+  "variants": [
+    {
+      "name": "baseline",
+      "description": "形態素解析/N-gramの標準合成",
+      "meanPrecisionAt1": 0.84,
+      "meanRPrecision": 0.7816666666666666,
+      "mrr": 0.895,
+      "recallAt5": 0.9016666666666666,
+      "ndcgAt5": 0.8542625721891269
+    },
+    {
+      "name": "morphological_only",
+      "description": "形態素解析のみ",
+      "meanPrecisionAt1": 0.88,
+      "meanRPrecision": 0.7983333333333335,
+      "mrr": 0.9183333333333333,
+      "recallAt5": 0.895,
+      "ndcgAt5": 0.8660015818570753
+    },
+    {
+      "name": "ngram_only",
+      "description": "N-gramのみ",
+      "meanPrecisionAt1": 0.86,
+      "meanRPrecision": 0.765,
+      "mrr": 0.904,
+      "recallAt5": 0.895,
+      "ndcgAt5": 0.856465511518061
+    },
+    {
+      "name": "no_synonym_expansion",
+      "description": "同義語展開を無効化した比較",
+      "meanPrecisionAt1": 0.84,
+      "meanRPrecision": 0.7816666666666666,
+      "mrr": 0.895,
+      "recallAt5": 0.9016666666666666,
+      "ndcgAt5": 0.8542625721891269
+    },
+    {
+      "name": "no_time_decay",
+      "description": "時間減衰を無効化した比較",
+      "meanPrecisionAt1": 0.84,
+      "meanRPrecision": 0.7816666666666666,
+      "mrr": 0.895,
+      "recallAt5": 0.9016666666666666,
+      "ndcgAt5": 0.8542625721891269
+    }
+  ]
 }

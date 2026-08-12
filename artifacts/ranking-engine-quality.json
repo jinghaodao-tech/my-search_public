@@ -70,20 +70,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "near-negative-ui",
-        "finalScoreGap": 1.559804,
-        "finalScoreGapRatio": 0.063859,
-        "bm25ScoreGap": 2.906466,
+        "finalScoreGap": 0.035164,
+        "finalScoreGapRatio": 0.065523,
+        "bm25ScoreGap": 0.065523,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 45.514031,
-        "runnerUpDecayToTie": 0.373875,
-        "winnerDecayToLose": 0.32765
+        "runnerUpBm25ToTie": 1.000001,
+        "runnerUpDecayToTie": 0.374541,
+        "winnerDecayToLose": 0.327067
       },
       "rankingDetails": [
         {
           "documentId": "sqlite-bm25",
           "rank": 1,
-          "finalScore": 24.425858,
-          "bm25Score": 45.514021,
+          "finalScore": 0.536667,
+          "bm25Score": 1,
+          "bm25Morphological": 39.153967,
+          "bm25Ngram": 45.514021,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.533333,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -105,8 +113,16 @@
         {
           "documentId": "near-negative-ui",
           "rank": 2,
-          "finalScore": 22.866054,
-          "bm25Score": 42.607555,
+          "finalScore": 0.501503,
+          "bm25Score": 0.934477,
+          "bm25Morphological": 36.436484,
+          "bm25Ngram": 42.607555,
+          "normalizedMorphological": 0.930595,
+          "normalizedNgram": 0.936141,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.533333,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -128,8 +144,16 @@
         {
           "documentId": "title-body-conflict",
           "rank": 3,
-          "finalScore": 14.662439,
-          "bm25Score": 29.923344,
+          "finalScore": 0.32158,
+          "bm25Score": 0.656285,
+          "bm25Morphological": 25.589393,
+          "bm25Ngram": 29.923344,
+          "normalizedMorphological": 0.653558,
+          "normalizedNgram": 0.657453,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -147,8 +171,16 @@
         {
           "documentId": "sqlite-token-persistence",
           "rank": 4,
-          "finalScore": 11.311349,
-          "bm25Score": 21.387005,
+          "finalScore": 0.247333,
+          "bm25Score": 0.467647,
+          "bm25Morphological": 18.104428,
+          "bm25Ngram": 21.387005,
+          "normalizedMorphological": 0.462391,
+          "normalizedNgram": 0.469899,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.511111,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -166,8 +198,16 @@
         {
           "documentId": "csv-import",
           "rank": 5,
-          "finalScore": 5.33685,
-          "bm25Score": 11.881669,
+          "finalScore": 0.116695,
+          "bm25Score": 0.259804,
+          "bm25Morphological": 10.058016,
+          "bm25Ngram": 11.881669,
+          "normalizedMorphological": 0.256884,
+          "normalizedNgram": 0.261055,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.283333,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -213,20 +253,28 @@
       "ndcgAt5": 0.9197207891481876,
       "sensitivity": {
         "runnerUpId": "near-negative-ui",
-        "finalScoreGap": 14.649756,
-        "finalScoreGapRatio": 0.416243,
-        "bm25ScoreGap": 19.177109,
+        "finalScoreGap": 0.261106,
+        "finalScoreGapRatio": 0.414454,
+        "bm25ScoreGap": 0.341261,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 62.848536,
-        "runnerUpDecayToTie": 0.599565,
-        "winnerDecayToLose": 0.204315
+        "runnerUpBm25ToTie": 1.125,
+        "runnerUpDecayToTie": 0.597733,
+        "winnerDecayToLose": 0.204941
       },
       "rankingDetails": [
         {
           "documentId": "sqlite-token-persistence",
           "rank": 1,
-          "finalScore": 35.19518,
-          "bm25Score": 55.865366,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 47.290891,
+          "bm25Ngram": 55.865366,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -248,8 +296,16 @@
         {
           "documentId": "near-negative-ui",
           "rank": 2,
-          "finalScore": 20.545424,
-          "bm25Score": 36.688257,
+          "finalScore": 0.368894,
+          "bm25Score": 0.658739,
+          "bm25Morphological": 31.374508,
+          "bm25Ngram": 36.688257,
+          "normalizedMorphological": 0.663437,
+          "normalizedNgram": 0.656726,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.6,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -267,8 +323,16 @@
         {
           "documentId": "sqlite-bm25",
           "rank": 3,
-          "finalScore": 19.245497,
-          "bm25Score": 34.36696,
+          "finalScore": 0.344498,
+          "bm25Score": 0.615175,
+          "bm25Morphological": 29.092159,
+          "bm25Ngram": 34.36696,
+          "normalizedMorphological": 0.615175,
+          "normalizedNgram": 0.615175,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.6,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -286,8 +350,16 @@
         {
           "documentId": "title-body-conflict",
           "rank": 4,
-          "finalScore": 8.287017,
-          "bm25Score": 16.91228,
+          "finalScore": 0.148794,
+          "bm25Score": 0.303661,
+          "bm25Morphological": 14.462788,
+          "bm25Ngram": 16.91228,
+          "normalizedMorphological": 0.305826,
+          "normalizedNgram": 0.302733,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -332,8 +404,16 @@
         {
           "documentId": "zettelkasten-links",
           "rank": 1,
-          "finalScore": 39.97804,
-          "bm25Score": 67.189983,
+          "finalScore": 0.595,
+          "bm25Score": 1,
+          "bm25Morphological": 59.040631,
+          "bm25Ngram": 67.189983,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.7,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -381,20 +461,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "jp-import",
-        "finalScoreGap": 31.830004,
-        "finalScoreGapRatio": 0.824274,
-        "bm25ScoreGap": 52.766832,
+        "finalScoreGap": 0.457446,
+        "finalScoreGapRatio": 0.792114,
+        "bm25ScoreGap": 0.750536,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 80.240617,
-        "runnerUpDecayToTie": 1.991739,
-        "winnerDecayToLose": 0.061504
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 1.68361,
+        "winnerDecayToLose": 0.07276
       },
       "rankingDetails": [
         {
           "documentId": "csv-import",
           "rank": 1,
-          "finalScore": 38.615797,
-          "bm25Score": 66.867181,
+          "finalScore": 0.5775,
+          "bm25Score": 1,
+          "bm25Morphological": 58.996881,
+          "bm25Ngram": 66.867181,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.65,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -412,8 +500,16 @@
         {
           "documentId": "jp-import",
           "rank": 2,
-          "finalScore": 6.785793,
-          "bm25Score": 14.100349,
+          "finalScore": 0.120054,
+          "bm25Score": 0.249464,
+          "bm25Morphological": 20.030211,
+          "bm25Ngram": 14.100349,
+          "normalizedMorphological": 0.339513,
+          "normalizedNgram": 0.210871,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.375,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -453,20 +549,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "near-negative-ui",
-        "finalScoreGap": 18.485135,
-        "finalScoreGapRatio": 0.640344,
-        "bm25ScoreGap": 26.045489,
+        "finalScoreGap": 0.404212,
+        "finalScoreGapRatio": 0.641606,
+        "bm25ScoreGap": 0.569927,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 54.985758,
-        "runnerUpDecayToTie": 0.973151,
-        "winnerDecayToLose": 0.12588
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 0.976578,
+        "winnerDecayToLose": 0.125438
       },
       "rankingDetails": [
         {
           "documentId": "ui-polish",
           "rank": 1,
-          "finalScore": 28.867523,
-          "bm25Score": 45.821465,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 39.648721,
+          "bm25Ngram": 45.821465,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -484,8 +588,16 @@
         {
           "documentId": "near-negative-ui",
           "rank": 2,
-          "finalScore": 10.382388,
-          "bm25Score": 19.775976,
+          "finalScore": 0.225788,
+          "bm25Score": 0.430073,
+          "bm25Morphological": 16.91172,
+          "bm25Ngram": 19.775976,
+          "normalizedMorphological": 0.426539,
+          "normalizedNgram": 0.431588,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -499,8 +611,16 @@
         {
           "documentId": "title-body-conflict",
           "rank": 3,
-          "finalScore": 10.382388,
-          "bm25Score": 19.775976,
+          "finalScore": 0.225788,
+          "bm25Score": 0.430073,
+          "bm25Morphological": 16.91172,
+          "bm25Ngram": 19.775976,
+          "normalizedMorphological": 0.426539,
+          "normalizedNgram": 0.431588,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -541,21 +661,29 @@
       "recallAt5": 1,
       "ndcgAt5": 1,
       "sensitivity": {
-        "runnerUpId": "saved-new",
-        "finalScoreGap": 8.760195,
-        "finalScoreGapRatio": 0.085953,
-        "bm25ScoreGap": 26.087563,
-        "decayFactorGap": -0.031424,
-        "runnerUpBm25ToTie": 148.447875,
-        "runnerUpDecayToTie": 0.417291,
-        "winnerDecayToLose": 0.319917
+        "runnerUpId": "saved-old",
+        "finalScoreGap": 0.066173,
+        "finalScoreGapRatio": 0.105037,
+        "bm25ScoreGap": 0.105037,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1,
+        "runnerUpDecayToTie": 0.391078,
+        "winnerDecayToLose": 0.313237
       },
       "rankingDetails": [
         {
           "documentId": "jp-search",
           "rank": 1,
-          "finalScore": 101.918848,
-          "bm25Score": 161.775949,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 113.906879,
+          "bm25Ngram": 161.775949,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -603,61 +731,18 @@
           "isExpected": true
         },
         {
-          "documentId": "saved-new",
-          "rank": 2,
-          "finalScore": 93.158653,
-          "bm25Score": 135.688386,
-          "contextBonus": 1.8,
-          "timeDecayFactor": 0.381424,
-          "matchedTerms": [
-            {
-              "term": "保存",
-              "contribution": 12.155693
-            },
-            {
-              "term": "済み",
-              "contribution": 12.155693
-            },
-            {
-              "term": "カード",
-              "contribution": 10.395465
-            },
-            {
-              "term": "カー",
-              "contribution": 10.395465
-            },
-            {
-              "term": "ード",
-              "contribution": 9.073342
-            },
-            {
-              "term": "ローカル",
-              "contribution": 7.796599
-            },
-            {
-              "term": "ロー",
-              "contribution": 7.796599
-            },
-            {
-              "term": "ーカ",
-              "contribution": 7.796599
-            },
-            {
-              "term": "カル",
-              "contribution": 7.796599
-            },
-            {
-              "term": "検索",
-              "contribution": 7.796599
-            }
-          ],
-          "isExpected": true
-        },
-        {
           "documentId": "saved-old",
-          "rank": 3,
-          "finalScore": 92.980585,
-          "bm25Score": 147.588231,
+          "rank": 2,
+          "finalScore": 0.563827,
+          "bm25Score": 0.894963,
+          "bm25Morphological": 97.334494,
+          "bm25Ngram": 147.588231,
+          "normalizedMorphological": 0.854509,
+          "normalizedNgram": 0.9123,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -705,10 +790,77 @@
           "isExpected": true
         },
         {
+          "documentId": "saved-new",
+          "rank": 3,
+          "finalScore": 0.531388,
+          "bm25Score": 0.843473,
+          "bm25Morphological": 97.334494,
+          "bm25Ngram": 135.688386,
+          "normalizedMorphological": 0.854509,
+          "normalizedNgram": 0.838743,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "保存",
+              "contribution": 11.154233
+            },
+            {
+              "term": "済み",
+              "contribution": 11.154233
+            },
+            {
+              "term": "カード",
+              "contribution": 9.539024
+            },
+            {
+              "term": "カー",
+              "contribution": 9.539024
+            },
+            {
+              "term": "ード",
+              "contribution": 8.325826
+            },
+            {
+              "term": "ローカル",
+              "contribution": 7.154268
+            },
+            {
+              "term": "ロー",
+              "contribution": 7.154268
+            },
+            {
+              "term": "ーカ",
+              "contribution": 7.154268
+            },
+            {
+              "term": "カル",
+              "contribution": 7.154268
+            },
+            {
+              "term": "検索",
+              "contribution": 7.154268
+            }
+          ],
+          "isExpected": true
+        },
+        {
           "documentId": "jp-links",
           "rank": 4,
-          "finalScore": 20.782782,
-          "bm25Score": 49.482815,
+          "finalScore": 0.11839,
+          "bm25Score": 0.281881,
+          "bm25Morphological": 25.73159,
+          "bm25Ngram": 49.482815,
+          "normalizedMorphological": 0.2259,
+          "normalizedNgram": 0.305873,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -730,8 +882,16 @@
         {
           "documentId": "jp-backup",
           "rank": 5,
-          "finalScore": 19.078049,
-          "bm25Score": 45.423926,
+          "finalScore": 0.106088,
+          "bm25Score": 0.252591,
+          "bm25Morphological": 21.278738,
+          "bm25Ngram": 45.423926,
+          "normalizedMorphological": 0.186808,
+          "normalizedNgram": 0.280783,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -783,20 +943,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "jp-import",
-        "finalScoreGap": 16.07506,
-        "finalScoreGapRatio": 0.344018,
-        "bm25ScoreGap": 15.785059,
+        "finalScoreGap": 0.26831,
+        "finalScoreGapRatio": 0.425889,
+        "bm25ScoreGap": 0.311066,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 89.004621,
-        "runnerUpDecayToTie": 0.533551,
-        "winnerDecayToLose": 0.229594
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 0.609637,
+        "winnerDecayToLose": 0.200939
       },
       "rankingDetails": [
         {
           "documentId": "jp-quality",
           "rank": 1,
-          "finalScore": 46.727426,
-          "bm25Score": 74.170518,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 60.14057,
+          "bm25Ngram": 74.170518,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -826,8 +994,16 @@
         {
           "documentId": "jp-import",
           "rank": 2,
-          "finalScore": 30.652366,
-          "bm25Score": 58.385459,
+          "finalScore": 0.36169,
+          "bm25Score": 0.688934,
+          "bm25Morphological": 27.646435,
+          "bm25Ngram": 58.385459,
+          "normalizedMorphological": 0.459697,
+          "normalizedNgram": 0.787179,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -849,8 +1025,16 @@
         {
           "documentId": "jp-dashboard",
           "rank": 3,
-          "finalScore": 23.237986,
-          "bm25Score": 44.262831,
+          "finalScore": 0.284978,
+          "bm25Score": 0.542816,
+          "bm25Morphological": 25.073857,
+          "bm25Ngram": 44.262831,
+          "normalizedMorphological": 0.416921,
+          "normalizedNgram": 0.596771,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -872,8 +1056,16 @@
         {
           "documentId": "jp-search",
           "rank": 4,
-          "finalScore": 4.264877,
-          "bm25Score": 10.154469,
+          "finalScore": 0.067994,
+          "bm25Score": 0.161889,
+          "bm25Morphological": 13.24183,
+          "bm25Ngram": 10.154469,
+          "normalizedMorphological": 0.220181,
+          "normalizedNgram": 0.136907,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -885,16 +1077,24 @@
           "isExpected": false
         },
         {
-          "documentId": "saved-new",
+          "documentId": "saved-old",
           "rank": 5,
-          "finalScore": 3.8983,
-          "bm25Score": 8.516986,
+          "finalScore": 0.060427,
+          "bm25Score": 0.143874,
+          "bm25Morphological": 11.315268,
+          "bm25Ngram": 9.263924,
+          "normalizedMorphological": 0.188147,
+          "normalizedNgram": 0.1249,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
-          "timeDecayFactor": 0.381424,
+          "timeDecayFactor": 0.35,
           "matchedTerms": [
             {
               "term": "検索",
-              "contribution": 3.8983
+              "contribution": 3.890848
             }
           ],
           "isExpected": false
@@ -933,20 +1133,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "jp-quality",
-        "finalScoreGap": 102.254734,
-        "finalScoreGapRatio": 0.852493,
-        "bm25ScoreGap": 154.284988,
+        "finalScoreGap": 0.536152,
+        "finalScoreGapRatio": 0.851035,
+        "bm25ScoreGap": 0.808473,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 244.791635,
-        "runnerUpDecayToTie": 2.372767,
-        "winnerDecayToLose": 0.051627
+        "runnerUpBm25ToTie": 1.285714,
+        "runnerUpDecayToTie": 2.349538,
+        "winnerDecayToLose": 0.052138
       },
       "rankingDetails": [
         {
           "documentId": "jp-import",
           "rank": 1,
-          "finalScore": 119.947901,
-          "bm25Score": 190.393493,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 87.822103,
+          "bm25Ngram": 190.393493,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -988,8 +1196,16 @@
         {
           "documentId": "jp-quality",
           "rank": 2,
-          "finalScore": 17.693167,
-          "bm25Score": 36.108505,
+          "finalScore": 0.093848,
+          "bm25Score": 0.191527,
+          "bm25Morphological": 17.204469,
+          "bm25Ngram": 36.108505,
+          "normalizedMorphological": 0.195901,
+          "normalizedNgram": 0.189652,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1011,8 +1227,16 @@
         {
           "documentId": "jp-dashboard",
           "rank": 3,
-          "finalScore": 16.26659,
-          "bm25Score": 33.197123,
+          "finalScore": 0.091283,
+          "bm25Score": 0.186292,
+          "bm25Morphological": 18.805393,
+          "bm25Ngram": 33.197123,
+          "normalizedMorphological": 0.214131,
+          "normalizedNgram": 0.174361,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1034,8 +1258,16 @@
         {
           "documentId": "csv-import",
           "rank": 4,
-          "finalScore": 8.220618,
-          "bm25Score": 16.776771,
+          "finalScore": 0.053995,
+          "bm25Score": 0.110195,
+          "bm25Morphological": 14.201795,
+          "bm25Ngram": 16.776771,
+          "normalizedMorphological": 0.161711,
+          "normalizedNgram": 0.088116,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1075,20 +1307,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "jp-search",
-        "finalScoreGap": 89.743394,
-        "finalScoreGapRatio": 0.846,
-        "bm25ScoreGap": 163.160615,
+        "finalScoreGap": 0.448616,
+        "finalScoreGapRatio": 0.854507,
+        "bm25ScoreGap": 0.818132,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 252.57066,
-        "runnerUpDecayToTie": 2.272725,
-        "winnerDecayToLose": 0.0539
+        "runnerUpBm25ToTie": 1.25,
+        "runnerUpDecayToTie": 2.405591,
+        "winnerDecayToLose": 0.050923
       },
       "rankingDetails": [
         {
           "documentId": "jp-links",
           "rank": 1,
-          "finalScore": 106.079677,
-          "bm25Score": 202.056528,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 112.414929,
+          "bm25Ngram": 202.056528,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1134,8 +1374,16 @@
         {
           "documentId": "jp-search",
           "rank": 2,
-          "finalScore": 16.336283,
-          "bm25Score": 38.895913,
+          "finalScore": 0.076384,
+          "bm25Score": 0.181868,
+          "bm25Morphological": 17.655773,
+          "bm25Ngram": 38.895913,
+          "normalizedMorphological": 0.157059,
+          "normalizedNgram": 0.1925,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1155,52 +1403,18 @@
           "isExpected": false
         },
         {
-          "documentId": "jp-job",
-          "rank": 3,
-          "finalScore": 15.497065,
-          "bm25Score": 36.897774,
-          "contextBonus": 1.2,
-          "timeDecayFactor": 0.35,
-          "matchedTerms": [
-            {
-              "term": "バッ",
-              "contribution": 7.748533
-            },
-            {
-              "term": "ック",
-              "contribution": 7.748533
-            }
-          ],
-          "isExpected": false
-        },
-        {
-          "documentId": "saved-new",
-          "rank": 4,
-          "finalScore": 14.932136,
-          "bm25Score": 32.62366,
-          "contextBonus": 1.2,
-          "timeDecayFactor": 0.381424,
-          "matchedTerms": [
-            {
-              "term": "カード",
-              "contribution": 5.197733
-            },
-            {
-              "term": "カー",
-              "contribution": 5.197733
-            },
-            {
-              "term": "ード",
-              "contribution": 4.536671
-            }
-          ],
-          "isExpected": false
-        },
-        {
           "documentId": "saved-old",
-          "rank": 5,
-          "finalScore": 14.903594,
-          "bm25Score": 35.484749,
+          "rank": 3,
+          "finalScore": 0.068542,
+          "bm25Score": 0.163195,
+          "bm25Morphological": 15.087024,
+          "bm25Ngram": 35.484749,
+          "normalizedMorphological": 0.134208,
+          "normalizedNgram": 0.175618,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1215,6 +1429,64 @@
             {
               "term": "ード",
               "contribution": 4.527999
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "saved-new",
+          "rank": 4,
+          "finalScore": 0.064379,
+          "bm25Score": 0.153283,
+          "bm25Morphological": 15.087024,
+          "bm25Ngram": 32.62366,
+          "normalizedMorphological": 0.134208,
+          "normalizedNgram": 0.161458,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.2,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "カード",
+              "contribution": 4.769512
+            },
+            {
+              "term": "カー",
+              "contribution": 4.769512
+            },
+            {
+              "term": "ード",
+              "contribution": 4.162913
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "jp-job",
+          "rank": 5,
+          "finalScore": 0.053688,
+          "bm25Score": 0.127828,
+          "bm25Morphological": 0,
+          "bm25Ngram": 36.897774,
+          "normalizedMorphological": 0,
+          "normalizedNgram": 0.182611,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.2,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "バッ",
+              "contribution": 7.748533
+            },
+            {
+              "term": "ック",
+              "contribution": 7.748533
             }
           ],
           "isExpected": false
@@ -1248,20 +1520,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "jp-search",
-        "finalScoreGap": 113.896047,
-        "finalScoreGapRatio": 0.945088,
-        "bm25ScoreGap": 175.53523,
+        "finalScoreGap": 0.605784,
+        "finalScoreGapRatio": 0.961562,
+        "bm25ScoreGap": 0.942342,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 286.937502,
-        "runnerUpDecayToTie": 6.373784,
-        "winnerDecayToLose": 0.019219
+        "runnerUpBm25ToTie": 1.5,
+        "runnerUpDecayToTie": 9.105415,
+        "winnerDecayToLose": 0.013453
       },
       "rankingDetails": [
         {
           "documentId": "jp-dashboard",
           "rank": 1,
-          "finalScore": 120.513751,
-          "bm25Score": 191.291668,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 69.837177,
+          "bm25Ngram": 191.291668,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1303,8 +1583,16 @@
         {
           "documentId": "jp-search",
           "rank": 2,
-          "finalScore": 6.617704,
-          "bm25Score": 15.756438,
+          "finalScore": 0.024216,
+          "bm25Score": 0.057658,
+          "bm25Morphological": 0,
+          "bm25Ngram": 15.756438,
+          "normalizedMorphological": 0,
+          "normalizedNgram": 0.082369,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1318,8 +1606,16 @@
         {
           "documentId": "jp-links",
           "rank": 3,
-          "finalScore": 6.31421,
-          "bm25Score": 15.033834,
+          "finalScore": 0.023106,
+          "bm25Score": 0.055014,
+          "bm25Morphological": 0,
+          "bm25Ngram": 15.033834,
+          "normalizedMorphological": 0,
+          "normalizedNgram": 0.078591,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1331,31 +1627,47 @@
           "isExpected": false
         },
         {
-          "documentId": "saved-new",
-          "rank": 4,
-          "finalScore": 6.048895,
-          "bm25Score": 13.215596,
-          "contextBonus": 1.2,
-          "timeDecayFactor": 0.381424,
-          "matchedTerms": [
-            {
-              "term": "ード",
-              "contribution": 6.048895
-            }
-          ],
-          "isExpected": false
-        },
-        {
           "documentId": "saved-old",
-          "rank": 5,
-          "finalScore": 6.037333,
-          "bm25Score": 14.374602,
+          "rank": 4,
+          "finalScore": 0.022093,
+          "bm25Score": 0.052601,
+          "bm25Morphological": 0,
+          "bm25Ngram": 14.374602,
+          "normalizedMorphological": 0,
+          "normalizedNgram": 0.075145,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
             {
               "term": "ード",
               "contribution": 6.037333
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "saved-new",
+          "rank": 5,
+          "finalScore": 0.020311,
+          "bm25Score": 0.04836,
+          "bm25Morphological": 0,
+          "bm25Ngram": 13.215596,
+          "normalizedMorphological": 0,
+          "normalizedNgram": 0.069086,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.2,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ード",
+              "contribution": 5.55055
             }
           ],
           "isExpected": false
@@ -1392,8 +1704,16 @@
         {
           "documentId": "jp-job",
           "rank": 1,
-          "finalScore": 83.928708,
-          "bm25Score": 133.220171,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 108.635609,
+          "bm25Ngram": 133.220171,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1453,20 +1773,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "jp-search",
-        "finalScoreGap": 91.51637,
-        "finalScoreGapRatio": 0.778336,
-        "bm25ScoreGap": 136.990067,
+        "finalScoreGap": 0.496263,
+        "finalScoreGapRatio": 0.787719,
+        "bm25ScoreGap": 0.745263,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 223.960966,
-        "runnerUpDecayToTie": 1.578967,
-        "winnerDecayToLose": 0.077582
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 1.648759,
+        "winnerDecayToLose": 0.074298
       },
       "rankingDetails": [
         {
           "documentId": "jp-backup",
           "rank": 1,
-          "finalScore": 117.579507,
-          "bm25Score": 186.634138,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 70.840491,
+          "bm25Ngram": 186.634138,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1516,8 +1844,16 @@
         {
           "documentId": "jp-search",
           "rank": 2,
-          "finalScore": 26.063137,
-          "bm25Score": 49.644071,
+          "finalScore": 0.133737,
+          "bm25Score": 0.254737,
+          "bm25Morphological": 16.184459,
+          "bm25Ngram": 49.644071,
+          "normalizedMorphological": 0.228463,
+          "normalizedNgram": 0.265997,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1536,42 +1872,23 @@
             {
               "term": "カル",
               "contribution": 6.515784
-            }
-          ],
-          "isExpected": false
-        },
-        {
-          "documentId": "saved-new",
-          "rank": 3,
-          "finalScore": 23.822941,
-          "bm25Score": 41.638599,
-          "contextBonus": 1.5,
-          "timeDecayFactor": 0.381424,
-          "matchedTerms": [
-            {
-              "term": "ローカル",
-              "contribution": 5.955735
-            },
-            {
-              "term": "ロー",
-              "contribution": 5.955735
-            },
-            {
-              "term": "ーカ",
-              "contribution": 5.955735
-            },
-            {
-              "term": "カル",
-              "contribution": 5.955735
             }
           ],
           "isExpected": false
         },
         {
           "documentId": "saved-old",
-          "rank": 4,
-          "finalScore": 23.777405,
-          "bm25Score": 45.290296,
+          "rank": 3,
+          "finalScore": 0.119929,
+          "bm25Score": 0.228435,
+          "bm25Morphological": 13.829772,
+          "bm25Ngram": 45.290296,
+          "normalizedMorphological": 0.195224,
+          "normalizedNgram": 0.242669,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1590,6 +1907,41 @@
             {
               "term": "カル",
               "contribution": 5.944351
+            }
+          ],
+          "isExpected": false
+        },
+        {
+          "documentId": "saved-new",
+          "rank": 4,
+          "finalScore": 0.112738,
+          "bm25Score": 0.214739,
+          "bm25Morphological": 13.829772,
+          "bm25Ngram": 41.638599,
+          "normalizedMorphological": 0.195224,
+          "normalizedNgram": 0.223103,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.5,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "ローカル",
+              "contribution": 5.465066
+            },
+            {
+              "term": "ロー",
+              "contribution": 5.465066
+            },
+            {
+              "term": "ーカ",
+              "contribution": 5.465066
+            },
+            {
+              "term": "カル",
+              "contribution": 5.465066
             }
           ],
           "isExpected": false
@@ -1597,8 +1949,16 @@
         {
           "documentId": "jp-links",
           "rank": 5,
-          "finalScore": 16.918484,
-          "bm25Score": 40.282105,
+          "finalScore": 0.063455,
+          "bm25Score": 0.151084,
+          "bm25Morphological": 0,
+          "bm25Ngram": 40.282105,
+          "normalizedMorphological": 0,
+          "normalizedNgram": 0.215835,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1645,8 +2005,16 @@
         {
           "documentId": "jp-postgres",
           "rank": 1,
-          "finalScore": 67.442711,
-          "bm25Score": 128.462308,
+          "finalScore": 0.525,
+          "bm25Score": 1,
+          "bm25Morphological": 25.667491,
+          "bm25Ngram": 128.462308,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1697,20 +2065,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "saved-new",
-        "finalScoreGap": 17.728538,
-        "finalScoreGapRatio": 0.707227,
-        "bm25ScoreGap": 23.755451,
-        "decayFactorGap": -0.031424,
-        "runnerUpBm25ToTie": 54.767732,
-        "runnerUpDecayToTie": 1.302798,
-        "winnerDecayToLose": 0.102471
+        "finalScoreGap": 0.456296,
+        "finalScoreGapRatio": 0.724279,
+        "bm25ScoreGap": 0.586419,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.5,
+        "runnerUpDecayToTie": 1.269401,
+        "winnerDecayToLose": 0.096502
       },
       "rankingDetails": [
         {
           "documentId": "saved-old",
           "rank": 1,
-          "finalScore": 25.067673,
-          "bm25Score": 39.789957,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 48.600789,
+          "bm25Ngram": 39.789957,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1728,14 +2104,22 @@
         {
           "documentId": "saved-new",
           "rank": 2,
-          "finalScore": 7.339135,
-          "bm25Score": 16.034506,
+          "finalScore": 0.173704,
+          "bm25Score": 0.413581,
+          "bm25Morphological": 21.302692,
+          "bm25Ngram": 16.034506,
+          "normalizedMorphological": 0.43832,
+          "normalizedNgram": 0.402979,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
-          "timeDecayFactor": 0.381424,
+          "timeDecayFactor": 0.35,
           "matchedTerms": [
             {
               "term": "記録",
-              "contribution": 7.339135
+              "contribution": 6.734493
             }
           ],
           "isExpected": false
@@ -1764,38 +2148,46 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "saved-old",
-        "finalScoreGap": 56.227758,
-        "finalScoreGapRatio": 0.862645,
-        "bm25ScoreGap": 73.621159,
-        "decayFactorGap": 0.031424,
-        "runnerUpBm25ToTie": 155.192062,
-        "runnerUpDecayToTie": 2.548137,
-        "winnerDecayToLose": 0.052391
+        "finalScoreGap": 0.50876,
+        "finalScoreGapRatio": 0.807556,
+        "bm25ScoreGap": 0.711332,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1.5,
+        "runnerUpDecayToTie": 1.818698,
+        "winnerDecayToLose": 0.067356
       },
       "rankingDetails": [
         {
           "documentId": "saved-new",
           "rank": 1,
-          "finalScore": 65.180666,
-          "bm25Score": 94.937606,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 59.400964,
+          "bm25Ngram": 94.937606,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
-          "timeDecayFactor": 0.381424,
+          "timeDecayFactor": 0.35,
           "matchedTerms": [
             {
               "term": "新しい",
-              "contribution": 17.241862
+              "contribution": 15.821374
             },
             {
               "term": "新し",
-              "contribution": 17.241862
+              "contribution": 15.821374
             },
             {
               "term": "しい",
-              "contribution": 17.241862
+              "contribution": 15.821374
             },
             {
               "term": "記録",
-              "contribution": 13.45508
+              "contribution": 12.34657
             }
           ],
           "isExpected": true
@@ -1803,8 +2195,16 @@
         {
           "documentId": "saved-old",
           "rank": 2,
-          "finalScore": 8.952908,
-          "bm25Score": 21.316447,
+          "finalScore": 0.12124,
+          "bm25Score": 0.288668,
+          "bm25Morphological": 26.036624,
+          "bm25Ngram": 21.316447,
+          "normalizedMorphological": 0.43832,
+          "normalizedNgram": 0.224531,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1849,20 +2249,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "near-negative-ui",
-        "finalScoreGap": 19.164422,
-        "finalScoreGapRatio": 0.482611,
-        "bm25ScoreGap": 26.343244,
+        "finalScoreGap": 0.303046,
+        "finalScoreGapRatio": 0.481025,
+        "bm25ScoreGap": 0.416154,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 70.910439,
-        "runnerUpDecayToTie": 0.676474,
-        "winnerDecayToLose": 0.181086
+        "runnerUpBm25ToTie": 1.125,
+        "runnerUpDecayToTie": 0.674407,
+        "winnerDecayToLose": 0.181641
       },
       "rankingDetails": [
         {
           "documentId": "sqlite-token-persistence",
           "rank": 1,
-          "finalScore": 39.709846,
-          "bm25Score": 63.031501,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 53.357134,
+          "bm25Ngram": 63.031501,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1884,8 +2292,16 @@
         {
           "documentId": "near-negative-ui",
           "rank": 2,
-          "finalScore": 20.545424,
-          "bm25Score": 36.688257,
+          "finalScore": 0.326954,
+          "bm25Score": 0.583846,
+          "bm25Morphological": 31.374508,
+          "bm25Ngram": 36.688257,
+          "normalizedMorphological": 0.58801,
+          "normalizedNgram": 0.582062,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.6,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1903,8 +2319,16 @@
         {
           "documentId": "sqlite-bm25",
           "rank": 3,
-          "finalScore": 19.245497,
-          "bm25Score": 34.36696,
+          "finalScore": 0.305331,
+          "bm25Score": 0.545235,
+          "bm25Morphological": 29.092159,
+          "bm25Ngram": 34.36696,
+          "normalizedMorphological": 0.545235,
+          "normalizedNgram": 0.545235,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.6,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1922,8 +2346,16 @@
         {
           "documentId": "title-body-conflict",
           "rank": 4,
-          "finalScore": 8.287017,
-          "bm25Score": 16.91228,
+          "finalScore": 0.131877,
+          "bm25Score": 0.269137,
+          "bm25Morphological": 14.462788,
+          "bm25Ngram": 16.91228,
+          "normalizedMorphological": 0.271056,
+          "normalizedNgram": 0.268315,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -1968,20 +2400,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "near-negative-ui",
-        "finalScoreGap": 18.90956,
-        "finalScoreGapRatio": 0.544637,
-        "bm25ScoreGap": 26.878272,
+        "finalScoreGap": 0.342242,
+        "finalScoreGapRatio": 0.543241,
+        "bm25ScoreGap": 0.486147,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 61.999187,
-        "runnerUpDecayToTie": 0.768618,
-        "winnerDecayToLose": 0.159377
+        "runnerUpBm25ToTie": 1.125,
+        "runnerUpDecayToTie": 0.76627,
+        "winnerDecayToLose": 0.159866
       },
       "rankingDetails": [
         {
           "documentId": "sqlite-token-persistence",
           "rank": 1,
-          "finalScore": 34.719545,
-          "bm25Score": 55.110388,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 46.651791,
+          "bm25Ngram": 55.110388,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2003,8 +2443,16 @@
         {
           "documentId": "near-negative-ui",
           "rank": 2,
-          "finalScore": 15.809985,
-          "bm25Score": 28.232116,
+          "finalScore": 0.287758,
+          "bm25Score": 0.513853,
+          "bm25Morphological": 24.143114,
+          "bm25Ngram": 28.232116,
+          "normalizedMorphological": 0.517517,
+          "normalizedNgram": 0.512283,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.6,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2022,8 +2470,16 @@
         {
           "documentId": "sqlite-bm25",
           "rank": 3,
-          "finalScore": 14.809674,
-          "bm25Score": 26.445847,
+          "finalScore": 0.268727,
+          "bm25Score": 0.47987,
+          "bm25Morphological": 22.386816,
+          "bm25Ngram": 26.445847,
+          "normalizedMorphological": 0.47987,
+          "normalizedNgram": 0.47987,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.6,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2041,8 +2497,16 @@
         {
           "documentId": "title-body-conflict",
           "rank": 4,
-          "finalScore": 4.143509,
-          "bm25Score": 8.45614,
+          "finalScore": 0.075416,
+          "bm25Score": 0.15391,
+          "bm25Morphological": 7.231394,
+          "bm25Ngram": 8.45614,
+          "normalizedMorphological": 0.155008,
+          "normalizedNgram": 0.15344,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2092,20 +2556,28 @@
       "ndcgAt5": 1,
       "sensitivity": {
         "runnerUpId": "sqlite-bm25",
-        "finalScoreGap": 34.384962,
-        "finalScoreGapRatio": 0.792165,
-        "bm25ScoreGap": 51.715392,
+        "finalScoreGap": 0.499916,
+        "finalScoreGapRatio": 0.793517,
+        "bm25ScoreGap": 0.752222,
         "decayFactorGap": 0,
-        "runnerUpBm25ToTie": 82.678646,
-        "runnerUpDecayToTie": 1.684032,
-        "winnerDecayToLose": 0.072742
+        "runnerUpBm25ToTie": 1.2,
+        "runnerUpDecayToTie": 1.695066,
+        "winnerDecayToLose": 0.072269
       },
       "rankingDetails": [
         {
           "documentId": "long-document",
           "rank": 1,
-          "finalScore": 43.406289,
-          "bm25Score": 68.898872,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 59.617302,
+          "bm25Ngram": 68.898872,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2131,8 +2603,16 @@
         {
           "documentId": "sqlite-bm25",
           "rank": 2,
-          "finalScore": 9.021327,
-          "bm25Score": 17.18348,
+          "finalScore": 0.130084,
+          "bm25Score": 0.247778,
+          "bm25Morphological": 14.54608,
+          "bm25Ngram": 17.18348,
+          "normalizedMorphological": 0.243991,
+          "normalizedNgram": 0.249401,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2150,8 +2630,16 @@
         {
           "documentId": "sqlite-token-persistence",
           "rank": 3,
-          "finalScore": 9.021327,
-          "bm25Score": 17.18348,
+          "finalScore": 0.130084,
+          "bm25Score": 0.247778,
+          "bm25Morphological": 14.54608,
+          "bm25Ngram": 17.18348,
+          "normalizedMorphological": 0.243991,
+          "normalizedNgram": 0.249401,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.5,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2169,8 +2657,16 @@
         {
           "documentId": "csv-import",
           "rank": 4,
-          "finalScore": 3.742726,
-          "bm25Score": 7.921113,
+          "finalScore": 0.053968,
+          "bm25Score": 0.114219,
+          "bm25Morphological": 6.705344,
+          "bm25Ngram": 7.921113,
+          "normalizedMorphological": 0.112473,
+          "normalizedNgram": 0.114967,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.35,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2215,21 +2711,29 @@
       "recallAt5": 1,
       "ndcgAt5": 0.6934264036172708,
       "sensitivity": {
-        "runnerUpId": "saved-new",
-        "finalScoreGap": 9.522239,
-        "finalScoreGapRatio": 0.085953,
-        "bm25ScoreGap": 28.3569,
-        "decayFactorGap": -0.031424,
-        "runnerUpBm25ToTie": 161.361234,
-        "runnerUpDecayToTie": 0.417291,
-        "winnerDecayToLose": 0.319917
+        "runnerUpId": "saved-old",
+        "finalScoreGap": 0.066173,
+        "finalScoreGapRatio": 0.105037,
+        "bm25ScoreGap": 0.105037,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1,
+        "runnerUpDecayToTie": 0.391078,
+        "winnerDecayToLose": 0.313237
       },
       "rankingDetails": [
         {
           "documentId": "jp-search",
           "rank": 1,
-          "finalScore": 110.784685,
-          "bm25Score": 175.848707,
+          "finalScore": 0.63,
+          "bm25Score": 1,
+          "bm25Morphological": 123.082596,
+          "bm25Ngram": 175.848707,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2285,69 +2789,18 @@
           "isExpected": false
         },
         {
-          "documentId": "saved-new",
-          "rank": 2,
-          "finalScore": 101.262446,
-          "bm25Score": 147.491807,
-          "contextBonus": 1.8,
-          "timeDecayFactor": 0.381424,
-          "matchedTerms": [
-            {
-              "term": "再発見",
-              "contribution": 4.051897
-            },
-            {
-              "term": "保存",
-              "contribution": 12.155692
-            },
-            {
-              "term": "済み",
-              "contribution": 12.155692
-            },
-            {
-              "term": "カード",
-              "contribution": 10.395465
-            },
-            {
-              "term": "カー",
-              "contribution": 10.395465
-            },
-            {
-              "term": "ード",
-              "contribution": 9.073342
-            },
-            {
-              "term": "ローカル",
-              "contribution": 7.796599
-            },
-            {
-              "term": "ロー",
-              "contribution": 7.796599
-            },
-            {
-              "term": "ーカ",
-              "contribution": 7.796599
-            },
-            {
-              "term": "カル",
-              "contribution": 7.796599
-            },
-            {
-              "term": "検索",
-              "contribution": 7.796599
-            },
-            {
-              "term": "発見",
-              "contribution": 4.051897
-            }
-          ],
-          "isExpected": true
-        },
-        {
           "documentId": "saved-old",
-          "rank": 3,
-          "finalScore": 101.06889,
-          "bm25Score": 160.42681,
+          "rank": 2,
+          "finalScore": 0.563827,
+          "bm25Score": 0.894963,
+          "bm25Morphological": 105.17523,
+          "bm25Ngram": 160.42681,
+          "normalizedMorphological": 0.854509,
+          "normalizedNgram": 0.9123,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.8,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2403,10 +2856,85 @@
           "isExpected": true
         },
         {
+          "documentId": "saved-new",
+          "rank": 3,
+          "finalScore": 0.531388,
+          "bm25Score": 0.843473,
+          "bm25Morphological": 105.17523,
+          "bm25Ngram": 147.491807,
+          "normalizedMorphological": 0.854509,
+          "normalizedNgram": 0.838743,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.8,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "再発見",
+              "contribution": 3.718078
+            },
+            {
+              "term": "保存",
+              "contribution": 11.154233
+            },
+            {
+              "term": "済み",
+              "contribution": 11.154233
+            },
+            {
+              "term": "カード",
+              "contribution": 9.539024
+            },
+            {
+              "term": "カー",
+              "contribution": 9.539024
+            },
+            {
+              "term": "ード",
+              "contribution": 8.325826
+            },
+            {
+              "term": "ローカル",
+              "contribution": 7.154268
+            },
+            {
+              "term": "ロー",
+              "contribution": 7.154268
+            },
+            {
+              "term": "ーカ",
+              "contribution": 7.154268
+            },
+            {
+              "term": "カル",
+              "contribution": 7.154268
+            },
+            {
+              "term": "検索",
+              "contribution": 7.154268
+            },
+            {
+              "term": "発見",
+              "contribution": 3.718078
+            }
+          ],
+          "isExpected": true
+        },
+        {
           "documentId": "jp-links",
           "rank": 4,
-          "finalScore": 20.782782,
-          "bm25Score": 49.482815,
+          "finalScore": 0.109071,
+          "bm25Score": 0.259694,
+          "bm25Morphological": 25.73159,
+          "bm25Ngram": 49.482815,
+          "normalizedMorphological": 0.20906,
+          "normalizedNgram": 0.281394,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2428,8 +2956,16 @@
         {
           "documentId": "jp-backup",
           "rank": 5,
-          "finalScore": 19.078049,
-          "bm25Score": 45.423926,
+          "finalScore": 0.097727,
+          "bm25Score": 0.232683,
+          "bm25Morphological": 21.278738,
+          "bm25Ngram": 45.423926,
+          "normalizedMorphological": 0.172882,
+          "normalizedNgram": 0.258313,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.2,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2485,21 +3021,29 @@
       "recallAt5": 0,
       "ndcgAt5": 0,
       "sensitivity": {
-        "runnerUpId": "saved-new",
-        "finalScoreGap": 1.981164,
-        "finalScoreGapRatio": 0.085953,
-        "bm25ScoreGap": 7.585506,
-        "decayFactorGap": -0.031424,
-        "runnerUpBm25ToTie": 43.164328,
-        "runnerUpDecayToTie": 0.417291,
-        "winnerDecayToLose": 0.319917
+        "runnerUpId": "saved-old",
+        "finalScoreGap": 0.051468,
+        "finalScoreGapRatio": 0.105037,
+        "bm25ScoreGap": 0.105037,
+        "decayFactorGap": 0,
+        "runnerUpBm25ToTie": 1,
+        "runnerUpDecayToTie": 0.391078,
+        "winnerDecayToLose": 0.313237
       },
       "rankingDetails": [
         {
           "documentId": "jp-search",
           "rank": 1,
-          "finalScore": 23.049475,
-          "bm25Score": 47.039745,
+          "finalScore": 0.49,
+          "bm25Score": 1,
+          "bm25Morphological": 39.297666,
+          "bm25Ngram": 47.039745,
+          "normalizedMorphological": 1,
+          "normalizedNgram": 1,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2527,41 +3071,18 @@
           "isExpected": false
         },
         {
-          "documentId": "saved-new",
-          "rank": 2,
-          "finalScore": 21.068311,
-          "bm25Score": 39.454239,
-          "contextBonus": 1.4,
-          "timeDecayFactor": 0.381424,
-          "matchedTerms": [
-            {
-              "term": "保存",
-              "contribution": 4.727214
-            },
-            {
-              "term": "済み",
-              "contribution": 4.727214
-            },
-            {
-              "term": "カード",
-              "contribution": 4.042681
-            },
-            {
-              "term": "カー",
-              "contribution": 4.042681
-            },
-            {
-              "term": "ード",
-              "contribution": 3.528522
-            }
-          ],
-          "isExpected": false
-        },
-        {
           "documentId": "saved-old",
-          "rank": 3,
-          "finalScore": 21.02804,
-          "bm25Score": 42.914368,
+          "rank": 2,
+          "finalScore": 0.438532,
+          "bm25Score": 0.894963,
+          "bm25Morphological": 33.580223,
+          "bm25Ngram": 42.914368,
+          "normalizedMorphological": 0.854509,
+          "normalizedNgram": 0.9123,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2589,10 +3110,57 @@
           "isExpected": false
         },
         {
+          "documentId": "saved-new",
+          "rank": 3,
+          "finalScore": 0.413302,
+          "bm25Score": 0.843473,
+          "bm25Morphological": 33.580223,
+          "bm25Ngram": 39.454239,
+          "normalizedMorphological": 0.854509,
+          "normalizedNgram": 0.838743,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
+          "contextBonus": 1.4,
+          "timeDecayFactor": 0.35,
+          "matchedTerms": [
+            {
+              "term": "保存",
+              "contribution": 4.337757
+            },
+            {
+              "term": "済み",
+              "contribution": 4.337757
+            },
+            {
+              "term": "カード",
+              "contribution": 3.709621
+            },
+            {
+              "term": "カー",
+              "contribution": 3.709621
+            },
+            {
+              "term": "ード",
+              "contribution": 3.237821
+            }
+          ],
+          "isExpected": false
+        },
+        {
           "documentId": "near-negative-ui",
           "rank": 4,
-          "finalScore": 13.482934,
-          "bm25Score": 27.516192,
+          "finalScore": 0.288661,
+          "bm25Score": 0.589105,
+          "bm25Morphological": 23.530881,
+          "bm25Ngram": 27.516192,
+          "normalizedMorphological": 0.598786,
+          "normalizedNgram": 0.584956,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2610,8 +3178,16 @@
         {
           "documentId": "title-body-conflict",
           "rank": 5,
-          "finalScore": 13.482934,
-          "bm25Score": 27.516192,
+          "finalScore": 0.288661,
+          "bm25Score": 0.589105,
+          "bm25Morphological": 23.530881,
+          "bm25Ngram": 27.516192,
+          "normalizedMorphological": 0.598786,
+          "normalizedNgram": 0.584956,
+          "tokenWeights": {
+            "morphological": 0.3,
+            "ngram": 0.7
+          },
           "contextBonus": 1.4,
           "timeDecayFactor": 0.35,
           "matchedTerms": [
@@ -2664,7 +3240,25 @@
   "variants": [
     {
       "name": "baseline",
-      "description": "実測窓の中央値",
+      "description": "形態素解析/N-gramの標準合成",
+      "meanPrecisionAt1": 0.9,
+      "meanRPrecision": 0.9,
+      "mrr": 0.925,
+      "recallAt5": 0.95,
+      "ndcgAt5": 0.9306573596382728
+    },
+    {
+      "name": "morphological_only",
+      "description": "形態素解析のみ",
+      "meanPrecisionAt1": 0.9,
+      "meanRPrecision": 0.9,
+      "mrr": 0.925,
+      "recallAt5": 0.95,
+      "ndcgAt5": 0.9306573596382728
+    },
+    {
+      "name": "ngram_only",
+      "description": "N-gramのみ",
       "meanPrecisionAt1": 0.9,
       "meanRPrecision": 0.9,
       "mrr": 0.925,

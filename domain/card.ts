@@ -15,4 +15,8 @@ export interface Card {
   updatedAt:   string;
   tokens?:     string[];
   docLength?:  number;
+  morphologicalTokens?: string[];
+  ngramTokens?: string[];
+  morphologicalDocLength?: number;
+  ngramDocLength?: number;
 }

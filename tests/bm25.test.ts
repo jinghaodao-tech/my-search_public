@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { article, bm25Engine, searchMode, tokenArticle } from "./helpers.js";
+import { duplicatePairRecall } from "../bm25_engine.js";
 
 const SEARCH = "\u691c\u7d22";
 const IMPLEMENTATION = "\u5b9f\u88c5";
@@ -130,5 +131,13 @@ describe("BM25 search", () => {
     expect(result.active.length).toBeLessThanOrEqual(200);
     // Threshold includes CI variance while still catching a regression toward per-search tokenization.
     expect(elapsedMs).toBeLessThan(2_000);
+  });
+
+  it("keeps LSH duplicate-pair recall at or above 85 percent", () => {
+    const base = Array.from({ length: 24 }, (_, index) => `shared article sentence ${index} about search quality and indexing`).join(". ");
+    const corpus = Array.from({ length: 10 }, (_, index) => article(`near-${index}`, `Shared article ${index}`, `${base}. Variant detail ${index}`));
+    corpus.push(...Array.from({ length: 10 }, (_, index) => article(`distinct-${index}`, `Distinct article ${index}`, `unrelated topic ${index} with independent content and vocabulary`)));
+
+    expect(duplicatePairRecall(corpus, 0.8)).toBeGreaterThanOrEqual(0.85);
   });
 });

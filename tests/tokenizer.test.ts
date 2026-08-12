@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeJapanesePhraseWeight, expandJapaneseTokens, looksLikeMojibake } from '../bm25_engine.js';
+import { buildStoredTokenSet, computeJapanesePhraseWeight, expandJapaneseTokens, looksLikeMojibake } from '../bm25_engine.js';
 
 describe('Japanese tokenizer safeguards', () => {
   it('adds character bigrams to unknown Japanese terms', () => {
@@ -17,5 +17,13 @@ describe('Japanese tokenizer safeguards', () => {
     expect(computeJapanesePhraseWeight(2, 5)).toBe(3);
     expect(computeJapanesePhraseWeight(2, 5)).not.toBeGreaterThan(3);
     expect(computeJapanesePhraseWeight(1, 1)).toBe(1);
+  });
+
+  it('builds both stored token signals without losing the legacy expanded tokens', async () => {
+    const stored = await buildStoredTokenSet('\u672a\u77e5\u8a9e\u691c\u7d22');
+    expect(stored.morphologicalTokens.length).toBeGreaterThan(0);
+    expect(stored.ngramTokens).toEqual(expect.arrayContaining(['\u672a\u77e5', '\u77e5\u8a9e']));
+    expect(stored.morphologicalDocLength).toBe(stored.morphologicalTokens.length);
+    expect(stored.ngramDocLength).toBe(stored.ngramTokens.length);
   });
 });

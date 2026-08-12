@@ -2,6 +2,7 @@ node_modules/
 data/*
 !data/search-evaluation/
 data/search-evaluation/*
+!data/search-evaluation/real-queries-v2.json
 !data/search-evaluation/real-queries.json
 !data/search-evaluation/anonymized-corpus.json
 backups/

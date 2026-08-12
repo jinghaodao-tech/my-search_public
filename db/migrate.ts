@@ -77,6 +77,7 @@ const migrations: Migration[] = [
       INSERT INTO cards_fts (id, title, body, summary, tags) SELECT cards.id, cards.title, cards.body, COALESCE(cards.summary, ''), COALESCE((SELECT group_concat(tag, ' ') FROM card_tags WHERE card_tags.card_id = cards.id), '') FROM cards WHERE cards.id = OLD.card_id;
     END;
   ` },
+  { id: "014_add_dual_token_columns", sql: "" },
 ];
 
 function columns(db: Database.Database, table: string): Set<string> {
@@ -119,6 +120,18 @@ function applyMigration(db: Database.Database, migration: Migration): void {
     if (names.size === 0) return;
     if (!names.has("saved_card_id")) db.exec("ALTER TABLE articles ADD COLUMN saved_card_id TEXT REFERENCES cards(id) ON DELETE SET NULL");
     db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_saved_card_unique ON articles(saved_card_id) WHERE saved_card_id IS NOT NULL");
+    return;
+  }
+  if (migration.id === "014_add_dual_token_columns") {
+    for (const table of ["cards", "articles"]) {
+      const names = columns(db, table);
+      if (names.size === 0) continue;
+      if (!names.has("morphological_tokens_json")) db.exec(`ALTER TABLE ${table} ADD COLUMN morphological_tokens_json TEXT NOT NULL DEFAULT '[]'`);
+      if (!names.has("ngram_tokens_json")) db.exec(`ALTER TABLE ${table} ADD COLUMN ngram_tokens_json TEXT NOT NULL DEFAULT '[]'`);
+      if (!names.has("morphological_doc_length")) db.exec(`ALTER TABLE ${table} ADD COLUMN morphological_doc_length INTEGER NOT NULL DEFAULT 0`);
+      if (!names.has("ngram_doc_length")) db.exec(`ALTER TABLE ${table} ADD COLUMN ngram_doc_length INTEGER NOT NULL DEFAULT 0`);
+      db.exec(`UPDATE ${table} SET ngram_tokens_json = CASE WHEN ngram_tokens_json = '[]' THEN COALESCE(tokens_json, '[]') ELSE ngram_tokens_json END, ngram_doc_length = CASE WHEN ngram_doc_length = 0 THEN COALESCE(doc_length, 0) ELSE ngram_doc_length END`);
+    }
     return;
   }
   if (migration.sql.trim()) db.exec(migration.sql);

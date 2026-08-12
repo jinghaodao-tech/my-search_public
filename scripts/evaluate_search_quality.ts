@@ -6,9 +6,9 @@ import { excludesArticle, parseSearchQuery, type ParsedSearchQuery } from '../se
 import { assertSearchQualityMetrics, realQualityGateThresholds, searchQualityThresholds, type SearchQualityMetricName } from './search_quality_config.js';
 
 type SearchCase = { id: string; query: string; keywords: Array<{ term: string; weight: number; synonyms?: string[] }>; expected: string[]; kind: string };
-type Variant = { name: string; description: string; synonym: boolean; lambda: number };
+type Variant = { name: string; description: string; synonym: boolean; lambda: number; morphologicalWeight?: number; ngramWeight?: number };
 type AnonymizedFixture = { version?: string; documents?: Array<{ id: string; title: string; body: string; url: string; sourceAuthority: number; publishedAt: string; tokens: string[]; morphologicalTokens?: string[]; docLength: number; archived?: boolean }> };
-type ManualRealQuery = { id: string; query: string; expected: string[]; kind?: string };
+type ManualRealQuery = { id: string; query: string; expected: string[]; kind?: string; difficulty?: 'easy' | 'medium' | 'hard'; language?: 'English' | 'Japanese' | 'mixed'; relevance?: 'single' | 'multiple' };
 const date = (value: string) => new Date(`${value}T00:00:00.000Z`);
 function article(id: string, title: string, body: string, tokens: string[], publishedAt = '2026-01-01', authority = 0.8): Article { return { id, title, body, url: `https://example.test/${id}`, sourceAuthority: authority, publishedAt: date(publishedAt), tokens, docLength: tokens.length }; }
 
@@ -80,17 +80,27 @@ function buildRealProbeCases(corpus: RealArticle[]): SearchCase[] {
   }).filter((testCase): testCase is SearchCase => testCase !== null).slice(0, 20);
 }
 function loadManualRealCases(): SearchCase[] {
-  const queryPath = path.join(process.cwd(), 'data', 'search-evaluation', 'real-queries.json');
-  if (!fs.existsSync(queryPath)) return [];
-  const queries = JSON.parse(fs.readFileSync(queryPath, 'utf8')) as ManualRealQuery[];
+  const basePath = path.join(process.cwd(), 'data', 'search-evaluation');
+  const queryPaths = ['real-queries.json', 'real-queries-v2.json'].map(file => path.join(basePath, file)).filter(fs.existsSync);
+  const queries = queryPaths.flatMap(queryPath => JSON.parse(fs.readFileSync(queryPath, 'utf8')) as ManualRealQuery[]);
   return queries.map(query => ({ id: query.id, kind: query.kind ?? 'real-manual', query: query.query, keywords: [], expected: query.expected }));
 }
 const realArticles = loadAnonymizedCorpus();
 const manualRealCases = loadManualRealCases();
+if (manualRealCases.length > 0) {
+  const ids = new Set(manualRealCases.map(testCase => testCase.id));
+  const queries = new Set(manualRealCases.map(testCase => testCase.query));
+  if (ids.size !== manualRealCases.length) throw new Error('real evaluation dataset contains duplicate case IDs');
+  if (queries.size !== manualRealCases.length) throw new Error('real evaluation dataset contains duplicate queries');
+  if (manualRealCases.some(testCase => testCase.expected.length === 0)) throw new Error('real evaluation dataset contains an unlabeled query');
+  if (manualRealCases.length < 50) throw new Error(`real evaluation dataset has only ${manualRealCases.length} cases; expected at least 50`);
+}
 const realCases = manualRealCases.length > 0 ? manualRealCases : buildRealProbeCases(realArticles);
-const realLabelSource = manualRealCases.length > 0 ? 'manual relevance labels from data/search-evaluation/real-queries.json' : 'auto-probed from common anonymized document tokens; not a release gate';
+const realLabelSource = manualRealCases.length > 0 ? 'manual relevance labels from data/search-evaluation/real-queries.json and real-queries-v2.json' : 'auto-probed from common anonymized document tokens; not a release gate';
 const variants: Variant[] = [
-  { name: 'baseline', description: '実測窓の中央値', synonym: true, lambda: 0.085 },
+  { name: 'baseline', description: '形態素解析/N-gramの標準合成', synonym: true, lambda: 0.085, morphologicalWeight: 0.3, ngramWeight: 0.7 },
+  { name: 'morphological_only', description: '形態素解析のみ', synonym: true, lambda: 0.085, morphologicalWeight: 1, ngramWeight: 0 },
+  { name: 'ngram_only', description: 'N-gramのみ', synonym: true, lambda: 0.085, morphologicalWeight: 0, ngramWeight: 1 },
   { name: 'no_synonym_expansion', description: '同義語展開を無効化した比較', synonym: false, lambda: 0.1 },
   { name: 'no_time_decay', description: '時間減衰を無効化した比較', synonym: true, lambda: 0 },
 ];
@@ -117,7 +127,7 @@ async function evaluateVariant(variant: Variant, endToEnd: boolean, timeDecayFlo
   for (const testCase of testCases) {
     const parsed: ParsedSearchQuery | undefined = endToEnd ? parseSearchQuery(testCase.query, variant.synonym ? synonymMap : {}) : undefined;
     const keywords = parsed?.parsedKeywords ?? testCase.keywords.map(keyword => ({ ...keyword, synonyms: variant.synonym ? (keyword.synonyms ?? []) : [] }));
-    const result = await runPipeline(corpus, { label: variant.name, description: endToEnd ? 'Raw query parser evaluation' : 'Keyword ranking evaluation', k1: 1.5, b: 0.75, lambda: variant.lambda, contextBonus: 1.2, keywords }, endToEnd ? 'end-to-end-query' : 'ranking-only', { archiveScoreThreshold: 2, dedupThreshold: 1, resultLimit: 5, timeDecayFloor });
+    const result = await runPipeline(corpus, { label: variant.name, description: endToEnd ? 'Raw query parser evaluation' : 'Keyword ranking evaluation', k1: 1.5, b: 0.75, lambda: variant.lambda, contextBonus: 1.2, keywords, morphologicalWeight: variant.morphologicalWeight, ngramWeight: variant.ngramWeight }, endToEnd ? 'end-to-end-query' : 'ranking-only', { archiveScoreThreshold: 0, dedupThreshold: 1, resultLimit: 5, timeDecayFloor });
     const eligible = result.active.filter(item => !parsed || !excludesArticle(item.article, parsed.excludedTerms));
     const ranked = eligible.map(item => item.article.id);
     const rankingDetails = eligible.map((item, index) => ({
@@ -125,6 +135,11 @@ async function evaluateVariant(variant: Variant, endToEnd: boolean, timeDecayFlo
       rank: index + 1,
       finalScore: Number(item.score.toFixed(6)),
       bm25Score: Number(item.breakdown.bm25Raw.toFixed(6)),
+      bm25Morphological: Number(item.breakdown.bm25Morphological.toFixed(6)),
+      bm25Ngram: Number(item.breakdown.bm25Ngram.toFixed(6)),
+      normalizedMorphological: Number(item.breakdown.normalizedMorphological.toFixed(6)),
+      normalizedNgram: Number(item.breakdown.normalizedNgram.toFixed(6)),
+      tokenWeights: item.breakdown.tokenWeights,
       contextBonus: Number(item.breakdown.contextBonus.toFixed(6)),
       timeDecayFactor: variant.lambda === 0 ? null : Number(item.breakdown.timeDecay.toFixed(6)),
       matchedTerms: item.breakdown.matchedTerms.map(term => ({
@@ -176,7 +191,7 @@ function artifact(evaluation: Awaited<ReturnType<typeof evaluateVariant>>, scope
     qualityGate: scope === 'end-to-end-query' || scope === 'real',
     qualityGateThresholds: scope === 'real' ? realQualityGateThresholds : searchQualityThresholds,
     pipeline,
-    dataset: { version: scope === 'real' ? (manualRealCases.length > 0 ? 'anonymized-card-corpus-v1-manual-queries' : 'anonymized-card-corpus-v1-common-token-probes') : 'v5-57-docs-20-query-cases', documents: corpus.length, queries: testCases.length, caseKinds: [...new Set(testCases.map(testCase => testCase.kind))], languages: ['English', 'Japanese'], labelSource },
+    dataset: { version: scope === 'real' ? (manualRealCases.length > 0 ? 'anonymized-card-corpus-v2-50-manual-queries' : 'anonymized-card-corpus-v1-common-token-probes') : 'v5-57-docs-20-query-cases', documents: corpus.length, queries: testCases.length, caseKinds: [...new Set(testCases.map(testCase => testCase.kind))], languages: ['English', 'Japanese'], labelSource },
     rows: evaluation.rows,
     metrics,
     theoretical,
@@ -189,7 +204,9 @@ const rankingEvaluations = []; const endToEndEvaluations = [];
 for (const variant of variants) { rankingEvaluations.push(await evaluateVariant(variant, false)); endToEndEvaluations.push(await evaluateVariant(variant, true)); }
 const ranking = artifact(rankingEvaluations[0], 'ranking-only', ['keywords', 'ranking_engine']); ranking.variants = rankingEvaluations.map(({ variant, rows: _rows, ...metrics }) => ({ name: variant, description: variants.find(item => item.name === variant)?.description ?? '', ...metrics }));
 const endToEnd = artifact(endToEndEvaluations[0], 'end-to-end-query', ['raw_query', 'query_parser', 'keyword_candidates', 'ranking_engine']); endToEnd.variants = endToEndEvaluations.map(({ variant, rows: _rows, ...metrics }) => ({ name: variant, description: variants.find(item => item.name === variant)?.description ?? '', ...metrics }));
-const real = realArticles.length > 0 && realCases.length > 0 ? artifact(await evaluateVariant(variants[0]!, true, 0.35, realArticles, realCases), 'real', ['anonymized_fixture', 'raw_query', 'query_parser', 'keyword_candidates', 'ranking_engine'], realArticles, realCases) : null;
+const realEvaluations = realArticles.length > 0 && realCases.length > 0 ? await Promise.all(variants.map((variant) => evaluateVariant(variant, true, 0.35, realArticles, realCases))) : [];
+const real = realEvaluations.length > 0 ? artifact(realEvaluations[0]!, 'real', ['anonymized_fixture', 'raw_query', 'query_parser', 'keyword_candidates', 'ranking_engine'], realArticles, realCases) : null;
+if (real) real.variants = realEvaluations.map(({ variant, rows: _rows, ...metrics }) => ({ name: variant, description: variants.find(item => item.name === variant)?.description ?? '', ...metrics }));
 type DecaySweepRow = {
   lambda: number;
   timeDecayFloor: number;

@@ -30,7 +30,7 @@ function ensureDataDir() {
 }
 
 import { db } from '../db/database.js';
-import { tokenize } from '../search/tokenizer.js';
+import { buildStoredTokenSet } from '../bm25_engine.js';
 
 type CardRow = {
   id: string;
@@ -47,6 +47,10 @@ type CardRow = {
   archived_at: string | null;
   tokens_json: string | null;
   doc_length: number | null;
+  morphological_tokens_json: string | null;
+  ngram_tokens_json: string | null;
+  morphological_doc_length: number | null;
+  ngram_doc_length: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -69,6 +73,10 @@ function rowToCard(row: CardRow): Card {
     updatedAt: row.updated_at,
     tokens: JSON.parse(row.tokens_json ?? "[]"),
     docLength: row.doc_length ?? 0,
+    morphologicalTokens: JSON.parse(row.morphological_tokens_json ?? "[]"),
+    ngramTokens: JSON.parse(row.ngram_tokens_json ?? row.tokens_json ?? "[]"),
+    morphologicalDocLength: row.morphological_doc_length ?? 0,
+    ngramDocLength: row.ngram_doc_length ?? row.doc_length ?? 0,
   };
 }
 
@@ -148,6 +156,10 @@ function cardToRow(card: Card) {
     archived_at: card.archivedAt ?? null,
     tokens_json: JSON.stringify(card.tokens ?? []),
     doc_length: card.docLength ?? card.tokens?.length ?? 0,
+    morphological_tokens_json: JSON.stringify(card.morphologicalTokens ?? card.tokens ?? []),
+    ngram_tokens_json: JSON.stringify(card.ngramTokens ?? card.tokens ?? []),
+    morphological_doc_length: card.morphologicalDocLength ?? card.morphologicalTokens?.length ?? card.tokens?.length ?? 0,
+    ngram_doc_length: card.ngramDocLength ?? card.ngramTokens?.length ?? card.docLength ?? card.tokens?.length ?? 0,
     created_at: card.createdAt,
     updated_at: card.updatedAt,
   };
@@ -169,6 +181,10 @@ const insertCardSql = `
     archived_at,
     tokens_json,
     doc_length,
+    morphological_tokens_json,
+    ngram_tokens_json,
+    morphological_doc_length,
+    ngram_doc_length,
     created_at,
     updated_at
   )
@@ -187,6 +203,10 @@ const insertCardSql = `
     @archived_at,
     @tokens_json,
     @doc_length,
+    @morphological_tokens_json,
+    @ngram_tokens_json,
+    @morphological_doc_length,
+    @ngram_doc_length,
     @created_at,
     @updated_at
   )
@@ -214,6 +234,10 @@ function updateStoredCard(card: Card): void {
       archived_at = @archived_at,
       tokens_json = @tokens_json,
       doc_length = @doc_length,
+      morphological_tokens_json = @morphological_tokens_json,
+      ngram_tokens_json = @ngram_tokens_json,
+      morphological_doc_length = @morphological_doc_length,
+      ngram_doc_length = @ngram_doc_length,
       created_at = @created_at,
       updated_at = @updated_at
     WHERE id = @id
@@ -480,8 +504,8 @@ export async function createCard(
     createdAt: now,
     updatedAt: now,
   };
-  card.tokens = await tokenize(`${card.title} ${card.body} ${(card.tags ?? []).join(" ")}`);
-  card.docLength = card.tokens.length;
+  const stored = await buildStoredTokenSet(`${card.title} ${card.body} ${(card.tags ?? []).join(" ")}`);
+  Object.assign(card, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength, ...stored });
   db.transaction(() => insertStoredCard(card))();
   return card;
 }
@@ -507,8 +531,8 @@ export async function createCardWithTransaction(
     createdAt: now,
     updatedAt: now,
   };
-  card.tokens = await tokenize(card.title + ' ' + card.body + ' ' + (card.tags ?? []).join(" "));
-  card.docLength = card.tokens.length;
+  const stored = await buildStoredTokenSet(card.title + ' ' + card.body + ' ' + (card.tags ?? []).join(" "));
+  Object.assign(card, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength, ...stored });
   return db.transaction(() => {
     insertStoredCard(card);
     finalize(card);
@@ -519,10 +543,8 @@ export async function updateCard(id: string, updates: Partial<Card>): Promise<Ca
   const existing = getCard(id);
   if (!existing) return null;
   const updated: Card = { ...existing, ...updates, id, updatedAt: new Date().toISOString() };
-  updated.tokens = await tokenize(
-    `${updated.title} ${updated.body} ${(updated.tags ?? []).join(" ")}`
-  );
-  updated.docLength = updated.tokens.length;
+  const stored = await buildStoredTokenSet(`${updated.title} ${updated.body} ${(updated.tags ?? []).join(" ")}`);
+  Object.assign(updated, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength, ...stored });
   db.transaction(() => updateStoredCard(updated))();
   return updated;
 }
@@ -662,9 +684,9 @@ export async function backfillCardTokens(): Promise<number> {
   let updated = 0;
 
   for (const card of cards) {
-    if ((card.tokens?.length ?? 0) > 0 && (card.docLength ?? 0) > 0) continue;
-    card.tokens = await tokenize(`${card.title} ${card.body} ${(card.tags ?? []).join(" ")}`);
-    card.docLength = card.tokens.length;
+    if ((card.morphologicalTokens?.length ?? 0) > 0 && (card.ngramTokens?.length ?? 0) > 0) continue;
+    const stored = await buildStoredTokenSet(`${card.title} ${card.body} ${(card.tags ?? []).join(" ")}`);
+    Object.assign(card, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength, ...stored });
     updated += 1;
   }
 

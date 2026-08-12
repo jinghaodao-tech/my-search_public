@@ -49,3 +49,5 @@ A hosted multi-user version would need authentication, authorization, tenant-awa
 ## If the Dataset Reaches 1M Items
 
 Likely bottlenecks would be token parsing, ranking all documents, relation hydration, sorting large result sets, and simple text filtering. Improvements would include SQL-side filtering, tag joins, FTS5 experiments, top-k ranking, incremental indexes, background token backfills, and possibly a separate search index. Those changes should be benchmark-driven rather than added prematurely.
+
+See `docs/adr/` for specific, numbered decisions on these bottlenecks (deduplication, top-K ranking, inverted indexing, and substring filtering) as they have been benchmarked.
