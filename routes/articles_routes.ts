@@ -40,30 +40,24 @@ export function createArticlesRouter(ctx: RouteContext) {
     }
   });
 
-  router.post('/cards/import-articles', async (req, res) => {
+  router.post('/cards/import-articles', ctx.importLimiter, async (req, res) => {
     const body = parseBody(ctx.importArticlesSchema, req, res);
     if (!body) return;
-    const { articleIds } = body;
-    const articles = ctx.getCachedArticles()?.articles ?? [];
-    const targets = articleIds
-      ? articles.filter((article: Article) => articleIds.includes(article.id))
-      : articles;
-
-    const existing = new Set(ctx.loadCards().map((card: Card) => card.id));
-    const imported: Card[] = [];
-
-    for (const article of targets) {
-      if (existing.has(`card_from_${article.id}`)) continue;
-      const card = await ctx.createCard({
-        title: article.title,
-        body: article.body,
-        url: article.url,
-        tags: [],
-        type: 'article',
-      });
-      imported.push(card);
+    try {
+      const { articleIds } = body;
+      const articles = ctx.getCachedArticles()?.articles ?? [];
+      const targets = articleIds ? articles.filter((article: Article) => articleIds.includes(article.id)) : articles;
+      const existing = new Set(ctx.loadCards().map((card: Card) => card.id));
+      const imported: Card[] = [];
+      for (const article of targets) {
+        if (existing.has(`card_from_${article.id}`)) continue;
+        imported.push(await ctx.createCard({ title: article.title, body: article.body, url: article.url, tags: [], type: 'article' }));
+      }
+      res.json({ ok: true, count: imported.length });
+    } catch (err) {
+      logger.error({ event: 'article_import_error', requestId: getRequestId(req), error: errorMeta(err) }, 'article import failed');
+      res.status(500).json({ error: 'Internal server error', code: 'article_import_failed', requestId: getRequestId(req) });
     }
-    res.json({ ok: true, count: imported.length });
   });
 
   return router;

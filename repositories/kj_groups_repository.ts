@@ -134,7 +134,8 @@ export function updateKJGroup(id: string, updates: Partial<KJGroup>): KJGroup | 
   return updated;
 }
 
-export function deleteKJGroup(id: string): void {
+export function deleteKJGroup(id: string): boolean {
+  if (!db.prepare('SELECT id FROM kj_groups WHERE id = ?').get(id)) return false;
   const now = new Date().toISOString();
   const tx = db.transaction(() => {
     db.prepare(`
@@ -145,6 +146,7 @@ export function deleteKJGroup(id: string): void {
     db.prepare(`DELETE FROM kj_groups WHERE id = ?`).run(id);
   });
   tx();
+  return true;
 }
 
 /** カードをKJグループへ割り当て（nullで解除） */

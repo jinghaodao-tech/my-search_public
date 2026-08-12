@@ -58,7 +58,7 @@ export function createCardsRouter(ctx: RouteContext) {
       res.status(201).json(card);
     } catch (err) {
       logger.warn({ event: 'card_create_error', requestId: getRequestId(req), error: errorMeta(err) }, 'card create failed');
-      sendError(req, res, 400, 'Invalid request');
+      sendError(req, res, 500, 'Internal server error', undefined, 'card_create_failed');
     }
   });
 
@@ -105,6 +105,7 @@ export function createCardsRouter(ctx: RouteContext) {
 
   router.delete('/cards/:id', (req, res) => {
     const ok = ctx.deleteCard(req.params.id);
+    if (!ok) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     res.json({ ok });
   });
 
@@ -115,6 +116,8 @@ export function createCardsRouter(ctx: RouteContext) {
   });
 
   router.put('/cards/:id/unarchive', async (req, res) => {
+    res.setHeader('Deprecation', 'true');
+    res.setHeader('Sunset', 'use POST /cards/:id/restore');
     const card = await ctx.restoreCard(req.params.id);
     if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     res.json(card);
@@ -171,15 +174,20 @@ export function createCardsRouter(ctx: RouteContext) {
   });
 
   router.delete('/cards/:id/links/:targetId', (req, res) => {
-    ctx.unlinkCards(req.params.id, req.params.targetId);
+    if (!ctx.getCard(req.params.id) || !ctx.getCard(req.params.targetId)) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
+    if (!ctx.unlinkCards(req.params.id, req.params.targetId)) { sendError(req, res, 404, 'Link not found', undefined, 'link_not_found'); return; }
     res.json({ ok: true });
   });
 
   router.get('/cards/:id/backlinks', (req, res) => {
+    if (!ctx.getCard(req.params.id)) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     res.json(ctx.getBacklinks(req.params.id));
   });
 
-  router.get('/zettelkasten/graph', (_req, res) => {
+  router.get('/zettelkasten/graph', (req, res) => {
+    const rawQuery = req.query as Record<string, unknown>;
+    const limit = normalizeQueryNumber(rawQuery.limit, 1, 5000) ?? 1000;
+    const offset = normalizeQueryNumber(rawQuery.offset, 0, Number.MAX_SAFE_INTEGER) ?? 0;
     const cards = ctx.loadCards();
     const linkedIds = new Set<string>();
     for (const card of cards) {
@@ -188,7 +196,8 @@ export function createCardsRouter(ctx: RouteContext) {
         for (const linkId of card.links) linkedIds.add(linkId);
       }
     }
-    const visibleCards = cards.filter((card: Card) => linkedIds.has(card.id));
+    const allVisibleCards = cards.filter((card: Card) => linkedIds.has(card.id));
+    const visibleCards = allVisibleCards.slice(offset, offset + limit);
     const nodes = visibleCards.map((card: Card) => ({
       id: card.id,
       label: card.title.slice(0, 40),
@@ -203,10 +212,17 @@ export function createCardsRouter(ctx: RouteContext) {
         edges.push({ from: card.id, to: linkId });
       }
     }
-    res.json({ nodes, edges });
+    res.json({ nodes, edges, total: allVisibleCards.length, limit, offset });
   });
 
-  router.get('/tags', (_req, res) => res.json(ctx.getAllTags()));
+  router.get('/tags', (req, res) => {
+    const rawQuery = req.query as Record<string, unknown>;
+    const limit = normalizeQueryNumber(rawQuery.limit, 1, 5000) ?? 1000;
+    const offset = normalizeQueryNumber(rawQuery.offset, 0, Number.MAX_SAFE_INTEGER) ?? 0;
+    const tags = ctx.getAllTags();
+    if (typeof rawQuery.limit === 'undefined' && typeof rawQuery.offset === 'undefined') { res.json(tags); return; }
+    res.json({ items: tags.slice(offset, offset + limit), total: tags.length, limit, offset });
+  });
 
   return router;
 }

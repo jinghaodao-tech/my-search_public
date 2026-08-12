@@ -27,6 +27,11 @@ export type AppErrorCode =
   | 'export_failed'
   | 'ai_provider_unavailable'
   | 'database_error'
+  | 'card_create_failed'
+  | 'article_import_failed'
+  | 'import_failed'
+  | 'link_not_found'
+  | 'scheduler_already_running'
   | 'job_not_found'
   | 'authentication_required'
   | 'request_failed';

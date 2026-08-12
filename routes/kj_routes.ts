@@ -34,7 +34,7 @@ export function createKjRouter(ctx: RouteContext) {
   });
 
   router.delete('/kj/groups/:id', (req, res) => {
-    ctx.deleteKJGroup(req.params.id);
+    if (!ctx.deleteKJGroup(req.params.id)) { sendError(req, res, 404, 'Not found', undefined, 'group_not_found'); return; }
     res.json({ ok: true });
   });
 

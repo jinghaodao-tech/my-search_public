@@ -7,6 +7,14 @@ import type { CollectResult } from '../collector.js';
 export function createCollectRouter(ctx: RouteContext) {
   const router = express.Router();
 
+  router.post('/scheduler/start', (req, res, next) => {
+    if (ctx.getSchedulerStop()) {
+      sendError(req, res, 409, 'Scheduler already running', undefined, 'scheduler_already_running');
+      return;
+    }
+    next();
+  });
+
   router.get('/articles', (_req, res) => {
     const cachedArticles = ctx.getCachedArticles();
     if (!cachedArticles) {

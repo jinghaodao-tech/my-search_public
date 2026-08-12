@@ -61,6 +61,36 @@ paths:
       responses:
         '200': { description: Job status }
         '404': { $ref: '#/components/responses/NotFound' }
+  /api/cards/{id}:
+    delete:
+      operationId: deleteCard
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Card deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/cards/summarize-bulk:
+    post:
+      operationId: summarizeCardsBulk
+      responses:
+        '202': { description: Summary job accepted; response includes jobId }
+        '500': { description: AI provider unavailable }
+  /api/zettelkasten/graph:
+    get:
+      operationId: getGraph
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 5000 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+      responses:
+        '200': { description: Paginated graph nodes and edges }
+  /api/tags:
+    get:
+      operationId: listTags
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 5000 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+      responses:
+        '200': { description: Tags, optionally paginated }
 components:
   securitySchemes:
     ApiKey:

@@ -27,6 +27,8 @@ Details:
 
 https://github.com/user-attachments/assets/be5052d8-1d60-4aaa-8f6a-565dbaa1ee4d
 
+![Card list view](docs/screenshots/card-list.jpg)
+
 ## 特徴
 
 - BM25 search over card title, body, summary, tags, and related metadata
@@ -125,6 +127,18 @@ More architecture notes are in [docs/project-details.md](docs/project-details.md
 ## Benchmark
 
 Benchmark numbers are generated, not hand-maintained. Run `npm run benchmark` for ranking-only, production-like, end-to-end pipeline, first-pipeline-call, repeated-pipeline-call, and candidate near-duplicate/diverse scopes. Run `npm run benchmark:http` for independent HTTP measurements.
+
+Latest benchmark snapshot (2026-08-12, `resultLimit=100`):
+
+| Scope | Corpus | Deduplication | Elapsed | Threshold | Result |
+|---|---:|---|---:|---:|---|
+| ranking-only | 10,000 | disabled | 129.333 ms | 500 ms | pass |
+| production-like | 5,000 | enabled | 2,821.705 ms | 3,000 ms | pass |
+| end-to-end-pipeline | 1,000 | disabled | 18.978 ms | 1,000 ms | pass |
+| first-pipeline-call | 100 | disabled | 3.682 ms | 1,000 ms | pass |
+| repeated-pipeline-call | 100 | disabled | 3.704 ms | 100 ms | pass |
+
+The complete generated output is recorded in `artifacts/benchmark-results.json` and `docs/benchmark.md`. Regenerate this snapshot with `npm run benchmark` after performance changes.
 
 Latest generated artifacts:
 

@@ -6,6 +6,32 @@ import { getRequestId, parseBody, sendError } from '../services/http_service.js'
 export function createAiRouter(ctx: RouteContext) {
   const router = express.Router();
 
+  router.post('/cards/summarize-bulk', ctx.aiLimiter, async (req, res) => {
+    const body = parseBody(ctx.idsBodySchema, req, res);
+    if (!body) return;
+    if (!ctx.hasConfiguredProviderKey()) {
+      const keyName = ctx.AI_PROVIDER === 'gemini' ? 'GEMINI_API_KEY' : 'ANTHROPIC_API_KEY';
+      res.status(500).json({ error: `${keyName} is not configured`, code: 'missing_api_key', requestId: getRequestId(req) });
+      return;
+    }
+    const job = ctx.submitJob('ai-summary-bulk', async () => {
+      let processed = 0;
+      for (const id of body.ids) {
+        const card = ctx.getCard(id);
+        if (!card || card.summary) continue;
+        try {
+          const summary = await ctx.summarizeCard(card);
+          await ctx.updateCard(id, { summary });
+          processed += 1;
+        } catch (error) {
+          logger.error({ event: 'ai_bulk_summary_error', id, error: errorMeta(error) }, '[AI SUMMARY] bulk summarize failed');
+        }
+      }
+      return { processed, requested: body.ids.length };
+    });
+    res.status(202).json({ ok: true, jobId: job.id, status: job.status, requested: body.ids.length });
+  });
+
   router.delete('/cards/:id/summary', async (req, res) => {
     const card = ctx.getCard(req.params.id);
     if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
