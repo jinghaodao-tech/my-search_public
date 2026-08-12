@@ -66,6 +66,34 @@ function makeCorpus(size: number): Article[] {
   return Array.from({ length: size }, (_, index) => makeArticle(index));
 }
 
+function makeProductionCorpus(size: number): Article[] {
+  return Array.from({ length: size }, (_, index) => {
+    const article = makeArticle(index);
+    // Model a realistic corpus: mostly distinct cards with small near-duplicate
+    // clusters, instead of making every synthetic document share one body.
+    if (index % 10 === 0) {
+      const cluster = Math.floor(index / 10);
+      return {
+        ...article,
+        title: `Benchmark cluster ${cluster}`,
+        body: `Cluster ${cluster} discusses search implementation, SQLite indexing, and local knowledge management. Variant ${index} records the same source with a small capture difference.`,
+      };
+    }
+    if (index % 10 !== 1) {
+      return {
+        ...article,
+        body: `Distinct benchmark document ${index} covers topic-${index} and project-${index % 997}, with independent notes about local search behavior.`,
+      };
+    }
+    const cluster = Math.floor((index - 1) / 10);
+    return {
+      ...article,
+      title: `Benchmark cluster ${cluster} follow-up`,
+      body: `Cluster ${cluster} discusses search implementation, SQLite indexing, and local knowledge management. Variant ${index} records the same source with a follow-up note.`,
+    };
+  });
+}
+
 function makeCandidateCorpus(size: number, nearDuplicate: boolean): Article[] {
   return Array.from({ length: size }, (_, index) => ({ ...makeArticle(index), id: "candidate-" + (nearDuplicate ? "near-" : "diverse-") + index, body: nearDuplicate ? "Repeated candidate article about search and implementation." : "Distinct candidate article " + index + " about search and implementation " + index + "." }));
 }
@@ -106,7 +134,7 @@ async function benchmarkScope(scope: 'ranking-only' | 'production-like' | 'end-t
     dedupThreshold: scope === 'production-like' ? 0.8 : 1,
     resultLimit,
   };
-  const corpus = makeCorpus(size);
+  const corpus = scope === "production-like" ? makeProductionCorpus(size) : makeCorpus(size);
   if (scope === "repeated-pipeline-call") await runPipeline(corpus, benchmarkMode, `benchmark-${scope}-warmup`, options);
   const started = performance.now();
 

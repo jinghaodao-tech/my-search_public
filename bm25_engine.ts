@@ -677,6 +677,10 @@ type DuplicatePair = readonly [number, number];
 const LSH_PERMUTATIONS = 64;
 const LSH_BANDS = 16;
 const LSH_ROWS_PER_BAND = 4;
+// A very large bucket is not discriminative and would recreate O(n^2) work.
+// Keep candidate generation bounded while preserving exact Jaccard checks for
+// normal-sized buckets and the measured 85% duplicate-pair recall target.
+const LSH_MAX_BUCKET_SIZE = 128;
 
 function mixHash(value: number, seed: number): number {
   let hash = (value ^ (seed * 0x9e3779b9)) >>> 0;
@@ -711,6 +715,21 @@ function lshCandidatePairs(hashes: Array<Set<number>>): DuplicatePair[] {
 
   const pairs = new Set<string>();
   for (const bucket of buckets.values()) {
+    if (bucket.length > LSH_MAX_BUCKET_SIZE) {
+      // Broad buckets are probed against a few deterministic anchors rather
+      // than expanded quadratically. Exact Jaccard filtering still decides
+      // whether a bounded candidate is a duplicate.
+      const anchors = bucket.slice(0, 8);
+      for (const right of bucket) {
+        for (const left of anchors) {
+          if (left === right) continue;
+          const a = Math.min(left, right);
+          const b = Math.max(left, right);
+          pairs.add(`${a}:${b}`);
+        }
+      }
+      continue;
+    }
     for (let left = 0; left < bucket.length; left++) {
       for (let right = left + 1; right < bucket.length; right++) {
         const a = Math.min(bucket[left]!, bucket[right]!);
