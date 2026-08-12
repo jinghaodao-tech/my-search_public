@@ -78,6 +78,7 @@ const migrations: Migration[] = [
     END;
   ` },
   { id: "014_add_dual_token_columns", sql: "" },
+  { id: "015_repair_invalid_card_timestamps", sql: "" },
 ];
 
 function columns(db: Database.Database, table: string): Set<string> {
@@ -131,6 +132,22 @@ function applyMigration(db: Database.Database, migration: Migration): void {
       if (!names.has("morphological_doc_length")) db.exec(`ALTER TABLE ${table} ADD COLUMN morphological_doc_length INTEGER NOT NULL DEFAULT 0`);
       if (!names.has("ngram_doc_length")) db.exec(`ALTER TABLE ${table} ADD COLUMN ngram_doc_length INTEGER NOT NULL DEFAULT 0`);
       db.exec(`UPDATE ${table} SET ngram_tokens_json = CASE WHEN ngram_tokens_json = '[]' THEN COALESCE(tokens_json, '[]') ELSE ngram_tokens_json END, ngram_doc_length = CASE WHEN ngram_doc_length = 0 THEN COALESCE(doc_length, 0) ELSE ngram_doc_length END`);
+    }
+    return;
+  }
+  if (migration.id === "015_repair_invalid_card_timestamps") {
+    const names = columns(db, "cards");
+    if (names.size === 0) return;
+    const rows = db.prepare("SELECT id, created_at, updated_at FROM cards").all() as Array<{ id: string; created_at: string; updated_at: string }>;
+    const update = db.prepare("UPDATE cards SET created_at = ?, updated_at = ? WHERE id = ?");
+    const isValidTimestamp = (value: string | null | undefined): boolean => Boolean(value && !Number.isNaN(Date.parse(value)));
+    for (const row of rows) {
+      if (isValidTimestamp(row.created_at) && isValidTimestamp(row.updated_at)) continue;
+      const idTimestamp = /^card_(\d+)_/.exec(row.id)?.[1];
+      const recoveredCreated = idTimestamp ? new Date(Number(idTimestamp)).toISOString() : new Date().toISOString();
+      const createdAt = isValidTimestamp(row.created_at) ? row.created_at : recoveredCreated;
+      const updatedAt = isValidTimestamp(row.updated_at) ? row.updated_at : createdAt;
+      update.run(createdAt, updatedAt, row.id);
     }
     return;
   }
