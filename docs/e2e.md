@@ -46,6 +46,21 @@ The E2E server launcher deletes `data/e2e-test.db`, `data/e2e-test.db-shm`, and 
 
 GitHub Actions installs Playwright Chromium and runs `npm run test:e2e` after type checks and API tests.
 
+## Known environment-specific failure (not a product bug)
+
+`npm run verify` (which chains `test:e2e` with everything else) can fail
+inside heavily sandboxed/locked-down Linux containers that either block
+outbound access to `cdn.playwright.dev` (so the Chromium binary itself
+cannot download) or restrict the namespace/seccomp calls Chromium's own
+sandbox needs to start. Neither failure mode is specific to this project:
+GitHub Actions CI installs with `--with-deps`, which pulls the OS-level
+packages plain `playwright install` skips, and E2E passes there as a normal
+required step; local runs on a real machine are unaffected. If `test:e2e`
+fails only inside a constrained container, check first whether the Chromium
+binary downloaded successfully and whether `--no-sandbox
+--disable-dev-shm-usage` launch args are needed for that specific
+environment, before assuming a real regression.
+
 ## Remaining Coverage Gaps
 
 - AI summary provider behavior is not covered; E2E uses `MOCK_AI_SUMMARY=true`.
