@@ -7,6 +7,8 @@ function renderCardGrid() {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📭</div><p>${currentFilter.archived?'アーカイブされたカードはありません':'カードがありません'}</p>${currentFilter.archived?'':'<button class="btn btn-primary btn-sm" onclick="openNewCardModal()">メモを作成</button>'}</div>`;
     return;
   }
+  if (typeof cardLayout !== 'undefined' && cardLayout === 'table') { renderCardTable(grid); return; }
+  grid.classList.remove('as-table');
   grid.innerHTML = allCards.map(card => {
     const strip = card.color ? `<div class="card-color-strip" style="background:${card.color}"></div>` : '';
     const typeMap = {article:'📰 記事',memo:'📝 メモ',csv:'📊 CSV'};
@@ -171,13 +173,43 @@ function highlightSearchText(text, keywords) {
 // ════════════════════════════════════════
 //  タグ・フィルター
 // ════════════════════════════════════════
+let tagSort = 'count';
+let showAllTags = false;
+const TAG_PREVIEW = 15;
+try { if (localStorage.getItem('tagSort') === 'name') tagSort = 'name'; } catch { /* storage unavailable */ }
+function visibleTags() {
+  const q = (document.getElementById('tag-search')?.value || '').trim().toLowerCase();
+  const list = allTags.filter(({ tag }) => !q || tag.toLowerCase().includes(q));
+  if (tagSort === 'name') list.sort((a, b) => a.tag.localeCompare(b.tag, 'ja'));
+  return list;
+}
 function renderTagCloud() {
   const cloud = document.getElementById('tag-cloud');
+  const searching = !!(document.getElementById('tag-search')?.value || '').trim();
+  const list = visibleTags();
+  const shown = showAllTags || searching ? list : list.slice(0, TAG_PREVIEW);
+  if (currentFilter.tag && !shown.some(t => t.tag === currentFilter.tag)) {
+    const active = allTags.find(t => t.tag === currentFilter.tag);
+    if (active) shown.unshift(active);
+  }
   document.getElementById('tag-count').textContent = `(${allTags.length})`;
-  cloud.innerHTML = allTags.map(({tag,count})=>
+  cloud.innerHTML = shown.map(({tag,count})=>
     `<span class="tag-pill ${currentFilter.tag===tag?'active':''}" onclick="filterTag('${esc(tag)}')">${esc(tag)} <small>${count}</small></span>`
-  ).join('');
+  ).join('') || '<span class="muted" style="font-size:12px">該当するタグはありません</span>';
+  const more = document.getElementById('tag-more');
+  if (more) {
+    more.style.display = !searching && list.length > TAG_PREVIEW ? '' : 'none';
+    more.textContent = showAllTags ? '少なく表示' : `すべて表示（${list.length}）`;
+  }
+  const sortBtn = document.getElementById('tag-sort-btn');
+  if (sortBtn) sortBtn.textContent = tagSort === 'name' ? '名前順' : '件数順';
 }
+function toggleTagSort() {
+  tagSort = tagSort === 'count' ? 'name' : 'count';
+  try { localStorage.setItem('tagSort', tagSort); } catch { /* storage unavailable */ }
+  renderTagCloud();
+}
+function toggleAllTags() { showAllTags = !showAllTags; renderTagCloud(); }
 function filterTag(tag) { currentFilter.tag = currentFilter.tag===tag?null:tag; renderTagCloud(); loadCards(); }
 function filterType(type,el) { currentFilter.type=type; document.querySelectorAll('#card-type-filter .type-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); loadCards(); }
 function onSearch(q) { currentFilter.q=q; loadCards(); }

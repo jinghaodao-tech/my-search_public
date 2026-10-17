@@ -1,0 +1,218 @@
+/**
+ * Reader: fetch an article page and extract its readable text without AI.
+ *
+ * Why: collected candidates only keep RSS snippets, so a saved card loses the
+ * article it came from, and the original opens in another tab, so the user
+ * cannot read and take notes side by side. This service keeps a copy of the
+ * readable text (personal use) together with the user's memo and the source.
+ *
+ * Extraction is deterministic (Mozilla Readability rules), so the same HTML
+ * always yields the same text and no tokens are spent.
+ */
+import { JSDOM } from 'jsdom';
+import { Readability } from '@mozilla/readability';
+
+export const READER_MAX_HTML_BYTES = 3 * 1024 * 1024;
+export const READER_TIMEOUT_MS = 10_000;
+/** Card bodies are limited to 20,000 chars by the existing card schema. */
+export const CARD_BODY_LIMIT = 20_000;
+
+export class ReaderError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+export type ReadableArticle = {
+  url: string;
+  title: string;
+  byline: string | null;
+  siteName: string | null;
+  paragraphs: string[];
+  fetchedAt: string;
+};
+
+const PRIVATE_HOST = [
+  /^localhost$/i,
+  /^127\./,
+  /^10\./,
+  /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^169\.254\./,
+  /^0\./,
+  /^\[?::1\]?$/,
+  /^\[?f[cd][0-9a-f]{2}:/i,
+];
+
+/**
+ * Only public http(s) pages may be fetched. This is a simple guard against the
+ * server being used to reach local services (it does not cover DNS rebinding).
+ */
+export function assertFetchableUrl(raw: string): URL {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new ReaderError('URL is invalid', 400);
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new ReaderError('Only http and https URLs can be read', 400);
+  if (PRIVATE_HOST.some(pattern => pattern.test(url.hostname))) throw new ReaderError('Local or private addresses cannot be read', 400);
+  return url;
+}
+
+const BLOCK_SELECTOR = 'h1, h2, h3, h4, h5, h6, p, li, pre, blockquote';
+export const IMAGE_LINE = /^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/;
+
+function toImageLine(image: Element, base: string): string | null {
+  const raw = image.getAttribute('src') || image.getAttribute('data-src');
+  if (!raw || raw.startsWith('data:')) return null;
+  let src: URL;
+  try {
+    src = new URL(raw, base);
+  } catch {
+    return null;
+  }
+  if (src.protocol !== 'http:' && src.protocol !== 'https:') return null;
+  const alt = (image.getAttribute('alt') ?? '').replace(/[\[\]\n]/g, ' ').trim();
+  return `![${alt}](${src.href.replace(/\)/g, '%29').replace(/\s/g, '%20')})`;
+}
+
+/** Pure function: HTML in, readable paragraphs out. */
+export function extractReadable(html: string, url: string, fetchedAt = new Date().toISOString()): ReadableArticle {
+  const dom = new JSDOM(html, { url });
+  // Ruby readings (<rt>/<rp>, common in Aozora Bunko) would be glued into the text; keep the base text only.
+  dom.window.document.querySelectorAll('rt, rp').forEach(node => node.remove());
+  // Character images (Aozora Bunko "gaiji", or tiny inline glyph images) belong inside the sentence:
+  // replace them with their alt text instead of turning them into separate image lines.
+  for (const img of Array.from(dom.window.document.querySelectorAll('img'))) {
+    const tiny = Number(img.getAttribute('width')) > 0 && Number(img.getAttribute('width')) <= 32 && Number(img.getAttribute('height') || 0) <= 32;
+    if (img.classList.contains('gaiji') || tiny) img.replaceWith(dom.window.document.createTextNode(img.getAttribute('alt') ?? ''));
+  }
+  const parsed = new Readability(dom.window.document).parse();
+  if (!parsed || !parsed.content) throw new ReaderError('No readable article text was found on this page', 422);
+
+  const content = new JSDOM(parsed.content).window.document;
+  const paragraphs: string[] = [];
+  for (const element of Array.from(content.querySelectorAll(`${BLOCK_SELECTOR}, img`))) {
+    if (element.tagName === 'IMG') {
+      // Images are kept as Markdown links to the original (the image file itself is not copied).
+      const image = toImageLine(element, url);
+      if (image) paragraphs.push(image);
+      continue;
+    }
+    // Skip containers whose text is already captured by a nested block (e.g. <li><p>..</p></li>).
+    if (element.querySelector(BLOCK_SELECTOR)) continue;
+    const text = (element.textContent ?? '').replace(/\s+/g, ' ').trim();
+    if (text) paragraphs.push(text);
+  }
+  if (!paragraphs.some(p => !IMAGE_LINE.test(p))) {
+    const fallback = (parsed.textContent ?? '').split(/\n\s*\n/).map(part => part.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    paragraphs.push(...fallback);
+  }
+  if (paragraphs.length === 0) throw new ReaderError('No readable article text was found on this page', 422);
+
+  return {
+    url,
+    title: (parsed.title ?? '').trim() || url,
+    byline: parsed.byline?.trim() || null,
+    siteName: parsed.siteName?.trim() || null,
+    paragraphs,
+    fetchedAt,
+  };
+}
+
+/**
+ * Decode HTML bytes with the page's own charset (e.g. Aozora Bunko is Shift_JIS).
+ * Order: Content-Type header -> <meta charset> / http-equiv in the first bytes -> UTF-8.
+ */
+export function decodeHtml(bytes: Uint8Array, contentType = ''): string {
+  const fromHeader = /charset=["']?([\w-]+)/i.exec(contentType)?.[1];
+  const head = Buffer.from(bytes.subarray(0, 4096)).toString('latin1');
+  const fromMeta = /<meta[^>]+charset=["']?([\w-]+)/i.exec(head)?.[1];
+  for (const label of [fromHeader, fromMeta, 'utf-8']) {
+    if (!label) continue;
+    try {
+      return new TextDecoder(label.toLowerCase()).decode(bytes);
+    } catch {
+      // unknown label: try the next candidate
+    }
+  }
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+/** Fetch a public page (with timeout and size limit) and extract it. */
+export async function fetchReadable(raw: string, fetchImpl: typeof fetch = fetch): Promise<ReadableArticle> {
+  const url = assertFetchableUrl(raw);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), READER_TIMEOUT_MS);
+  try {
+    const response = await fetchImpl(url, { signal: controller.signal, redirect: 'follow', headers: { 'user-agent': 'MySearchReader/1.0 (+personal reading)' } });
+    if (!response.ok) throw new ReaderError(`The page returned HTTP ${response.status}`, 502);
+    const type = response.headers.get('content-type') ?? '';
+    if (!/html/i.test(type)) throw new ReaderError('The page is not HTML', 415);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > READER_MAX_HTML_BYTES) throw new ReaderError('The page is too large to read', 413);
+    return extractReadable(decodeHtml(bytes, type), response.url || url.toString());
+  } catch (error) {
+    if (error instanceof ReaderError) throw error;
+    if ((error as Error).name === 'AbortError') throw new ReaderError('Fetching the page timed out', 504);
+    throw new ReaderError('The page could not be fetched', 502);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export type ReaderCardInput = {
+  memo: string;
+  source: Pick<ReadableArticle, 'title' | 'url' | 'byline' | 'siteName' | 'fetchedAt'>;
+  paragraphs: string[];
+};
+
+/**
+ * One card keeps three things together: the memo, where it came from, and a
+ * copy of what was read. The copy is cut to fit the card body limit.
+ */
+export function composeReaderCardBody({ memo, source, paragraphs }: ReaderCardInput): string {
+  const sourceLines = [
+    `- タイトル: ${source.title}`,
+    `- URL: ${source.url}`,
+    source.siteName ? `- サイト: ${source.siteName}` : null,
+    source.byline ? `- 著者: ${source.byline}` : null,
+    `- 取得日時: ${source.fetchedAt}`,
+  ].filter(Boolean).join('\n');
+  const head = `## メモ\n\n${memo.trim() || '（なし）'}\n\n## 出典\n\n${sourceLines}\n\n## 本文（取得時点のコピー・私的利用）\n\n`;
+  const fullText = paragraphs.join('\n\n');
+  const room = CARD_BODY_LIMIT - head.length;
+  if (fullText.length <= room) return head + fullText;
+  const note = `\n\n（以下省略：本文は全${fullText.length}文字。カードの上限のため途中まで保存）`;
+  return head + fullText.slice(0, Math.max(0, room - note.length)) + note;
+}
+
+export type ParsedReaderCard = {
+  isReaderFormat: boolean;
+  memo: string;
+  source: { title: string | null; url: string | null; siteName: string | null; byline: string | null; fetchedAt: string | null };
+  paragraphs: string[];
+};
+
+const MEMO_HEAD = '## メモ\n\n';
+const SOURCE_HEAD = '\n\n## 出典\n\n';
+const TEXT_HEAD = '\n\n## 本文（取得時点のコピー・私的利用）\n\n';
+
+/** Inverse of composeReaderCardBody. Cards in any other format are treated as memo only. */
+export function parseReaderCardBody(body: string): ParsedReaderCard {
+  const empty = { title: null, url: null, siteName: null, byline: null, fetchedAt: null };
+  const sourceAt = body.indexOf(SOURCE_HEAD);
+  const textAt = body.indexOf(TEXT_HEAD);
+  if (!body.startsWith(MEMO_HEAD) || sourceAt < 0 || textAt < sourceAt) {
+    return { isReaderFormat: false, memo: body, source: empty, paragraphs: [] };
+  }
+  const memo = body.slice(MEMO_HEAD.length, sourceAt);
+  const field = (name: string) => new RegExp(`^- ${name}: (.*)$`, 'm').exec(body.slice(sourceAt, textAt))?.[1]?.trim() ?? null;
+  return {
+    isReaderFormat: true,
+    memo: memo === '（なし）' ? '' : memo,
+    source: { title: field('タイトル'), url: field('URL'), siteName: field('サイト'), byline: field('著者'), fetchedAt: field('取得日時') },
+    paragraphs: body.slice(textAt + TEXT_HEAD.length).split(/\n\n/).filter(Boolean),
+  };
+}

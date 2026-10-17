@@ -20,7 +20,8 @@
     <button class="tab" onclick="switchView('bm25')">BM25スコアリング</button>
   </div>
   <div class="spacer"></div>
-  <button class="btn btn-secondary btn-sm" onclick="openSourceModal()">ソース管理</button>
+  <button class="btn btn-primary btn-sm" onclick="openReader()">読んでメモ</button>
+<button class="btn btn-secondary btn-sm" onclick="openSourceModal()">ソース管理</button>
   <button class="btn btn-secondary btn-sm" onclick="openCSVModal()">データ取り込み</button>
 </div>
 
@@ -56,7 +57,12 @@
       </div>
       <div class="sidebar-section">
         <h3>タグ <span id="tag-count" style="font-size:10px;font-weight:400"></span></h3>
+        <div class="tag-tools">
+          <input type="text" id="tag-search" placeholder="タグを検索" oninput="renderTagCloud()" onkeydown="if(event.key==='Enter'){const t=visibleTags()[0];if(t)filterTag(t.tag)}">
+          <button class="type-btn" id="tag-sort-btn" onclick="toggleTagSort()">件数順</button>
+        </div>
         <div class="tag-cloud" id="tag-cloud"></div>
+        <button class="tag-more" id="tag-more" onclick="toggleAllTags()" style="display:none"></button>
       </div>
     </div>
   </div>
@@ -68,6 +74,10 @@
       <span id="count-badge">0件</span>
       <div class="spacer"></div>
       <div id="header-actions">
+        <div class="layout-toggle">
+          <button class="type-btn active" id="layout-cards" onclick="setCardLayout('cards')">カード</button>
+          <button class="type-btn" id="layout-table" onclick="setCardLayout('table')">表</button>
+        </div>
         <input type="text" id="search-input" placeholder="保存済みカードを検索" oninput="onSearch(this.value)">
         <button class="btn btn-primary btn-sm" onclick="openNewCardModal()">メモ作成</button>
         <button id="multi-select-btn" class="btn btn-secondary btn-sm" onclick="toggleMultiSelect()">選択</button>
@@ -220,6 +230,7 @@
     <div id="detail-header">
       <h3 id="detail-title">カード詳細</h3>
       <button class="btn-icon" onclick="exportMarkdown(currentCardId)" title="Export Markdown">MD</button>
+      <button class="btn-icon" onclick="openReaderForCard(currentCardId)" title="読みながら編集">読んで編集</button>
       <button class="btn-icon" onclick="openEditModal(currentCardId)" title="編集">編集</button>
       <button class="btn-icon" onclick="closeDetail()" title="閉じる">×</button>
     </div>
@@ -229,6 +240,40 @@
 </div>
 
 <!-- モーダル: 新規カード -->
+<div class="modal-overlay" id="modal-reader">
+  <div class="modal reader-modal">
+    <div class="reader-bar">
+      <input type="url" id="reader-url" placeholder="https://... 記事のURL" onkeydown="if(event.key==='Enter')loadReaderArticle()">
+      <button class="btn btn-secondary btn-sm" onclick="loadReaderArticle()">読む</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-reader')">閉じる</button>
+    </div>
+    <div class="reader-split">
+      <div class="reader-left">
+        <div id="reader-meta" class="reader-meta"></div>
+        <div id="reader-article" class="reader-article"></div>
+      </div>
+      <div class="reader-divider" id="reader-divider" title="ドラッグで幅を調整（ダブルクリックで元に戻す）"></div>
+      <div class="reader-right">
+        <div class="memo-mode">
+          <label>メモ</label>
+          <button class="type-btn active" id="memo-mode-text" onclick="setMemoMode('text')">テキスト</button>
+          <button class="type-btn" id="memo-mode-table" onclick="setMemoMode('table')">表</button>
+        </div>
+        <div id="reader-table" class="reader-table" style="display:none">
+          <div id="reader-table-grid"></div>
+          <p class="reader-note">Enter で下のセルへ（最後の行なら行を追加）。最後のセルで Tab でも行を追加。</p>
+        </div>
+        <textarea id="reader-memo" placeholder="読みながら書く。左で文を選んで「選択を引用」でも追加できます。"></textarea>
+        <input type="text" id="reader-tags" placeholder="タグ（スペース区切り）">
+        <div class="reader-actions">
+          <button class="btn btn-secondary btn-sm" onclick="quoteReaderSelection()">選択を引用</button>
+          <button class="btn btn-primary btn-sm" id="reader-save-btn" onclick="saveReaderCard()">メモと本文を保存</button>
+        </div>
+        <p class="reader-note">本文は取得時点のコピーとして、メモ・出典と一緒にカードに保存されます（私的利用）。</p>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-new">
   <div class="modal">
     <h2>メモ作成</h2>
@@ -429,6 +474,7 @@
 <script src="app.js"></script>
 <script src="js/views.js"></script>
 <script src="js/cards_ui.js"></script>
+<script src="js/card_table_ui.js"></script>
 <script src="js/import_ui.js"></script>
 <script src="js/ai_ui.js"></script>
 <script src="js/kj_ui.js"></script>
@@ -439,6 +485,8 @@
 <script src="js/bm25_modes_ui.js"></script>
 <script src="js/source_ui.js"></script>
 <script src="js/candidate_ui.js"></script>
+<script src="js/memo_table.js"></script>
+<script src="js/reader_ui.js"></script>
 <script type="module" src="js/typed/api_client.js"></script>
 </body>
 </html>

@@ -360,3 +360,68 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
 
 #workflow-steps { display:flex; gap:8px; flex-wrap:wrap; padding:8px 16px; border-bottom:1px solid var(--border); color:var(--text-dim); font-size:11px; }
 #workflow-steps span { white-space:nowrap; }
+
+/* Reader: article left, memo right */
+#modal-reader{padding:0}
+.reader-modal{max-width:none;width:100vw;height:100vh;max-height:100vh;border-radius:0;display:flex;flex-direction:column;padding:16px}
+.reader-bar{display:flex;gap:8px;margin-bottom:12px}
+.reader-bar input{flex:1}
+.reader-split{display:grid;grid-template-columns:3fr 2fr;gap:16px;flex:1;min-height:0}
+.reader-left{overflow-y:auto;border-right:1px solid var(--border);padding-right:16px}
+.reader-meta{font-size:12px;color:var(--text-dim);margin-bottom:8px}
+.reader-article h3{font-size:18px;margin-bottom:12px}
+.reader-article p{line-height:1.8;margin-bottom:12px}
+.reader-error{color:var(--danger,#f87171)}
+.reader-right{display:flex;flex-direction:column;gap:8px;min-height:0}
+.reader-right textarea{flex:1;min-height:200px;resize:none}
+.reader-actions{display:flex;gap:8px;justify-content:flex-end}
+.reader-note{font-size:11px;color:var(--text-dim)}
+@media (max-width:768px){.reader-split{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.reader-left{border-right:none;border-bottom:1px solid var(--border);padding-right:0}}
+.reader-bar input,.reader-right textarea,.reader-right input{padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:inherit}
+.reader-bar input:focus,.reader-right textarea:focus,.reader-right input:focus{border-color:var(--accent)}
+.reader-right textarea{line-height:1.7}
+.reader-image{max-width:100%;height:auto;display:block;margin:8px 0 16px;border-radius:6px}
+
+/* Memo table (reader) */
+.memo-mode{display:flex;align-items:center;gap:6px}
+.memo-mode label{margin-right:auto}
+.reader-table{flex:1;min-height:200px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.memo-table{border-collapse:collapse;width:100%}
+.memo-table th,.memo-table td{border:1px solid var(--border);padding:0}
+.memo-table input{width:100%;min-width:80px;padding:6px 8px;background:var(--surface2);border:none;color:var(--text);font-size:13px;font-family:inherit;outline:none}
+.memo-table th input{font-weight:700}
+.memo-table input:focus{box-shadow:inset 0 0 0 1px var(--accent)}
+.reader-table-actions{display:flex;gap:6px}
+/* Card list as table */
+.layout-toggle{display:flex;gap:4px}
+#card-grid.as-table{display:block !important;overflow-x:auto}
+.card-table{border-collapse:collapse;width:100%;font-size:13px}
+.card-table th{position:sticky;top:0;background:var(--surface);text-align:left;padding:8px;border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none}
+.card-table td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top}
+.card-table tr.card-row{cursor:pointer}
+.card-table tr.card-row:hover td{background:var(--surface2)}
+.card-table tr.card-row.selected td{background:var(--surface2)}
+.card-table .muted{color:var(--text-dim)}
+.card-table td:first-child,.card-table td:nth-child(5),.card-table td:nth-child(6){white-space:nowrap}
+
+/* Reader: resizable split */
+.reader-split{grid-template-columns:var(--reader-left,60%) 8px 1fr;gap:0}
+.reader-left{padding-right:16px;border-right:none}
+.reader-right{padding-left:16px}
+.reader-divider{cursor:col-resize;background:var(--border);width:2px;justify-self:center;border-radius:2px;touch-action:none}
+.reader-divider:hover{background:var(--accent);width:4px}
+/* Memo table: inline controls */
+.memo-table th{position:relative}
+.memo-table th input{padding-right:22px}
+.memo-table-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;padding:2px 6px;line-height:1}
+.memo-table-btn:hover{color:var(--accent)}
+.memo-table th .memo-table-btn{position:absolute;right:2px;top:50%;transform:translateY(-50%);opacity:.35}
+.memo-table th:hover .memo-table-btn{opacity:1}
+.memo-table-tail{width:28px;border:none !important;text-align:center}
+.memo-table-addrow{border:none !important;padding-top:4px !important}
+/* Tag tools */
+.tag-tools{display:flex;gap:6px;margin-bottom:8px}
+.tag-tools input{flex:1;min-width:0;padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none}
+.tag-tools input:focus{border-color:var(--accent)}
+.tag-more{background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:6px 0}
+@media (max-width:768px){.reader-split{grid-template-columns:1fr}.reader-divider{display:none}.reader-right{padding-left:0}.reader-left{padding-right:0}}

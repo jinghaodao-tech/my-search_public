@@ -34,6 +34,7 @@ export type AppErrorCode =
   | 'scheduler_already_running'
   | 'job_not_found'
   | 'authentication_required'
+  | 'reader_fetch_failed'
   | 'request_failed';
 export class HttpError extends Error {
   status: number;

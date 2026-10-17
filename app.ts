@@ -20,6 +20,7 @@ import { createKjRouter } from './routes/kj_routes.js';
 import { createSearchRouter } from './routes/search_routes.js';
 import { createCandidateRouter } from './routes/candidate_routes.js';
 import { createJobsRouter } from './routes/jobs_routes.js';
+import { createReaderRouter } from './routes/reader_routes.js';
 import {
   requestLogger,
   notFoundHandler,
@@ -78,6 +79,7 @@ app.use('/api', createCardsRouter(routeContext));
 app.use('/api', createAiRouter(routeContext));
 app.use('/api', createKjRouter(routeContext));
 app.use('/api', createArticlesRouter(routeContext));
+app.use('/api', createReaderRouter(routeContext));
 if (process.env.NODE_ENV === 'test') {
   app.get('/api/test/error', () => {
     throw new Error('synthetic test failure');

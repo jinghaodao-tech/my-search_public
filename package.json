@@ -46,6 +46,7 @@
     "verify": "npm run typecheck && npm run build:frontend && npm run check:frontend && npm test && npm run acceptance:test && npm run test:e2e && npm run benchmark && npm run benchmark:http && npm run evaluate:search && npm run check:verification-artifacts && npm run check:encoding && npm run check:openapi && npm run verify:schema && npm run check:search-index && npm audit --audit-level=high && npm run test:summary && docker build -t my-search-public:test ."
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "@types/pg": "^8.20.0",
     "better-sqlite3": "^12.11.1",
     "cors": "^2.8.6",
@@ -53,6 +54,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
+    "jsdom": "^29.1.1",
     "kuromoji": "^0.1.2",
     "node-cron": "^4.5.0",
     "pg": "^8.22.0",
@@ -67,6 +69,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsdom": "^30.0.0",
     "@types/kuromoji": "^0.1.3",
     "@types/node": "^25.9.3",
     "@types/node-cron": "^3.0.11",
