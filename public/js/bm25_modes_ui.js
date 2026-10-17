@@ -84,6 +84,10 @@ loadBM25Modes = async function(){
   }
   const ids = Object.keys(bm25Modes);
   if(!ids.length) return;
+  if (currentSearchId && savedSearches.some(search => search.id === currentSearchId)) {
+    restoreSavedSearch(currentSearchId);
+    return;
+  }
   const tabsEl = document.getElementById('mode-tabs');
   if(!tabsEl) return;
   tabsEl.innerHTML = ids.map(id=>

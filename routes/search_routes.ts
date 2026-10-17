@@ -1,9 +1,12 @@
+import { loadArticlesFromDb } from '../repositories/articles_repository.js';
+import { buildSearchSnippet } from '../services/search_match_service.js';
 import express from 'express';
 import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
 import type { Card } from '../domain/card.js';
 import type { Article } from '../bm25_engine.js';
+import { buildStoredTokenSet } from '../bm25_engine.js';
 import { db } from '../db/database.js';
 
 type SearchInputArticle = Partial<Article> & Pick<Article, 'id' | 'title' | 'body'> & {
@@ -21,14 +24,28 @@ export function createSearchRouter(ctx: RouteContext) {
     const body = parseBody(ctx.runBodySchema, req, res);
     if (!body) return;
     try {
-      const { modeId, config, articles: reqArticles, options } = body;
-      const rawArticles = (reqArticles ?? ctx.getCachedArticles()?.articles ?? []) as SearchInputArticle[];
-      if (!rawArticles.length) {
-        res.status(400).json({ error: '記事がありません。先に /api/collect を呼んでください', requestId: getRequestId(req) });
-        return;
-      }
+      const { modeId, config, articles: reqArticles, options, filters } = body;
+      const rawArticles = (reqArticles ?? loadArticlesFromDb()) as SearchInputArticle[];
+      const candidates = new Map(ctx.getCandidates().map(candidate => [candidate.candidateId, candidate]));
+      const normalize = (value: string) => value.normalize('NFKC').toLowerCase();
+      const filteredArticles = rawArticles.filter(article => {
+        const candidate = reqArticles ? undefined : candidates.get(article.id);
+        if (filters?.since && (!candidate || candidate.firstSeenAt <= filters.since)) return false;
+        if (candidate?.status === 'expired') return false;
+        if (filters?.status && filters.status !== 'all' && candidate?.status !== filters.status) return false;
+        if (filters?.sources.length && !filters.sources.includes(article.source ?? 'unknown')) return false;
+        const content = normalize(`${article.title} ${article.body} ${article.summary ?? ''}`);
+        return !filters?.excludedTerms.some(term => content.includes(normalize(term)));
+      });
+      const scope = {
+        corpus: reqArticles ? 'cards' : 'articles',
+        totalCount: rawArticles.length,
+        searchedCount: filteredArticles.length,
+        sources: [...new Set(filteredArticles.map(article => article.source ?? (reqArticles ? '保存済みカード' : 'unknown')))],
+        availableSources: [...new Set(rawArticles.map(article => article.source ?? 'unknown'))],
+      };
       const cardsById = new Map(ctx.loadCards().map((card: Card) => [card.id, card]));
-      const parsed: Article[] = rawArticles.map(art => {
+      const parsed: Article[] = filteredArticles.map(art => {
         const stored = cardsById.get(art.id);
         return {
           id: art.id,
@@ -49,7 +66,13 @@ export function createSearchRouter(ctx: RouteContext) {
           archivedAt: stored?.archivedAt ?? art.archivedAt ?? undefined,
         };
       });
-      const result = await ctx.runPipeline(parsed, config, modeId ?? 'custom', options);
+      for (const article of parsed) {
+        if (!article.tokens?.length) {
+          const stored = await buildStoredTokenSet(`${article.title} ${article.body}`);
+          Object.assign(article, stored, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength });
+        }
+      }
+      const result = await ctx.runPipeline(parsed, config, modeId ?? 'custom', reqArticles ? options : { ...options, dedupThreshold: 1 });
       const stripSearchFields = (article: Article) => {
         const { tokens: _tokens, docLength: _docLength, ...publicArticle } = article;
         return {
@@ -69,16 +92,23 @@ export function createSearchRouter(ctx: RouteContext) {
       };
       const response = {
         ...result,
+        scope,
         active: result.active.map(item => {
           const article = stripSearchFields(item.article);
           const meta = ctx.buildSearchMatchMeta(article, ctx.buildSearchKeywordCandidates(config), item.breakdown?.matchedTerms);
           updateRankingMetadata.run(item.score, rankingReason(item, meta), item.article.id);
-          return { ...item, article, ...meta };
+          return { ...item, article, ...meta,
+            snippet: buildSearchSnippet(article, [...meta.matchedKeywords, ...ctx.buildSearchKeywordCandidates(config)]),
+            candidate: reqArticles ? null : candidates.get(article.id) ? { status: candidates.get(article.id)!.status, savedCardId: candidates.get(article.id)!.savedCardId } : null,
+          };
         }),
         archived: result.archived.map(item => {
           const article = stripSearchFields(item.article);
           const meta = ctx.buildSearchMatchMeta(article, ctx.buildSearchKeywordCandidates(config));
-          return { ...item, article, ...meta };
+          return { ...item, article, ...meta,
+            snippet: buildSearchSnippet(article, [...meta.matchedKeywords, ...ctx.buildSearchKeywordCandidates(config)]),
+            candidate: reqArticles ? null : candidates.get(article.id) ? { status: candidates.get(article.id)!.status, savedCardId: candidates.get(article.id)!.savedCardId } : null,
+          };
         }),
       };
       logger.debug({

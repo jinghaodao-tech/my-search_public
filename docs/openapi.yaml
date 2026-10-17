@@ -29,6 +29,45 @@ paths:
       responses:
         '200': { description: Created card }
         '400': { $ref: '#/components/responses/ValidationError' }
+  /api/saved-searches:
+    get:
+      operationId: listSavedSearches
+      responses:
+        '200': { description: Saved searches ordered by most recently updated }
+    post:
+      operationId: createSavedSearch
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/SavedSearchInput' } }
+      responses:
+        '201': { description: Saved search with generated id }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /api/saved-searches/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      operationId: updateSavedSearch
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/SavedSearchInput' } }
+      responses:
+        '200': { description: Updated search }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      operationId: deleteSavedSearch
+      responses:
+        '200': { description: Search removed; candidates and cards are unchanged }
+  /api/candidates/{id}/defer:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      operationId: deferCandidate
+      responses:
+        '200': { description: Candidate in deferred state; saved and expired candidates remain unchanged }
+        '404': { $ref: '#/components/responses/NotFound' }
   /api/run:
     post:
       operationId: runSearch
@@ -37,7 +76,7 @@ paths:
         content:
           application/json: { schema: { $ref: '#/components/schemas/SearchRequest' } }
       responses:
-        '200': { description: Ranked search results }
+        '200': { description: Ranked results with plain-text snippet, candidate state and scope (corpus, totalCount, searchedCount, sources, availableSources) }
         '400': { $ref: '#/components/responses/ValidationError' }
   /api/collect:
     post:
@@ -106,6 +145,23 @@ components:
         body: { type: string }
         tags: { type: array, items: { type: string } }
         type: { type: string, enum: [article, memo, csv] }
+    SearchFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        excludedTerms: { type: array, maxItems: 100, items: { type: string, minLength: 1, maxLength: 100 } }
+        sources: { type: array, maxItems: 100, items: { type: string, maxLength: 200 } }
+        status: { type: string, enum: [all, unreviewed, deferred, saved_as_card], default: all }
+    SavedSearchInput:
+      type: object
+      additionalProperties: false
+      required: [name, source, config, options, filters]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        source: { type: string, enum: [articles, cards] }
+        config: { type: object, description: Same validated ranking config as SearchRequest }
+        options: { type: object }
+        filters: { $ref: '#/components/schemas/SearchFilters' }
     SearchRequest:
       type: object
       required: [config]
@@ -113,6 +169,8 @@ components:
         modeId: { type: string }
         config: { type: object }
         articles: { type: array, items: { type: object } }
+        options: { type: object }
+        filters: { $ref: '#/components/schemas/SearchFilters' }
   responses:
     ValidationError:
       description: Request validation failed

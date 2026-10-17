@@ -54,12 +54,15 @@ describe('reader: extraction (no network, no AI)', () => {
     expect(assertFetchableUrl('https://zenn.dev/some/article').hostname).toBe('zenn.dev');
   });
 
-  it('fetches through an injected fetch and refuses non-HTML', async () => {
+  it('fetches through an injected fetch, reads PDFs and refuses other types', async () => {
     const htmlFetch = (async () => new Response(ARTICLE_HTML, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } })) as typeof fetch;
     const article = await fetchReadable('https://blog.example.com/post', htmlFetch);
     expect(article.paragraphs.length).toBeGreaterThan(2);
+    // a PDF URL is read as a PDF (a broken one is refused as unreadable, not as the wrong type)
     const pdfFetch = (async () => new Response('%PDF', { status: 200, headers: { 'content-type': 'application/pdf' } })) as typeof fetch;
-    await expect(fetchReadable('https://blog.example.com/file.pdf', pdfFetch)).rejects.toMatchObject({ status: 415 });
+    await expect(fetchReadable('https://blog.example.com/file.pdf', pdfFetch)).rejects.toMatchObject({ status: 422 });
+    const zipFetch = (async () => new Response('PK', { status: 200, headers: { 'content-type': 'application/zip' } })) as typeof fetch;
+    await expect(fetchReadable('https://blog.example.com/file.zip', zipFetch)).rejects.toMatchObject({ status: 415 });
   });
 });
 

@@ -1,3 +1,4 @@
+import { deferCandidate } from '../repositories/candidates_repository.js';
 import { candidateStatusSchema } from "../schemas/api_schemas.js";
 import express from 'express';
 import type { RouteContext } from '../services/route_context.js';
@@ -16,6 +17,11 @@ export function createCandidateRouter(ctx: RouteContext) {
   router.get('/candidates/:id', (req, res) => {
     const candidate = ctx.getCandidate(req.params.id);
     if (!candidate) { sendError(req, res, 404, 'Not found', undefined, 'candidate_not_found'); return; }
+    res.json(candidate);
+  });
+  router.put('/candidates/:id/defer', (req, res) => {
+    const candidate = deferCandidate(req.params.id);
+    if (!candidate) { sendError(req, res, 404, 'Not found'); return; }
     res.json(candidate);
   });
   router.put('/candidates/:id/review', (req, res) => {

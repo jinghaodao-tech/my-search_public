@@ -15,7 +15,7 @@ function renderCardGrid() {
     const typeCls = `card-type-${card.type}`;
     const tagHtml = card.tags.slice(0,4).map(t=>`<span class="card-tag">${esc(t)}</span>`).join('');
     const moreTags = card.tags.length>4 ? `<span class="card-tag">+${card.tags.length-4}</span>` : '';
-    const sourceText = showCardSummaries && card.summary ? card.summary : card.body;
+    const sourceText = showCardSummaries && card.summary ? card.summary : ((typeof memoPreviewText === 'function' && memoPreviewText(card.body)) || card.body);
     const disp = esc(sourceText||'').slice(0,120)+((sourceText||'').length>120?'...':'');
     const date = new Date(card.createdAt).toLocaleDateString('ja-JP',{month:'short',day:'numeric'});
     const restoreButton = currentFilter.archived
@@ -244,6 +244,14 @@ function exportMarkdown(id) {
   if(!id) return;
   window.open(`/api/cards/${encodeURIComponent(id)}/export-md`, '_blank');
 }
+// Reader cards: show the memo formatted (quotes, tables) and the source; the copied text stays in the reader.
+function renderDetailBody(card) {
+  const parts = typeof splitReaderBody === 'function' ? splitReaderBody(card.body) : null;
+  if (!parts) return `<div class="detail-section"><h4>本文</h4><div class="detail-body-text">${esc(card.body).slice(0,400)}${card.body.length>400?'...':''}</div></div>`;
+  const source = parts.sourceLines.map(line => `<div>${esc(line.replace(/^- /, ''))}</div>`).join('');
+  return `<div class="detail-section"><h4>メモ</h4><div class="memo-view">${parts.memo ? renderMemoHtml(parts.memo) : '<span style="color:var(--text-dim)">（なし）</span>'}</div></div>`
+    + `<div class="detail-section"><h4>出典</h4><div class="detail-source">${source}</div><button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="openReaderForCard('${esc(card.id)}')">本文と一緒に開く</button></div>`;
+}
 function renderDetailPanel(card) {
   document.getElementById('detail-title').textContent = card.title;
   const linksHtml = (card.links||[]).map(lid=>{
@@ -258,7 +266,7 @@ function renderDetailPanel(card) {
       <h4>AI要約${card.summary?'':'<span style="color:var(--text-dim);font-weight:400"> (未生成)</span>'}</h4>
       ${card.summary?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="deleteSummary('${card.id}')">Delete</button></div><div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm" onclick="summarizeOne('${card.id}')">⚡ AI要約を生成</button>`}
     </div>
-    <div class="detail-section"><h4>本文</h4><div class="detail-body-text">${esc(card.body).slice(0,400)}${card.body.length>400?'...':''}</div></div>
+    ${renderDetailBody(card)}
     <div class="detail-section">
       <h4>タグ</h4>
       <div class="tag-edit">${tagsHtml}</div>

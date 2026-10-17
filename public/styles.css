@@ -425,3 +425,51 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
 .tag-tools input:focus{border-color:var(--accent)}
 .tag-more{background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:6px 0}
 @media (max-width:768px){.reader-split{grid-template-columns:1fr}.reader-divider{display:none}.reader-right{padding-left:0}.reader-left{padding-right:0}}
+
+/* Search workspace: everyday controls first, tuning remains available in details. */
+.search-controls { display: grid; gap: 10px; margin-bottom: 16px; }
+.search-controls label { display: grid; gap: 5px; }
+.search-controls input, .search-controls select { width: 100%; padding: 8px; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; }
+.search-controls select[multiple] { min-height: 65px; }
+#search-advanced summary { cursor: pointer; padding: 12px 0; }
+#bm25-result-header { flex-wrap: wrap; }
+#bm25-stats { flex-basis: 100%; font-size: 12px; line-height: 1.6; }
+.score-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.score-card mark { background: #f4d66a; color: #17202a; border-radius: 2px; }
+#reader-search-actions[hidden] { display: none; }
+/* Quote markers, jump highlight, drafts, memo view */
+.quote-marker{display:inline-block;font-size:11px;color:var(--accent);border:1px solid var(--border);border-radius:4px;padding:0 4px;margin-left:4px}
+@keyframes quoteFlash{0%{background:rgba(250,204,21,.35)}100%{background:transparent}}
+.reader-article .quote-flash{animation:quoteFlash 2.4s ease-out;border-radius:4px}
+.reader-draft{font-size:12px;padding:8px 10px;border:1px solid var(--accent);border-radius:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.memo-view p{margin-bottom:8px;line-height:1.7}
+.memo-view-quote{border-left:3px solid var(--accent);padding:4px 10px;margin:8px 0;color:var(--text-dim)}
+.memo-view-table{border-collapse:collapse;width:100%;font-size:12px;margin:8px 0}
+.memo-view-table th,.memo-view-table td{border:1px solid var(--border);padding:4px 6px;text-align:left;vertical-align:top}
+.detail-source{font-size:12px;color:var(--text-dim);line-height:1.6;word-break:break-all}
+.memo-view{font-size:13px}
+.memo-view-quote{font-size:13px}
+/* AI evidence (reader) */
+.evidence-box{display:flex;flex-direction:column;gap:6px}
+.evidence-input{display:flex;gap:6px}
+.evidence-input input{flex:1;min-width:0}
+.evidence-results{max-height:38vh;overflow:auto;display:flex;flex-direction:column;gap:6px;font-size:12px}
+.evidence-results:empty{display:none}
+.evidence-head{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--text);opacity:.8}
+.evidence-row{border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--surface2)}
+.evidence-claim{font-weight:600;margin-bottom:4px}
+.evidence-quote{margin:0 0 6px;padding-left:8px;border-left:3px solid var(--accent);opacity:.85;line-height:1.6}
+.evidence-actions{display:flex;gap:6px;justify-content:flex-end}
+.evidence-rejected{opacity:.8}
+.evidence-rejected p{margin:4px 0;text-decoration:line-through;opacity:.75}
+/* PDF in the reader */
+.reader-page{margin:18px 0 8px;padding:2px 0;border-top:1px dashed var(--border);font-size:11px;opacity:.7;text-align:right;user-select:none}
+.reader-page::after{content:attr(data-label)}
+.reader-pages-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;font-size:12px}
+.reader-pages-row input{width:64px;padding:3px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px}
+.reader-warn{margin-top:6px;padding:6px 8px;border:1px solid var(--warning);border-radius:6px;font-size:12px}
+.reader-biblio{display:grid;grid-template-columns:2fr 1fr 2fr;gap:6px}
+.reader-biblio input{min-width:0}
+.evidence-flags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.evidence-flags:empty{display:none}
+.evidence-flag{font-size:11px;padding:1px 8px;border:1px solid var(--warning);border-radius:999px;cursor:help}

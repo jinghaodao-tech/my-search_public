@@ -1,6 +1,6 @@
 let candidateArticles = new Map();
 let candidateStatusFilter = '';
-const candidateStatusLabels = { unreviewed: '未確認', reviewed_not_saved: '確認済み・未保存', saved_as_card: '保存済み', expired: '期限切れ' };
+const candidateStatusLabels = { unreviewed: '未確認', deferred: '保留', reviewed_not_saved: '確認済み・未保存', saved_as_card: '保存済み', expired: '期限切れ' };
 
 async function loadCandidates() {
   const grid = document.getElementById('candidate-grid');
@@ -32,5 +32,12 @@ async function loadCandidates() {
   }
 }
 async function reviewCandidate(id) { await api.put(`/api/candidates/${encodeURIComponent(id)}/review`, {}); await loadCandidates(); }
-async function saveCandidateAsCard(id) { await api.post(`/api/candidates/${encodeURIComponent(id)}/save`, {}); toast('カードに保存しました'); await loadCandidates(); await loadCards(); }
+async function saveCandidateAsCard(id) {
+  // Full text first; if the page cannot be read, fall back to the snippet-only save.
+  const candidate = await api.get(`/api/candidates/${encodeURIComponent(id)}`);
+  const full = candidate.url ? await saveArticleWithFullText(candidate.url, id) : false;
+  if (!full) await api.post(`/api/candidates/${encodeURIComponent(id)}/save`, {});
+  toast(full ? '本文ごとカードに保存しました' : '本文を取得できなかったため、抜粋のみ保存しました', full ? 'ok' : 'warn');
+  await loadCandidates(); await loadCards();
+}
 async function expireOneCandidate(id) { await api.put(`/api/candidates/${encodeURIComponent(id)}/expire`, {}); await loadCandidates(); }

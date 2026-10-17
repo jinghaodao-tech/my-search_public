@@ -31,3 +31,15 @@ SELECT cards.id, json_each.value, cards.created_at
 FROM cards, json_each(COALESCE(cards.links_json, '[]'))
 WHERE json_each.value IS NOT NULL AND TRIM(json_each.value) <> '' AND EXISTS (SELECT 1 FROM cards target WHERE target.id = json_each.value);
 `);
+
+// Reader copies survive feed refreshes; search checkpoints are explicit.
+db.exec(`
+CREATE TABLE IF NOT EXISTS article_reader_content (
+ article_id TEXT PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE,
+ body TEXT NOT NULL, fetched_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS search_checkpoints (
+ search_id TEXT PRIMARY KEY REFERENCES saved_searches(id) ON DELETE CASCADE,
+ checked_at TEXT NOT NULL
+);
+`);

@@ -1,6 +1,6 @@
 import { db } from '../db/database.js';
 
-export type CandidateStatus = 'unreviewed' | 'reviewed_not_saved' | 'saved_as_card' | 'expired';
+export type CandidateStatus = 'unreviewed' | 'reviewed_not_saved' | 'deferred' | 'saved_as_card' | 'expired';
 export interface CandidateLifecycle {
   candidateId: string;
   status: CandidateStatus;
@@ -48,7 +48,7 @@ export function reviewCandidate(id: string): CandidateLifecycle | null {
 }
 export function saveCandidate(id: string, savedCardId: string): CandidateLifecycle | null {
   const now = new Date().toISOString();
-  const result = db.prepare(`UPDATE articles SET candidate_status = 'saved_as_card', saved_at = ?, saved_card_id = ?, updated_at = ? WHERE id = ? AND candidate_status IN ('unreviewed', 'reviewed_not_saved') AND saved_card_id IS NULL`).run(now, savedCardId, now, id);
+  const result = db.prepare(`UPDATE articles SET candidate_status = 'saved_as_card', saved_at = ?, saved_card_id = ?, updated_at = ? WHERE id = ? AND candidate_status IN ('unreviewed', 'reviewed_not_saved', 'deferred') AND saved_card_id IS NULL`).run(now, savedCardId, now, id);
   return result.changes ? getCandidate(id) : null;
 }
 export function expireCandidate(id: string): CandidateLifecycle | null {
@@ -62,4 +62,9 @@ export function expireReviewedCandidates(retentionDays: number): string[] {
   const expire = db.prepare(`UPDATE articles SET candidate_status = 'expired', expired_at = ?, updated_at = ? WHERE id = ?`);
   const now = new Date().toISOString();
   return db.transaction(() => rows.map(({ id }) => { expire.run(now, now, id); return id; }))();
+}
+export function deferCandidate(id: string): CandidateLifecycle | null {
+  const current = getCandidate(id);
+  if (!current || current.status === 'saved_as_card' || current.status === 'expired') return current;
+  return setStatus(id, 'deferred', 'reviewed_at');
 }

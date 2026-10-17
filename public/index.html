@@ -93,7 +93,7 @@
       <!-- カードグリッド -->
       <div id="card-grid"></div>
 
-      <div id="candidate-view"><div id="candidate-toolbar"><span id="candidate-count">0件</span><label>状態 <select id="candidate-status-filter" onchange="candidateStatusFilter=this.value; loadCandidates()"><option value="">すべて</option><option value="unreviewed">未確認</option><option value="reviewed_not_saved">確認済み・未保存</option><option value="saved_as_card">保存済み</option><option value="expired">期限切れ</option></select></label><button class="btn btn-secondary btn-sm" onclick="loadCandidates()">更新</button></div><div id="candidate-grid"></div></div>
+      <div id="candidate-view"><div id="candidate-toolbar"><span id="candidate-count">0件</span><label>状態 <select id="candidate-status-filter" onchange="candidateStatusFilter=this.value; loadCandidates()"><option value="">すべて</option><option value="unreviewed">未確認</option><option value="reviewed_not_saved">確認済み・未保存</option><option value="deferred">保留</option><option value="saved_as_card">保存済み</option><option value="expired">期限切れ</option></select></label><button class="btn btn-secondary btn-sm" onclick="loadCandidates()">更新</button></div><div id="candidate-grid"></div></div>
 
       <!-- KJボード -->
       <div id="kj-board">
@@ -117,11 +117,24 @@
           <div id="bm25-config">
             <div id="bm25-config-header">
               <button class="btn btn-secondary btn-sm" onclick="toggleBM25Sidebar()" title="Toggle BM25 settings">=</button>
-              <h3>BM25 設定</h3>
+              <h3>記事を探す</h3>
               <button class="btn btn-primary btn-sm" onclick="runBM25()" id="bm25-run-btn">実行</button>
             </div>
             <div id="bm25-config-body">
 
+              <div class="search-controls">
+                <label>保存した検索<select id="saved-search-select" onchange="restoreSavedSearch(this.value)"><option value="">検索条件を選ぶ</option></select></label>
+                <input id="saved-search-name" maxlength="120" placeholder="検索名（例：TypeScriptの設計）" aria-label="検索名">
+                <div><button class="btn btn-secondary btn-sm" onclick="saveCurrentSearch()">条件を保存</button>
+                <button class="btn btn-secondary btn-sm" onclick="saveCurrentSearch(true)">別名で保存</button>
+                <button class="btn btn-secondary btn-sm" onclick="deleteSavedSearch()">削除</button></div>
+                <label>検索語<input id="search-terms" placeholder="SQLite 同時書き込み" oninput="setSimpleSearchTerms(this.value)" onkeydown="if(event.key==='Enter')runBM25()"></label>
+                <label>除外語<input id="search-excluded" placeholder="スペース区切り"></label>
+                <label>並びの基準<select id="search-order" onchange="setSearchOrder(this.value)"><option value="relevance">関連度優先</option><option value="recent">新しさを加味</option><option value="custom">詳細設定</option></select></label>
+                <label><input type="checkbox" id="search-new-only">前回確認後の新着だけ</label><button class="btn btn-secondary" onclick="markSearchChecked()">ここまで確認した</button><label><input type="checkbox" id="search-group-similar" checked onchange="renderBM25Result()">似た記事をまとめる</label><label>状態<select id="search-status"><option value="all">すべて（見送りを除く）</option><option value="unreviewed">未確認</option><option value="deferred">保留</option><option value="saved_as_card">保存済み</option></select></label>
+                <label>情報源<select id="search-sources" multiple aria-label="検索する情報源"></select></label>
+                <small>情報源は未選択ならすべて。Ctrl / ⌘ で複数選択できます。</small>
+              </div>
               <!-- データソース -->
               <div class="section-sep">データソース</div>
               <div class="source-radio" id="bm25-source-radio">
@@ -135,6 +148,7 @@
                 <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="updateArticleAutoStatus()">Status</button>
               </div>
 
+              <details id="search-advanced"><summary>詳細設定・プリセット</summary>
               <!-- モード選択 -->
               <div class="section-sep" style="display:flex;align-items:center">
                 モード
@@ -197,6 +211,7 @@
               <div class="kw-chip-list" id="kw-chip-list"></div>
               <div class="kw-header"><span>キーワード</span><span>重み</span><span>同義語（カンマ区切り）</span><span></span></div>
               <div class="kw-list" id="kw-list"></div>
+              </details>
 
             </div>
           </div>
@@ -204,7 +219,10 @@
           <!-- 右：結果パネル -->
           <div id="bm25-result">
             <div id="bm25-result-header">
-              <div id="bm25-stats"></div>
+              <div id="bm25-stats" aria-live="polite"></div>
+              <button class="btn btn-secondary btn-sm" onclick="openExternalSearch()">同じ検索語でWeb検索</button>
+              <button class="btn btn-secondary btn-sm" onclick="openReader()">URLを取り込む</button>
+              <button class="btn btn-secondary btn-sm" onclick="openSourceModal()">情報源を追加</button>
               <div class="spacer"></div>
               <div id="bm25-result-actions" style="display:none;gap:6px">
                 <button class="btn btn-success btn-sm" onclick="saveTopAsCards()">カードに保存</button>
@@ -243,17 +261,37 @@
 <div class="modal-overlay" id="modal-reader">
   <div class="modal reader-modal">
     <div class="reader-bar">
-      <input type="url" id="reader-url" placeholder="https://... 記事のURL" onkeydown="if(event.key==='Enter')loadReaderArticle()">
+      <input type="url" id="reader-url" placeholder="https://... 記事やPDFのURL" onkeydown="if(event.key==='Enter')loadReaderArticle()">
       <button class="btn btn-secondary btn-sm" onclick="loadReaderArticle()">読む</button>
+      <button class="btn btn-secondary btn-sm" onclick="chooseReaderPdf()" title="手元のPDF（論文・技術書など、DRMの無いもの）を開く">PDFを開く</button>
+      <input type="file" id="reader-pdf-file" accept="application/pdf,.pdf" style="display:none" onchange="openReaderPdf(this)">
       <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-reader')">閉じる</button>
+    </div>
+    <div id="reader-search-actions" class="reader-bar" hidden>
+      <span id="reader-search-position"></span>
+      <button class="btn btn-secondary btn-sm" onclick="decideReaderSearch('defer')">保留して次へ</button>
+      <button class="btn btn-secondary btn-sm" onclick="decideReaderSearch('expire')">見送って次へ</button>
+      <button class="btn btn-secondary btn-sm" onclick="nextSearchArticle()">次の記事</button>
     </div>
     <div class="reader-split">
       <div class="reader-left">
-        <div id="reader-meta" class="reader-meta"></div>
+        <label>タイトル（本文なしで保存する場合）<input id="reader-fallback-title" maxlength="200"></label><details><summary>本文を貼り付ける</summary><textarea id="reader-manual-text" placeholder="本文を貼り付けて保存"></textarea><button class="btn btn-secondary" onclick="applyManualReaderText()">本文に反映</button></details><div id="reader-meta" class="reader-meta"></div>
         <div id="reader-article" class="reader-article"></div>
       </div>
       <div class="reader-divider" id="reader-divider" title="ドラッグで幅を調整（ダブルクリックで元に戻す）"></div>
       <div class="reader-right">
+        <div id="reader-draft" class="reader-draft" style="display:none">
+          保存していない下書きがあります（<span id="reader-draft-time"></span>）
+          <button class="btn btn-secondary btn-sm" onclick="restoreReaderDraft()">復元</button>
+          <button class="btn btn-secondary btn-sm" onclick="discardReaderDraft()">破棄</button>
+        </div>
+        <div class="evidence-box">
+          <div class="evidence-input">
+            <input type="text" id="evidence-purpose" maxlength="300" placeholder="何のために読む？（例: BM25がAI検索より有利な点を知りたい）" onkeydown="if(event.key==='Enter')runEvidence()">
+            <button class="btn btn-secondary btn-sm" id="evidence-run" onclick="runEvidence()" title="AIが目的に関係する主張と根拠の一節を提案し、一節が本文に実在するかを照合します">AIで根拠を探す</button>
+          </div>
+          <div id="evidence-results" class="evidence-results"></div>
+        </div>
         <div class="memo-mode">
           <label>メモ</label>
           <button class="type-btn active" id="memo-mode-text" onclick="setMemoMode('text')">テキスト</button>
@@ -263,10 +301,17 @@
           <div id="reader-table-grid"></div>
           <p class="reader-note">Enter で下のセルへ（最後の行なら行を追加）。最後のセルで Tab でも行を追加。</p>
         </div>
-        <textarea id="reader-memo" placeholder="読みながら書く。左で文を選んで「選択を引用」でも追加できます。"></textarea>
+        <textarea id="reader-memo" placeholder="読みながら書く。左で文を選んで「選択を引用」（Alt+Q）またはドラッグで引用。引用の上で Alt+J で元の段落へ。"></textarea>
+        <div class="reader-biblio" title="引用の出典表記に使います">
+          <input type="text" id="reader-author" maxlength="300" placeholder="著者（例: 水本・竹内）">
+          <input type="text" id="reader-year" maxlength="20" placeholder="発行年">
+          <input type="text" id="reader-site" maxlength="300" placeholder="誌名・書名">
+        </div>
         <input type="text" id="reader-tags" placeholder="タグ（スペース区切り）">
         <div class="reader-actions">
-          <button class="btn btn-secondary btn-sm" onclick="quoteReaderSelection()">選択を引用</button>
+          <button class="btn btn-secondary btn-sm" onclick="jumpToQuoteSource()" title="カーソルのある引用の元の段落へ（Alt+J）">引用元へ</button>
+          <button class="btn btn-secondary btn-sm" onclick="quoteReaderSelection()" title="左で選んだ文を引用（Alt+Q／ドラッグでも可）">選択を引用</button>
+          <button class="btn btn-secondary btn-sm" onclick="copyCitedSelection()" title="左で選んだ文を「引用」（著者，年，ページ）の形でコピー">出典つきでコピー</button>
           <button class="btn btn-primary btn-sm" id="reader-save-btn" onclick="saveReaderCard()">メモと本文を保存</button>
         </div>
         <p class="reader-note">本文は取得時点のコピーとして、メモ・出典と一緒にカードに保存されます（私的利用）。</p>
@@ -473,6 +518,7 @@
 
 <script src="app.js"></script>
 <script src="js/views.js"></script>
+<script src="js/memo_render.js"></script>
 <script src="js/cards_ui.js"></script>
 <script src="js/card_table_ui.js"></script>
 <script src="js/import_ui.js"></script>
@@ -483,6 +529,7 @@
 <script src="js/ui_common.js"></script>
 <script src="js/mobile_edit.js"></script>
 <script src="js/bm25_modes_ui.js"></script>
+<script src="js/search_workflow_ui.js"></script>
 <script src="js/source_ui.js"></script>
 <script src="js/candidate_ui.js"></script>
 <script src="js/memo_table.js"></script>

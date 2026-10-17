@@ -79,6 +79,15 @@ const migrations: Migration[] = [
   ` },
   { id: "014_add_dual_token_columns", sql: "" },
   { id: "015_repair_invalid_card_timestamps", sql: "" },
+  { id: "016_saved_searches", sql: `
+    CREATE TABLE IF NOT EXISTS saved_searches (
+      id TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+  ` },
+  { id: "017_create_reader_texts", sql: `
+    CREATE TABLE IF NOT EXISTS reader_texts (card_id TEXT PRIMARY KEY, paragraphs_json TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TRIGGER IF NOT EXISTS reader_texts_after_card_delete AFTER DELETE ON cards BEGIN DELETE FROM reader_texts WHERE card_id = OLD.id; END;
+  ` },
 ];
 
 function columns(db: Database.Database, table: string): Set<string> {

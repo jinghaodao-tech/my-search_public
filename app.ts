@@ -2,6 +2,7 @@
  * Express application assembly for MySearch.
  * server.ts stays thin and only starts the HTTP listener.
  */
+import { createSavedSearchRouter } from './routes/saved_search_routes.js';
 import fs                from 'fs';
 import dotenv            from 'dotenv';
 import express           from 'express';
@@ -73,6 +74,7 @@ app.use(createSystemRouter(publicDir));
 
 app.use('/api', createCollectRouter(routeContext));
 app.use('/api', createSearchRouter(routeContext));
+app.use('/api', createSavedSearchRouter());
 app.use('/api', createCandidateRouter(routeContext));
 app.use('/api', createJobsRouter(routeContext));
 app.use('/api', createCardsRouter(routeContext));

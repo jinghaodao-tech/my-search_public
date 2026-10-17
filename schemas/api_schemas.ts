@@ -36,7 +36,7 @@ const bm25KeywordSchema = z.object({
   synonyms: z.array(z.string().trim().min(1).max(100)).max(100).optional(),
 }).passthrough();
 
-const runConfigSchema = z.object({
+export const runConfigSchema = z.object({
   label: z.string().max(120).default('Custom'),
   description: z.string().max(1000).default(''),
   k1: z.number().finite().min(0).max(10),
@@ -57,20 +57,36 @@ const runArticleSchema = z.object({
   docLength: z.number().int().nonnegative().max(100000).optional(),
 }).passthrough();
 
-const runOptionsSchema = z.object({
+export const runOptionsSchema = z.object({
   dedupThreshold: z.number().finite().min(0).max(1).optional(),
   archiveScoreThreshold: z.number().finite().optional(),
   resultLimit: z.number().int().min(1).max(500).optional(),
 }).passthrough();
+
+export const searchFiltersSchema = z.object({
+  since: z.string().datetime().optional(),
+  excludedTerms: z.array(z.string().trim().min(1).max(100)).max(100).default([]),
+  sources: z.array(z.string().max(200)).max(100).default([]),
+  status: z.enum(['all', 'unreviewed', 'deferred', 'saved_as_card']).default('all'),
+}).strict();
+
+export const savedSearchSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  config: runConfigSchema,
+  options: runOptionsSchema,
+  source: z.enum(['articles', 'cards']),
+  filters: searchFiltersSchema,
+}).strict();
 
 export const runBodySchema = z.object({
   modeId: z.string().trim().min(1).max(100).optional(),
   config: runConfigSchema,
   articles: z.array(runArticleSchema).max(10000).optional(),
   options: runOptionsSchema.optional(),
+  filters: searchFiltersSchema.optional(),
 }).strict();
 
-export const candidateStatusSchema = z.enum(["unreviewed", "reviewed_not_saved", "saved_as_card", "expired"]);
+export const candidateStatusSchema = z.enum(["unreviewed", "reviewed_not_saved", "deferred", "saved_as_card", "expired"]);
 const idSchema = z.string().trim().min(1).max(200);
 
 const urlSchema = z

@@ -74,12 +74,12 @@ function rowToArticle(row: ArticleRow): Article & { source?: string | null; last
   return {
     id: row.id,
     title: row.title,
-    body: row.body,
+    body: (row as ArticleRow & { reader_body?: string }).reader_body ?? row.body,
     publishedAt: row.published_at ? new Date(row.published_at) : new Date(row.created_at),
     sourceAuthority: row.source_authority,
     url: row.url,
-    tokens: parseJsonArray(row.tokens_json),
-    docLength: row.doc_length,
+    tokens: (row as ArticleRow & { reader_body?: string }).reader_body ? undefined : parseJsonArray(row.tokens_json),
+    docLength: (row as ArticleRow & { reader_body?: string }).reader_body ? undefined : row.doc_length,
     morphologicalTokens: parseJsonArray(row.morphological_tokens_json),
     ngramTokens: parseJsonArray(row.ngram_tokens_json),
     morphologicalDocLength: row.morphological_doc_length,
@@ -96,8 +96,8 @@ function rowToArticle(row: ArticleRow): Article & { source?: string | null; last
 
 export function loadArticlesFromDb(): Article[] {
   const rows = db.prepare(`
-    SELECT *
-    FROM articles
+    SELECT articles.*, article_reader_content.body AS reader_body
+    FROM articles LEFT JOIN article_reader_content ON articles.id = article_reader_content.article_id
     ORDER BY published_at DESC, updated_at DESC
   `).all() as ArticleRow[];
   return rows.map(rowToArticle);

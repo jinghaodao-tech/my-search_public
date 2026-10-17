@@ -34,6 +34,8 @@ https://github.com/user-attachments/assets/be5052d8-1d60-4aaa-8f6a-565dbaa1ee4d
 - BM25 search over card title, body, summary, tags, and related metadata
 - SQLite persistence with normalized `card_tags` and `card_links` junction tables
 - Collected articles are persisted in SQLite with URL de-duplication and token caches
+- Named search conditions persisted in SQLite (keywords, exclusions, sources, ranking options)
+- Ranked results with matching excerpts, source coverage, and direct read/save/defer/skip actions
 - Card CRUD, archive/restore, bulk archive/delete, and Markdown export
 - Zettelkasten-style links, backlinks, and graph view
 - KJ group organization backed by SQLite
@@ -48,9 +50,17 @@ My Search App keeps collection and saved knowledge as separate lifecycles:
 
 `Collect -> BM25 rank -> Review -> Save as Card -> Organize -> Search saved knowledge -> Export`
 
-Collected candidates expose `unreviewed`, `reviewed_not_saved`, `saved_as_card`, and `expired` states through the candidate API. BM25 ranks collected articles before saving; `GET /api/cards?q=...` is intentionally a lightweight SQLite `LIKE` filter for already-saved cards, not a second BM25 pipeline.
+Collected candidates expose `unreviewed`, `reviewed_not_saved`, `deferred`, `saved_as_card`, and `expired` states through the candidate API. BM25 ranks collected articles before saving; `GET /api/cards?q=...` is intentionally a lightweight SQLite `LIKE` filter for already-saved cards, not a second BM25 pipeline.
 
 The candidate lifecycle is local-only and stored in SQLite. Saving a candidate creates a normal article card and marks the source candidate as `saved_as_card`; candidate expiry never archives or deletes a saved card.
+### Search workspace
+
+Save a named search to resume its keywords, synonyms, exclusions, source filters, and ranking settings after restarting. Saved searches are shared by browsers using the same local SQLite database. Candidate review/save state is global across searches. Deferred candidates are exempt from automatic reviewed-candidate expiry.
+
+Results show the actual searched corpus and matching excerpts without an AI request. Reading from a result preserves the search and list position; saving in the reader advances to the next actionable result. Web search opens a separate tab with the current keywords; paste a discovered URL into “URLを取り込む” to read and save it. Source collection settings remain separate from saved-search source filters.
+
+Per-card search provenance and additional commenting features are not included.
+
 ## Architecture
 
 ```mermaid

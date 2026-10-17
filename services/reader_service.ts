@@ -11,11 +11,17 @@
  */
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
+import { PDF_MAX_BYTES, PdfReadError, extractPdf } from './pdf_service.js';
 
 export const READER_MAX_HTML_BYTES = 3 * 1024 * 1024;
 export const READER_TIMEOUT_MS = 10_000;
-/** Card bodies are limited to 20,000 chars by the existing card schema. */
+/**
+ * Card bodies are limited to 20,000 chars by the existing card schema, so the card keeps
+ * only the beginning of the text; the full text is kept separately (reader_texts).
+ */
 export const CARD_BODY_LIMIT = 20_000;
+/** Long PDFs (books) may be slow to download. */
+export const READER_PDF_TIMEOUT_MS = 60_000;
 
 export class ReaderError extends Error {
   constructor(message: string, readonly status: number) {
@@ -24,13 +30,45 @@ export class ReaderError extends Error {
 }
 
 export type ReadableArticle = {
-  url: string;
+  url: string | null;
   title: string;
   byline: string | null;
   siteName: string | null;
   paragraphs: string[];
   fetchedAt: string;
+  /** PDF only */
+  kind?: 'html' | 'pdf';
+  fileName?: string | null;
+  year?: string | null;
+  pageCount?: number;
+  pageLabelSource?: 'pdf-labels' | 'printed-numbers' | 'none';
+  copyAllowed?: boolean;
 };
+
+/** PDF bytes → the same shape as an article, with page markers in the paragraphs. */
+export async function readPdf(bytes: Uint8Array, source: { url: string | null; fileName: string | null }, fetchedAt = new Date().toISOString()): Promise<ReadableArticle> {
+  try {
+    const pdf = await extractPdf(bytes);
+    return {
+      kind: 'pdf',
+      url: source.url,
+      fileName: source.fileName,
+      title: pdf.title || source.fileName || 'PDF',
+      // PDF "Author" metadata is often a login name ("tmogi"); only offer it when it looks like a name.
+      byline: pdf.byline && /[\s\u3040-\u9fff]/.test(pdf.byline) ? pdf.byline : null,
+      siteName: pdf.siteName,
+      year: pdf.year,
+      paragraphs: pdf.paragraphs,
+      fetchedAt,
+      pageCount: pdf.pageCount,
+      pageLabelSource: pdf.pageLabelSource,
+      copyAllowed: pdf.copyAllowed,
+    };
+  } catch (error) {
+    if (error instanceof PdfReadError) throw new ReaderError(error.message, error.status);
+    throw error;
+  }
+}
 
 const PRIVATE_HOST = [
   /^localhost$/i,
@@ -144,12 +182,19 @@ export function decodeHtml(bytes: Uint8Array, contentType = ''): string {
 export async function fetchReadable(raw: string, fetchImpl: typeof fetch = fetch): Promise<ReadableArticle> {
   const url = assertFetchableUrl(raw);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), READER_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), READER_PDF_TIMEOUT_MS);
   try {
     const response = await fetchImpl(url, { signal: controller.signal, redirect: 'follow', headers: { 'user-agent': 'MySearchReader/1.0 (+personal reading)' } });
     if (!response.ok) throw new ReaderError(`The page returned HTTP ${response.status}`, 502);
     const type = response.headers.get('content-type') ?? '';
-    if (!/html/i.test(type)) throw new ReaderError('The page is not HTML', 415);
+    if (/application\/pdf/i.test(type)) {
+      const declared = Number(response.headers.get('content-length') ?? 0);
+      if (declared > PDF_MAX_BYTES) throw new ReaderError('PDF is too large (max 30MB)', 413);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const finalUrl = response.url || url.toString();
+      return await readPdf(bytes, { url: finalUrl, fileName: decodeURIComponent(new URL(finalUrl).pathname.split('/').pop() || '') || null });
+    }
+    if (!/html/i.test(type)) throw new ReaderError('The page is not HTML or PDF', 415);
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength > READER_MAX_HTML_BYTES) throw new ReaderError('The page is too large to read', 413);
     return extractReadable(decodeHtml(bytes, type), response.url || url.toString());
@@ -164,7 +209,7 @@ export async function fetchReadable(raw: string, fetchImpl: typeof fetch = fetch
 
 export type ReaderCardInput = {
   memo: string;
-  source: Pick<ReadableArticle, 'title' | 'url' | 'byline' | 'siteName' | 'fetchedAt'>;
+  source: Pick<ReadableArticle, 'title' | 'url' | 'byline' | 'siteName' | 'fetchedAt'> & { year?: string | null; fileName?: string | null };
   paragraphs: string[];
 };
 
@@ -175,9 +220,11 @@ export type ReaderCardInput = {
 export function composeReaderCardBody({ memo, source, paragraphs }: ReaderCardInput): string {
   const sourceLines = [
     `- タイトル: ${source.title}`,
-    `- URL: ${source.url}`,
+    source.url ? `- URL: ${source.url}` : null,
+    source.fileName ? `- ファイル: ${source.fileName}` : null,
     source.siteName ? `- サイト: ${source.siteName}` : null,
     source.byline ? `- 著者: ${source.byline}` : null,
+    source.year ? `- 発行年: ${source.year}` : null,
     `- 取得日時: ${source.fetchedAt}`,
   ].filter(Boolean).join('\n');
   const head = `## メモ\n\n${memo.trim() || '（なし）'}\n\n## 出典\n\n${sourceLines}\n\n## 本文（取得時点のコピー・私的利用）\n\n`;
@@ -191,7 +238,7 @@ export function composeReaderCardBody({ memo, source, paragraphs }: ReaderCardIn
 export type ParsedReaderCard = {
   isReaderFormat: boolean;
   memo: string;
-  source: { title: string | null; url: string | null; siteName: string | null; byline: string | null; fetchedAt: string | null };
+  source: { title: string | null; url: string | null; siteName: string | null; byline: string | null; fetchedAt: string | null; year: string | null; fileName: string | null };
   paragraphs: string[];
 };
 
@@ -201,7 +248,7 @@ const TEXT_HEAD = '\n\n## 本文（取得時点のコピー・私的利用）\n\
 
 /** Inverse of composeReaderCardBody. Cards in any other format are treated as memo only. */
 export function parseReaderCardBody(body: string): ParsedReaderCard {
-  const empty = { title: null, url: null, siteName: null, byline: null, fetchedAt: null };
+  const empty = { title: null, url: null, siteName: null, byline: null, fetchedAt: null, year: null, fileName: null };
   const sourceAt = body.indexOf(SOURCE_HEAD);
   const textAt = body.indexOf(TEXT_HEAD);
   if (!body.startsWith(MEMO_HEAD) || sourceAt < 0 || textAt < sourceAt) {
@@ -212,7 +259,7 @@ export function parseReaderCardBody(body: string): ParsedReaderCard {
   return {
     isReaderFormat: true,
     memo: memo === '（なし）' ? '' : memo,
-    source: { title: field('タイトル'), url: field('URL'), siteName: field('サイト'), byline: field('著者'), fetchedAt: field('取得日時') },
+    source: { title: field('タイトル'), url: field('URL'), siteName: field('サイト'), byline: field('著者'), fetchedAt: field('取得日時'), year: field('発行年'), fileName: field('ファイル') },
     paragraphs: body.slice(textAt + TEXT_HEAD.length).split(/\n\n/).filter(Boolean),
   };
 }

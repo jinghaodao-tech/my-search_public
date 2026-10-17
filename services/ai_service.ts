@@ -414,3 +414,57 @@ export function isAiSummaryError(error: unknown): error is AiSummaryError {
   return error instanceof AiSummaryError;
 }
 
+
+/**
+ * Plain text completion with the configured provider (used by features that
+ * build their own prompt and parse the answer themselves, e.g. the evidence table).
+ */
+export async function completeWithProvider(prompt: string, maxTokens: number): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  try {
+    if (AI_PROVIDER === 'gemini') {
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) throw new AiSummaryError(500, 'missing_api_key', 'GEMINI_API_KEY is not configured');
+      const url =
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}` +
+        `:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: maxTokens, temperature: 0 },
+        }),
+        signal: controller.signal,
+      });
+      const responseBody = await response.text();
+      if (!response.ok) throw mapAnthropicStatus(response.status, responseBody);
+      const data = JSON.parse(responseBody) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+      return data.candidates?.[0]?.content?.parts?.map(part => part.text ?? '').join('') ?? '';
+    }
+    if (AI_PROVIDER === 'anthropic') {
+      const apiKey = getAnthropicApiKey();
+      if (!apiKey) throw new AiSummaryError(500, 'missing_api_key', 'ANTHROPIC_API_KEY is not configured');
+      const response = await fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
+        signal: controller.signal,
+      });
+      const responseBody = await response.text();
+      if (!response.ok) throw mapAnthropicStatus(response.status, responseBody);
+      const data = JSON.parse(responseBody) as { content?: Array<{ text?: string }> };
+      return data.content?.map(part => part.text ?? '').join('') ?? '';
+    }
+    throw new AiSummaryError(500, 'api_error', `Unsupported AI_PROVIDER: ${AI_PROVIDER}`);
+  } catch (error) {
+    if (error instanceof AiSummaryError) throw error;
+    if (error instanceof Error && error.name === 'AbortError') throw new AiSummaryError(500, 'timeout', 'AI request timed out');
+    throw new AiSummaryError(500, 'api_error', 'AI request failed', String(error));
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export const IS_MOCK_AI = MOCK_AI_SUMMARY;
