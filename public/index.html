@@ -9,6 +9,8 @@
 </head>
 <body>
 
+<div id="demo-banner" class="demo-banner" hidden></div>
+
 <!-- トップバー -->
 <div id="topbar">
   <h1>カード検索</h1>
@@ -34,7 +36,7 @@
     <div id="sidebar-body">
       <div class="sidebar-section">
         <h3>Display</h3>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)">
+        <label class="needs-ai" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)">
           <input type="checkbox" id="summary-toggle" onchange="toggleSummaryVisibility(this.checked)"> AI summary
         </label>
       </div>
@@ -85,7 +87,7 @@
         <button id="bulk-restore-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="restoreSelected()">一括復元</button>
         <button id="bulk-export-md-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="exportSelectedMarkdown()">MD Export</button>
         <button id="bulk-delete-btn" class="btn btn-danger btn-sm" style="display:none" onclick="deleteSelected()">一括削除</button>
-        <button class="btn btn-secondary btn-sm" onclick="summarizeBulk()">一括要約</button>
+        <button class="btn btn-secondary btn-sm needs-ai" onclick="summarizeBulk()">一括要約</button>
       </div>
     </div>
     <div id="content-body">
@@ -285,7 +287,7 @@
           <button class="btn btn-secondary btn-sm" onclick="restoreReaderDraft()">復元</button>
           <button class="btn btn-secondary btn-sm" onclick="discardReaderDraft()">破棄</button>
         </div>
-        <div class="evidence-box">
+        <div class="evidence-box needs-ai">
           <div class="evidence-input">
             <input type="text" id="evidence-purpose" maxlength="300" placeholder="何のために読む？（例: BM25がAI検索より有利な点を知りたい）" onkeydown="if(event.key==='Enter')runEvidence()">
             <button class="btn btn-secondary btn-sm" id="evidence-run" onclick="runEvidence()" title="AIが目的に関係する主張と根拠の一節を提案し、一節が本文に実在するかを照合します">AIで根拠を探す</button>
@@ -534,6 +536,7 @@
 <script src="js/candidate_ui.js"></script>
 <script src="js/memo_table.js"></script>
 <script src="js/reader_ui.js"></script>
+<script src="js/features_ui.js"></script>
 <script type="module" src="js/typed/api_client.js"></script>
 </body>
 </html>

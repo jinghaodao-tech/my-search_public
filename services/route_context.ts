@@ -72,6 +72,7 @@ export function createRouteContext(limiters: {
   apiLimiter: express.RequestHandler;
   aiLimiter: express.RequestHandler;
   importLimiter: express.RequestHandler;
+  readerLimiter: express.RequestHandler;
 }) {
   const collector = createCollectorService();
   const scheduler = createSchedulerService();

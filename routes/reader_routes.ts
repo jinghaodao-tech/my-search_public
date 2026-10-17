@@ -5,7 +5,8 @@ import type { RouteContext } from '../services/route_context.js';
 import { CandidateSaveConflict } from '../services/candidate_service.js';
 import { parseBody, sendError } from '../services/http_service.js';
 import { ReaderError, composeReaderCardBody, fetchReadable, parseReaderCardBody, readPdf } from '../services/reader_service.js';
-import { PAGE_MARKER, PDF_MAX_BYTES } from '../services/pdf_service.js';
+import { PAGE_MARKER, pdfMaxBytes } from '../services/pdf_service.js';
+import { DEMO_DOCUMENTS, demoUrl, isDemoMode, readDemoDocument } from '../services/demo_service.js';
 import { getReaderText, saveReaderText } from '../repositories/reader_texts_repository.js';
 import { IS_MOCK_AI, completeWithProvider } from '../services/ai_service.js';
 import { buildEvidenceTable, type EvidenceSource } from '../services/evidence_service.js';
@@ -66,11 +67,22 @@ export function createReaderRouter(ctx: RouteContext) {
   const router = express.Router();
 
   // Fetch a page and return its readable text (no AI, deterministic).
-  router.post('/reader/extract', async (req, res) => {
+  // What this instance offers (the UI hides what is not available).
+  router.get('/features', (_req, res) => {
+    const demo = isDemoMode();
+    res.json({
+      demo,
+      ai: IS_MOCK_AI || ctx.hasConfiguredProviderKey(),
+      pdfMaxMb: Math.round(pdfMaxBytes() / 1024 / 1024),
+      samples: demo ? Object.entries(DEMO_DOCUMENTS).map(([pathname, doc]) => ({ title: doc.title, url: demoUrl(pathname), download: pathname.endsWith('.pdf') ? `/demo/${doc.file}` : null })) : [],
+    });
+  });
+
+  router.post('/reader/extract', ctx.readerLimiter, async (req, res) => {
     const body = parseBody(extractSchema, req, res);
     if (!body) return;
     try {
-      const article = await fetchReadable(body.url);
+      const article = (await readDemoDocument(body.url)) ?? await fetchReadable(body.url);
       cacheReaderText(body.url, article.paragraphs, article.fetchedAt);
       res.json(article);
     } catch (error) {
@@ -83,7 +95,7 @@ export function createReaderRouter(ctx: RouteContext) {
   });
 
   // Read an uploaded PDF (sent as the raw request body). No AI; pages come from the PDF itself.
-  router.post('/reader/pdf', express.raw({ type: 'application/pdf', limit: PDF_MAX_BYTES }), async (req, res) => {
+  router.post('/reader/pdf', ctx.readerLimiter, (req, res, next) => express.raw({ type: 'application/pdf', limit: pdfMaxBytes() })(req, res, next), async (req, res) => {
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
       sendError(req, res, 400, 'Content-Type: application/pdf の本文としてPDFを送ってください', undefined, 'validation_failed');
       return;

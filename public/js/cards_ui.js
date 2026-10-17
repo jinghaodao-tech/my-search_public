@@ -28,7 +28,7 @@ function renderCardGrid() {
         <div class="card-actions">
           ${restoreButton}
           <button class="btn-icon btn-sm" onclick="event.stopPropagation();openEditModal('${card.id}')" title="編集">✏️</button>
-          <button class="btn-icon btn-sm" onclick="event.stopPropagation();summarizeOne('${card.id}')" title="AI要約">⚡</button>
+          <button class="btn-icon btn-sm needs-ai" onclick="event.stopPropagation();summarizeOne('${card.id}')" title="AI要約">⚡</button>
         </div>
       </div>
       <div class="card-title">${esc(card.title)}</div>
@@ -264,7 +264,7 @@ function renderDetailPanel(card) {
     ${card.url?`<div class="detail-section detail-url"><h4>リンク</h4><a href="${esc(card.url)}" target="_blank">🔗 ${esc(card.url)}</a></div>`:''}
     <div class="detail-section">
       <h4>AI要約${card.summary?'':'<span style="color:var(--text-dim);font-weight:400"> (未生成)</span>'}</h4>
-      ${card.summary?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="deleteSummary('${card.id}')">Delete</button></div><div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm" onclick="summarizeOne('${card.id}')">⚡ AI要約を生成</button>`}
+      ${card.summary?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="deleteSummary('${card.id}')">Delete</button></div><div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm needs-ai" onclick="summarizeOne('${card.id}')">⚡ AI要約を生成</button>`}
     </div>
     ${renderDetailBody(card)}
     <div class="detail-section">

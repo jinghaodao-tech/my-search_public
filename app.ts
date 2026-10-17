@@ -31,6 +31,7 @@ import {
   metricsSnapshot,
 } from './services/http_service.js';
 import { createRouteContext } from './services/route_context.js';
+import { DEMO_DIR, isDemoMode, seedDemoData } from './services/demo_service.js';
 import { loadRuntimeConfig } from './config/runtime_config.js';
 declare global {
   namespace Express {
@@ -61,7 +62,12 @@ const routeContext = createRouteContext(createRateLimiters());
 
 app.use(helmet({
   contentSecurityPolicy: false,
+  // The public demo is shown inside the Hugging Face Space page (an iframe on huggingface.co).
+  frameguard: isDemoMode() ? false : undefined,
 }));
+if (isDemoMode()) {
+  app.use((_req, res, next) => { res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://huggingface.co"); next(); });
+}
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '10mb' }));
 app.use(requestLogger);
@@ -70,6 +76,8 @@ app.use('/api', apiKeyGuard);
 app.get('/metrics', (_req, res) => res.json({ ok: true, metrics: metricsSnapshot() }));
 const publicDir = path.join(__dirname, 'public');
 app.use(express.static(publicDir));
+// Sample documents for the demo (written for the demo; served for download, e.g. the sample PDF).
+app.use('/demo', express.static(DEMO_DIR));
 app.use(createSystemRouter(publicDir));
 
 app.use('/api', createCollectRouter(routeContext));
@@ -93,6 +101,7 @@ app.use(errorHandler);
 
 // Server bootstrap
 if (process.env.NODE_ENV !== 'test') {
+  if (isDemoMode()) await seedDemoData(routeContext);
   await routeContext.bootstrap();
 }
 

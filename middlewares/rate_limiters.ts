@@ -36,5 +36,17 @@ export function createRateLimiters() {
     },
   });
 
-  return { apiLimiter, aiLimiter, importLimiter };
+  // Reading a page or a PDF fetches/parses external content: limited separately (stricter in demo mode).
+  const readerLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: Number(process.env.READER_RATE_LIMIT ?? (String(process.env.DEMO_MODE).toLowerCase() === 'true' ? 10 : 60)),
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
+      logger.warn({ event: 'rate_limit', requestId: getRequestId(req), method: req.method, path: req.path, bucket: 'reader' }, 'rate limit exceeded');
+      sendError(req, res, 429, 'Rate limit exceeded');
+    },
+  });
+
+  return { apiLimiter, aiLimiter, importLimiter, readerLimiter };
 }

@@ -14,6 +14,11 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const PDF_MAX_BYTES = 30 * 1024 * 1024;
+/** Upload limit; READER_PDF_MAX_MB lowers it (e.g. 10 on a small free server). */
+export function pdfMaxBytes(env: NodeJS.ProcessEnv = process.env): number {
+  const mb = Number(env.READER_PDF_MAX_MB);
+  return Number.isFinite(mb) && mb > 0 ? Math.min(mb * 1024 * 1024, PDF_MAX_BYTES) : PDF_MAX_BYTES;
+}
 export const PDF_MAX_PAGES = 2000;
 
 export const PAGE_MARKER = /^\[\[page:(\d+)\|([^\]]*)\]\]$/;
@@ -299,7 +304,7 @@ export class PdfReadError extends Error {
 
 /** Extract page-tagged paragraphs from PDF bytes. */
 export async function extractPdf(bytes: Uint8Array): Promise<PdfDocumentText> {
-  if (bytes.byteLength > PDF_MAX_BYTES) throw new PdfReadError('PDF is too large (max 30MB)', 413);
+  if (bytes.byteLength > pdfMaxBytes()) throw new PdfReadError(`PDF is too large (max ${Math.round(pdfMaxBytes() / 1024 / 1024)}MB)`, 413);
   const { pdfjs, root } = await loadPdfJs();
   let doc;
   try {

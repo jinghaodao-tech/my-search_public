@@ -11,7 +11,7 @@
  */
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
-import { PDF_MAX_BYTES, PdfReadError, extractPdf } from './pdf_service.js';
+import { PdfReadError, extractPdf, pdfMaxBytes } from './pdf_service.js';
 
 export const READER_MAX_HTML_BYTES = 3 * 1024 * 1024;
 export const READER_TIMEOUT_MS = 10_000;
@@ -189,7 +189,7 @@ export async function fetchReadable(raw: string, fetchImpl: typeof fetch = fetch
     const type = response.headers.get('content-type') ?? '';
     if (/application\/pdf/i.test(type)) {
       const declared = Number(response.headers.get('content-length') ?? 0);
-      if (declared > PDF_MAX_BYTES) throw new ReaderError('PDF is too large (max 30MB)', 413);
+      if (declared > pdfMaxBytes()) throw new ReaderError(`PDF is too large (max ${Math.round(pdfMaxBytes() / 1024 / 1024)}MB)`, 413);
       const bytes = new Uint8Array(await response.arrayBuffer());
       const finalUrl = response.url || url.toString();
       return await readPdf(bytes, { url: finalUrl, fileName: decodeURIComponent(new URL(finalUrl).pathname.split('/').pop() || '') || null });

@@ -3,9 +3,16 @@ import type { RouteContext } from '../services/route_context.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
 import type { CollectResult } from '../collector.js';
+import { isDemoMode } from '../services/demo_service.js';
 
 export function createCollectRouter(ctx: RouteContext) {
   const router = express.Router();
+
+  // Demo instance: no collecting from outside feeds (the sample articles are already there).
+  router.post(['/collect', '/articles/refresh', '/collect/config', '/scheduler/start'], (req, res, next) => {
+    if (isDemoMode()) { sendError(req, res, 403, 'デモ版では記事の収集は止めています', undefined, 'request_failed'); return; }
+    next();
+  });
 
   router.post('/scheduler/start', (req, res, next) => {
     if (ctx.getSchedulerStop()) {
