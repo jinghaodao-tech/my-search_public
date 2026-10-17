@@ -43,6 +43,9 @@ describe('demo mode', () => {
     expect(read.status).toBe(200);
     expect(read.body.title).toContain('引用にページ番号を付ける理由');
     expect((await request(app).post('/api/collect').send({})).status).toBe(403);
+    const modes = await request(app).get('/api/modes');
+    expect(Object.keys(modes.body)[0]).toBe('demo');
+    expect(modes.body.demo.keywords.map((k: { term: string }) => k.term)).toEqual(['引用', 'ページ', 'メモ']);
     const pdf = await request(app).get('/demo/sample-paper.pdf');
     expect(pdf.status).toBe(200);
     expect(pdf.headers['content-type']).toContain('application/pdf');
@@ -52,6 +55,7 @@ describe('demo mode', () => {
     delete process.env.DEMO_MODE;
     const features = await request(app).get('/api/features');
     expect(features.body).toMatchObject({ demo: false, samples: [] });
+    expect(Object.keys((await request(app).get('/api/modes')).body)).not.toContain('demo');
   });
 
   it('lets the PDF size limit be lowered', () => {

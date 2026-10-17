@@ -8,6 +8,7 @@ import type { Card } from '../domain/card.js';
 import type { Article } from '../bm25_engine.js';
 import { buildStoredTokenSet } from '../bm25_engine.js';
 import { db } from '../db/database.js';
+import { DEMO_SEARCH_MODE, isDemoMode } from '../services/demo_service.js';
 
 type SearchInputArticle = Partial<Article> & Pick<Article, 'id' | 'title' | 'body'> & {
   publishedAt: string | Date;
@@ -18,7 +19,8 @@ type SearchInputArticle = Partial<Article> & Pick<Article, 'id' | 'title' | 'bod
 export function createSearchRouter(ctx: RouteContext) {
   const router = express.Router();
 
-  router.get('/modes', (_req, res) => res.json(ctx.MODES));
+  // Demo: a first preset whose words match the sample documents, so the first search finds them.
+  router.get('/modes', (_req, res) => res.json(isDemoMode() ? { demo: DEMO_SEARCH_MODE, ...ctx.MODES } : ctx.MODES));
 
   router.post('/run', async (req, res) => {
     const body = parseBody(ctx.runBodySchema, req, res);

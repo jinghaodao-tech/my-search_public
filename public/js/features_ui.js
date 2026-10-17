@@ -8,7 +8,15 @@ async function loadAppFeatures() {
   document.body.classList.toggle('no-ai', !appFeatures.ai);
   const pdfButton = document.querySelector('[onclick="chooseReaderPdf()"]');
   if (pdfButton) pdfButton.title = `手元のPDF（論文・技術書など、DRMの無いもの・${appFeatures.pdfMaxMb}MBまで）を開く`;
-  if (appFeatures.demo) renderDemoBanner();
+  if (appFeatures.demo) {
+    renderDemoBanner();
+    // Only a few sample documents: show every one that matches at all (instead of moving low scores to the archive).
+    if (typeof syncParam === 'function') {
+      syncParam('arch', 0.01);
+      const input = document.getElementById('p-arch');
+      if (input) input.value = '0.01';
+    }
+  }
 }
 
 function renderDemoBanner() {

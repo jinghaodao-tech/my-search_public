@@ -35,6 +35,23 @@ export const DEMO_DOCUMENTS: Record<string, DemoDocument> = {
   '/sample-paper.pdf': { file: 'sample-paper.pdf', kind: 'pdf', title: '調べ物の記録を確かめられる形で残す（見本論文PDF）', summary: '引用・出典・ページの三つをそろえる記録の方法。表紙つき、印刷ページ41〜44。', daysAgo: 4 },
 };
 
+/** Search preset shown first in demo mode: words that the sample documents contain. */
+export const DEMO_SEARCH_MODE = {
+  label: '見本を探す',
+  description: 'デモ用：見本の記事とPDFに合う検索語です。自由に書き換えて試せます。',
+  k1: 1.2,
+  b: 0.75,
+  lambda: 0,
+  contextBonus: 0,
+  morphologicalWeight: 0.5,
+  ngramWeight: 0.5,
+  keywords: [
+    { term: '引用', weight: 1.5, synonyms: ['出典'] },
+    { term: 'ページ', weight: 1.2, synonyms: ['ページ番号'] },
+    { term: 'メモ', weight: 1.2, synonyms: ['記録'] },
+  ],
+};
+
 export function demoUrl(pathname: string): string {
   return `https://${DEMO_HOST}${pathname}`;
 }
