@@ -394,7 +394,8 @@ code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:12px
 .reader-table-actions{display:flex;gap:6px}
 /* Card list as table */
 .layout-toggle{display:flex;gap:4px}
-#card-grid.as-table{display:block !important;overflow-x:auto}
+/* table layout: one full-width column; the view switch (inline display) still decides whether it is shown */
+#card-grid.as-table{grid-template-columns:1fr;overflow-x:auto;align-content:start}
 .card-table{border-collapse:collapse;width:100%;font-size:13px}
 .card-table th{position:sticky;top:0;background:var(--surface);text-align:left;padding:8px;border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none}
 .card-table td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top}
