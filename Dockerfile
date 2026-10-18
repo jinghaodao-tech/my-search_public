@@ -6,7 +6,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY --chown=node:node . .
-RUN mkdir -p /app/data && chown -R node:node /app
+RUN npm run build && mkdir -p /app/data && chown -R node:node /app
 
 ENV PORT=3000
 ENV DB_PATH=/app/data/cards.db
@@ -17,4 +17,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD node 
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Compiled JavaScript with plain node (no npm / tsx processes): less memory.
+CMD ["node", "dist/server.js"]

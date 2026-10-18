@@ -8,6 +8,8 @@ const READER_IMAGE_LINE = /^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/;
 
 let readerRequestVersion = 0;
 let readerSaving = false;
+// Set by 目的から探す before opening: fill the purpose, and optionally find evidence once the text is in.
+let readerPendingPurpose = null;
 function openReader(url = '', candidateId = null, fromSearch = false) {
   readerRequestVersion++;
   if (!fromSearch) searchReaderIndex = -1;
@@ -15,6 +17,8 @@ function openReader(url = '', candidateId = null, fromSearch = false) {
   readerArticle = null;
   readerCandidateId = candidateId;
   readerCardId = null;
+  if (typeof resetReaderTranslation === 'function') resetReaderTranslation();
+  if (readerPendingPurpose?.purpose) document.getElementById('evidence-purpose').value = readerPendingPurpose.purpose;
   document.getElementById('reader-fallback-title').value = (typeof findSearchItem === 'function' ? findSearchItem(candidateId)?.article.title : '') || '';
   document.getElementById('reader-manual-text').value = '';
   setReaderSaveLabel();
@@ -39,9 +43,13 @@ async function openReaderForCard(id) {
     const data = await api.get(`/api/reader/cards/${encodeURIComponent(id)}`);
     readerCandidateId = null;
     readerCardId = id;
+    if (typeof resetReaderTranslation === 'function') resetReaderTranslation(data.translation);
     setReaderSaveLabel();
     document.getElementById('reader-url').value = data.url || '';
     document.getElementById('reader-memo').value = data.memo || '';
+    // the title field must show this card, not the article opened before
+    document.getElementById('reader-fallback-title').value = data.title || '';
+    document.getElementById('reader-manual-text').value = '';
     document.getElementById('reader-tags').value = (data.tags || []).join(' ');
     setReaderBiblio(data);
     if (typeof resetMemoMode === 'function') resetMemoMode();
@@ -74,10 +82,14 @@ async function loadReaderArticle() {
     const extracted = await api.post('/api/reader/extract', { url });
     if (requestVersion !== readerRequestVersion) return;
     readerArticle = extracted;
+    if (typeof resetReaderTranslation === 'function' && !readerCardId) resetReaderTranslation();
     setReaderBiblio(readerArticle);
     renderReaderArticle();
     if (!readerCardId && !document.getElementById('reader-memo').value) offerReaderDraft();
     document.getElementById('reader-memo').focus();
+    const pending = readerPendingPurpose;
+    readerPendingPurpose = null;
+    if (pending?.run) runEvidence();
   } catch (error) {
     if (requestVersion !== readerRequestVersion) return;
     readerArticle = null;
@@ -127,6 +139,7 @@ function renderReaderArticle() {
       pane.appendChild(img);
       return;
     }
+    if (typeof renderReaderParagraph === 'function') { renderReaderParagraph(pane, text, index); return; }
     const p = document.createElement('p');
     p.textContent = text;
     p.dataset.index = index;
@@ -135,6 +148,8 @@ function renderReaderArticle() {
   const parts = [readerArticle.fileName, readerArticle.siteName, readerArticle.byline, `取得: ${new Date(readerArticle.fetchedAt).toLocaleString('ja-JP')}`].filter(Boolean);
   meta.textContent = parts.join(' · ');
   if (readerArticle.kind === 'pdf' || readerArticle.paragraphs.some(paragraph => PAGE_MARKER_LINE.test(paragraph))) renderPdfMeta(meta);
+  else if (typeof renderTranslationBar === 'function') renderTranslationBar(meta);
+  renderEvidenceEngine();
 }
 
 // PDF: how the printed page numbers were found, a way to correct them, and the copy permission.
@@ -272,14 +287,25 @@ function selectedReaderText() {
 function quoteReaderSelection() {
   const selected = selectedReaderText();
   if (!selected) { toast('引用したい文を左で選択してください', 'warn'); return; }
-  insertReaderQuote(selected, selectionParagraphIndex(), undefined, selectionLocation());
+  insertReaderQuote(markIfTranslated(selected), selectionParagraphIndex(), undefined, selectionLocation());
 }
 
 // Copy the selection with its citation, e.g. 「…」（水本・竹内，2008，p. 57）.
 async function copyCitedSelection() {
   const selected = selectedReaderText();
   if (!selected) { toast('引用したい文を左で選択してください', 'warn'); return; }
-  await copyCitation(selected, selectionLocation());
+  await copyCitation(markIfTranslated(selected), selectionLocation());
+}
+
+// A quote taken from the Japanese translation is the quoter's translation, not the author's words.
+const TRANSLATED_QUOTE_NOTE = '（引用者訳・機械翻訳をもとに）';
+function selectionInTranslation() {
+  const range = window.getSelection?.()?.rangeCount ? window.getSelection().getRangeAt(0) : null;
+  const element = range ? (range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement) : null;
+  return !!element?.closest?.('.reader-translation');
+}
+function markIfTranslated(text) {
+  return selectionInTranslation() ? text + TRANSLATED_QUOTE_NOTE : text;
 }
 
 async function copyCitation(quote, location) {
@@ -404,6 +430,7 @@ async function saveReaderCardOnce() {
         ...readerBiblio(),
         fetchedAt: article.fetchedAt,
         paragraphs: article.paragraphs,
+        ...(typeof readerTranslationPayload === 'function' ? readerTranslationPayload(article.paragraphs) : {}),
         memo: document.getElementById('reader-memo').value,
         tags,
       });
@@ -424,6 +451,7 @@ async function saveReaderCardOnce() {
     ...readerBiblio(),
     fetchedAt: readerArticle.fetchedAt,
     paragraphs: readerArticle.paragraphs,
+    ...(typeof readerTranslationPayload === 'function' ? readerTranslationPayload(readerArticle.paragraphs) : {}),
     memo: document.getElementById('reader-memo').value,
     tags,
   };
@@ -483,7 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
   pane?.addEventListener('dragstart', event => {
     const text = selectedReaderText();
     if (!text || !event.dataTransfer) return;
-    event.dataTransfer.setData('application/x-reader-quote', JSON.stringify({ text, index: selectionParagraphIndex(), location: selectionLocation() }));
+    event.dataTransfer.setData('application/x-reader-quote', JSON.stringify({ text: markIfTranslated(text), index: selectionParagraphIndex(), location: selectionLocation() }));
     event.dataTransfer.setData('text/plain', text);
   });
   const memo = document.getElementById('reader-memo');
@@ -509,19 +537,51 @@ function resetEvidence() {
   if (host) host.textContent = '';
 }
 
+// Which picks the passages: the on-device AI in Chrome when it is ready, else the server's AI
+// when this instance has a key, else the words of the purpose (no AI). Quotes are always checked.
+async function evidenceEngine() {
+  if (typeof localAi !== 'undefined' && await localAi.isReady('prompt')) return 'local-ai';
+  if (typeof appFeatures !== 'undefined' && appFeatures.ai) return 'server-ai';
+  return 'words';
+}
+const EVIDENCE_ENGINE_TEXT = {
+  'local-ai': '端末のAI（Chrome内蔵）が一節を選び、アプリが本文と一字一句照合します。',
+  'server-ai': 'AIが一節を選び、アプリが本文と一字一句照合します。',
+  words: '目的の語を多く含む文を選びます（AIなし）。端末のAIを準備すると、意味で選べます。',
+};
+async function renderEvidenceEngine() {
+  const host = document.getElementById('evidence-engine');
+  if (!host) return;
+  const engine = await evidenceEngine();
+  host.textContent = EVIDENCE_ENGINE_TEXT[engine];
+  if (engine === 'words' && typeof renderLocalAiControl === 'function' && typeof localAi !== 'undefined' && ['downloadable', 'downloading'].includes(await localAi.availability('prompt'))) {
+    const control = document.createElement('div');
+    host.appendChild(control);
+    renderLocalAiControl(control, 'prompt', renderEvidenceEngine);
+  }
+}
+
 async function runEvidence() {
   if (!readerArticle) { toast('先に本文を読み込んでください', 'warn'); return; }
   const purpose = document.getElementById('evidence-purpose').value.trim();
   if (purpose.length < 2) { toast('何のために読むのかを1行で書いてください', 'warn'); document.getElementById('evidence-purpose').focus(); return; }
   const host = document.getElementById('evidence-results');
   const button = document.getElementById('evidence-run');
-  host.textContent = 'AIが本文を読んでいます…（引用は本文と照合してから表示します）';
+  const article = { title: readerArticle.title.slice(0, 200), url: readerArticle.url || null, paragraphs: readerArticle.paragraphs };
+  const engine = await evidenceEngine();
+  host.textContent = engine === 'words' ? '目的の語を含む文を探しています…' : 'AIが本文を読んでいます…（引用は本文と照合してから表示します）';
   button.disabled = true;
   try {
-    evidenceResult = await api.post('/api/reader/evidence', {
-      purpose,
-      article: { title: readerArticle.title.slice(0, 200), url: readerArticle.url || null, paragraphs: readerArticle.paragraphs },
-    });
+    if (engine === 'local-ai') {
+      const proposed = await localAi.proposePassages(purpose, readerArticle.paragraphs, {
+        onChunk: (done, total) => { host.textContent = `端末のAIが本文を読んでいます… ${done}/${total}`; },
+      });
+      evidenceResult = await api.post('/api/reader/passages', { purpose, article, proposed: proposed.rows.map(row => ({ ...row, source: 'S1' })) });
+    } else if (engine === 'server-ai') {
+      evidenceResult = await api.post('/api/reader/evidence', { purpose, article });
+    } else {
+      evidenceResult = await api.post('/api/reader/passages', { purpose, article });
+    }
     renderEvidence();
   } catch (error) {
     evidenceResult = null;

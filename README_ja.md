@@ -1,5 +1,7 @@
 # My Search App
 
+> **お試し（審査用）:** `npm install` → `npm run trial` で見本入りのデモが起動します。手順は [docs/trial.md](docs/trial.md)。
+
 My Search Appは、カード型の知識をSQLiteへ保存し、BM25でローカル検索するナレッジ管理アプリです。収集候補、Review、カード保存、整理、検索、エクスポートの流れを分離して管理します。
 
 ## 主な機能

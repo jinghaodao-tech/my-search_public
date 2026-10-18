@@ -11,10 +11,10 @@
  */
 
 import kuromoji from "kuromoji";
+import { PROJECT_ROOT } from './utils/project_root.js';
 import * as path from "path";
-import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = PROJECT_ROOT;
 
 // ═══════════════════════════════════════════════════════════════════
 //  § 1. 型定義
@@ -47,9 +47,13 @@ export interface Article {
   title: string;
   body: string;
   publishedAt: Date;
+  publicationDateKnown?: boolean;
   sourceAuthority: number; // 0–1 : ソースの信頼度
   url: string;
   source?: string | null;
+  sources?: string[];
+  bodyKind?: 'excerpt' | 'fulltext';
+  sourceUpdatedAt?: string;
   tokens?: string[];
   docLength?: number;
   morphologicalTokens?: string[];
@@ -265,8 +269,40 @@ let _tokenizerPromise: Promise<KuromojiTokenizer> | null = null;
 
 const DICT_PATH = path.join(__dirname, "node_modules/kuromoji/dict/");
 
+/**
+ * Which tokenizer the server uses.
+ * - kuromoji (default): morphological analysis with a dictionary. Best quality, ~250-300MB of memory.
+ * - segmenter (TOKENIZER=segmenter): the word splitter built into Node (Intl.Segmenter, ICU). Almost no
+ *   extra memory, about 40x faster, slightly lower known-item search quality (measured ~5% lower MRR).
+ *   Meant for small public demos on 512MB hosts. Tokens stored in the DB remember which one made them.
+ */
+export function tokenizerName(): "kuromoji" | "segmenter" {
+  return String(process.env.TOKENIZER ?? "").trim().toLowerCase() === "segmenter" ? "segmenter" : "kuromoji";
+}
+
+const HIRAGANA_ONLY = /^[\u3040-\u309f]+$/u;
+function createSegmenterTokenizer(): KuromojiTokenizer {
+  const segmenter = new Intl.Segmenter("ja", { granularity: "word" });
+  return {
+    tokenize(text: string): KuromojiToken[] {
+      const tokens: KuromojiToken[] = [];
+      for (const part of segmenter.segment(text)) {
+        if (!part.isWordLike) continue;
+        // Short hiragana words are mostly particles and endings (の, する, こと); treat them like kuromoji's 助詞.
+        const functional = HIRAGANA_ONLY.test(part.segment) && Array.from(part.segment).length <= 3;
+        tokens.push({ surface_form: part.segment, base_form: part.segment, pos: functional ? "助詞" : "名詞", pos_detail_1: functional ? "" : "一般" });
+      }
+      return tokens;
+    },
+  };
+}
+
 async function getTokenizer(): Promise<KuromojiTokenizer> {
   if (_tokenizer) return _tokenizer;
+  if (tokenizerName() === "segmenter") {
+    _tokenizer = createSegmenterTokenizer();
+    return _tokenizer;
+  }
   if (_tokenizerPromise) return _tokenizerPromise;
   _tokenizerPromise = new Promise((resolve, reject) => {
     kuromoji
@@ -301,8 +337,30 @@ export async function tokenizeMorphological(text: string): Promise<string[]> {
   return morphologicalTokens;
 }
 
+/** Content nouns only (for turning a sentence into search words): no pronouns, numbers or dependent nouns. */
+export async function tokenizeNouns(text: string): Promise<string[]> {
+  const tokenizer = await getTokenizer();
+  const tokens = tokenizer.tokenize(text.normalize("NFKC").toLowerCase()) as Array<{ pos: string; pos_detail_1?: string; surface_form: string; base_form?: string }>;
+  return tokens
+    .filter((t) => t.pos === "名詞" && !["非自立", "代名詞", "数", "接尾", "副詞可能"].includes(t.pos_detail_1 ?? ""))
+    .map((t) => (t.base_form && t.base_form !== "*" ? t.base_form : t.surface_form).toLowerCase())
+    .filter((t) => t.length > 1);
+}
+
 export async function tokenize(text: string): Promise<string[]> {
   return expandJapaneseTokens(await tokenizeMorphological(text));
+}
+
+const LONG_KATAKANA = /^[\u30a0-\u30ffー]{5,}$/u;
+/**
+ * Query side: like tokenize, but a long katakana word is matched as a whole word. Its 2-character pieces
+ * (プログラマー → プロ, グラ …) would match unrelated words (プロダクト, プログラム).
+ */
+export async function tokenizeQuery(text: string): Promise<string[]> {
+  const morphological = await tokenizeMorphological(text);
+  const expanded = new Set(expandJapaneseTokens(morphological.filter(token => !LONG_KATAKANA.test(token))));
+  for (const token of morphological) if (LONG_KATAKANA.test(token)) expanded.add(token.normalize("NFKC").toLowerCase());
+  return [...expanded];
 }
 
 export async function tokenizeNgram(text: string): Promise<string[]> {
@@ -344,11 +402,11 @@ async function buildSynonymMap(
 ): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   for (const kw of keywords) {
-    const canonicalTokens = await tokenize(kw.term);
+    const canonicalTokens = await tokenizeQuery(kw.term);
     const canonical = canonicalTokens[0] ?? kw.term.toLowerCase();
     map.set(canonical, canonical);
     for (const syn of kw.synonyms ?? []) {
-      for (const tok of await tokenize(syn)) {
+      for (const tok of await tokenizeQuery(syn)) {
         map.set(tok, canonical);
       }
       // ASCII のまま入ってくるケースにも対応
@@ -367,7 +425,7 @@ async function buildKeywordWeightMap(
   for (const kw of keywords) {
     const terms = [kw.term, ...(kw.synonyms ?? [])];
     for (const term of terms) {
-      const tokens = await tokenize(term);
+      const tokens = await tokenizeQuery(term);
       const normalizedTerm = term.normalize("NFKC").toLowerCase().trim();
       const candidates = [...new Set([normalizedTerm, ...tokens])].filter(Boolean);
       const phraseWeight = tokens.length > 1 && tokens.some((token) => JAPANESE_CHAR.test(token))
@@ -394,7 +452,7 @@ async function normalizeTokens(
 
 async function buildQueryTokens(keywords: KeywordWeight[]): Promise<string[]> {
   const queryText = keywords.map((keyword) => keyword.term).join(" ");
-  const tokens = await tokenize(queryText);
+  const tokens = await tokenizeQuery(queryText);
   const rawTerms = keywords
     .flatMap((keyword) => [keyword.term, ...(keyword.synonyms ?? [])])
     .map((term) => term.normalize("NFKC").toLowerCase().trim())
@@ -672,6 +730,23 @@ function jaccardSimilarity(a: Set<number>, b: Set<number>): number {
   return union === 0 ? 1 : intersection / union;
 }
 
+export function meetsJaccardThreshold(a: Set<number>, b: Set<number>, threshold: number): boolean {
+  const small = a.size <= b.size ? a : b;
+  const large = a.size <= b.size ? b : a;
+  if (large.size > 0 && small.size / large.size < threshold) return false;
+  // Compute the exact same predicate, stopping once even all remaining matches cannot pass.
+  let intersection = 0;
+  let remaining = small.size;
+  for (const value of small) {
+    remaining -= 1;
+    if (large.has(value)) intersection += 1;
+    const possible = intersection + remaining;
+    if (possible / (small.size + large.size - possible) < threshold) return false;
+  }
+  const union = small.size + large.size - intersection;
+  return (union === 0 ? 1 : intersection / union) >= threshold;
+}
+
 type DuplicatePair = readonly [number, number];
 
 const LSH_PERMUTATIONS = 64;
@@ -752,7 +827,9 @@ function exactCandidatePairs(hashes: Array<Set<number>>): DuplicatePair[] {
 function duplicatePairsForArticles(articles: Article[], threshold: number, useLsh: boolean): DuplicatePair[] {
   const hashes = articles.map((article) => shingleHash(`${article.title} ${article.body.slice(0, 500)}`));
   const candidates = useLsh ? lshCandidatePairs(hashes) : exactCandidatePairs(hashes);
-  return candidates.filter(([left, right]) => jaccardSimilarity(hashes[left]!, hashes[right]!) >= threshold);
+  return candidates.filter(([left, right]) => useLsh
+    ? meetsJaccardThreshold(hashes[left]!, hashes[right]!, threshold)
+    : jaccardSimilarity(hashes[left]!, hashes[right]!) >= threshold);
 }
 
 export function duplicatePairRecall(articles: Article[], threshold = 0.8): number {
@@ -766,7 +843,7 @@ export function deduplicateArticles(articles: Article[], threshold = 0.8): Artic
   if (threshold >= 1) return articles;
   const hashes = articles.map((article) => shingleHash(`${article.title} ${article.body.slice(0, 500)}`));
   const keep = new Array<boolean>(articles.length).fill(true);
-  const pairs = lshCandidatePairs(hashes).filter(([left, right]) => jaccardSimilarity(hashes[left]!, hashes[right]!) >= threshold);
+  const pairs = lshCandidatePairs(hashes).filter(([left, right]) => meetsJaccardThreshold(hashes[left]!, hashes[right]!, threshold));
   for (const [left, right] of pairs) {
     if (!keep[left] || !keep[right]) continue;
     const leftQuality = articles[left]!.body.length * articles[left]!.sourceAuthority;
@@ -850,7 +927,7 @@ export async function runPipeline(
   const morphologicalQueryTokens = await buildMorphologicalQueryTokens(mode.keywords);
   const synonymMap = await buildSynonymMap(mode.keywords);
   const keywordGroups = await Promise.all(mode.keywords.map(async (keyword) => {
-    const tokens = await tokenize(keyword.term);
+    const tokens = await tokenizeQuery(keyword.term);
     return [...new Set(tokens.map((token) => synonymMap.get(token) ?? token))];
   }));
   const corpus = await buildCorpusStats(resolved.articles, mode, synonymMap);

@@ -1,7 +1,7 @@
 //  ソースURL管理
 // ════════════════════════════════════════
 let sourceConfig = null;
-let sourceTab    = 'rss';
+let sourceTab    = 'site';
 
 async function openSourceModal(){
   try{
@@ -13,15 +13,17 @@ async function openSourceModal(){
   }
   renderSourceList();
   openModal('source-modal');
+  if (typeof loadSiteList === 'function') loadSiteList();
 }
 
 function switchSourceTab(tab, el){
   sourceTab = tab;
   document.querySelectorAll('#source-modal .modal-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  ['rss','arxiv','github'].forEach(t=>{
+  ['site','rss','arxiv','github'].forEach(t=>{
     document.getElementById('source-'+t+'-tab').style.display = t===tab?'block':'none';
   });
+  document.getElementById('source-config-save').style.display = tab === 'site' ? 'none' : '';
 }
 
 function renderSourceList(){

@@ -1,0 +1,235 @@
+{
+  "scope": "site integration verification; no production code changes",
+  "passed": 11,
+  "failed": 0,
+  "results": [
+    {
+      "id": "registration-to-card",
+      "expectation": "API登録→初回ジョブ→SQLite→日本語/英語検索→候補保存→削除後再保存が成立する",
+      "pass": true,
+      "observed": {
+        "registrationStatus": 201,
+        "jobStatus": "succeeded",
+        "articleCount": 1,
+        "englishHits": 1,
+        "japaneseHits": 1,
+        "dualTokens": true,
+        "save": 201,
+        "repeat": 409,
+        "resave": 201
+      }
+    },
+    {
+      "id": "cross-source-fulltext",
+      "expectation": "サイト取得済みの全文は、後から来た同一URLのRSS抜粋で失われない",
+      "pass": true,
+      "observed": {
+        "idPreserved": true,
+        "beforeLength": 358,
+        "afterBody": "統合検証の記事\n統合検証 本文に固有の integrationdeepneedle を含みます。統合検証 本文に固有の integrationdeepneedle を含みます。統合検証 本文に固有の integrationdeepneedle を含みます。統合検証 本文に固有の integrationdeepneedle を含みます。統合検証 本文に固有の integrationdeepneedle を含みます。統合検証 本文に固有の integrationdeepneedle を含みます。統合検証 本文に固有の integrationdeepneedle を含みます。統合検証 本文に固有の integrationdeepneedle を含みます。\n検索と保存の統合を確認するための十分な長さの第二段落です。",
+        "source": "site:47ae184fcc32"
+      }
+    },
+    {
+      "id": "cross-source-search",
+      "expectation": "RSS再収集後も登録サイトを選んで全文を検索できる",
+      "pass": true,
+      "observed": {
+        "siteIndexRows": 1,
+        "target": {
+          "value": "site:47ae184fcc32",
+          "label": "https://shared.audit.test",
+          "kind": "site",
+          "count": 1,
+          "bodyCount": 1,
+          "lastCheckedAt": "2026-10-18T14:11:20.409Z",
+          "status": "ok",
+          "statusLabel": "正常",
+          "bodyPolicy": "body",
+          "bodyPolicyLabel": "本文も取得（利用条件を確認済み）",
+          "pastArticles": false,
+          "lastError": null,
+          "enabled": true,
+          "missingCount": 0,
+          "searchable": "fulltext"
+        },
+        "scope": {
+          "corpus": "articles",
+          "totalCount": 2,
+          "searchedCount": 1,
+          "sources": [
+            "rss:Integration",
+            "site:47ae184fcc32"
+          ],
+          "availableSources": [
+            "rss:Integration",
+            "site:47ae184fcc32",
+            "site:37868331e23a"
+          ],
+          "bySource": {
+            "rss:Integration": {
+              "total": 1,
+              "searched": 1
+            },
+            "site:47ae184fcc32": {
+              "total": 1,
+              "searched": 1
+            },
+            "site:37868331e23a": {
+              "total": 1,
+              "searched": 0
+            }
+          },
+          "filtersApplied": {
+            "excludedTerms": [],
+            "status": "all",
+            "since": null,
+            "sources": [
+              "site:47ae184fcc32"
+            ]
+          }
+        },
+        "hits": 1
+      }
+    },
+    {
+      "id": "query-order-id-join",
+      "expectation": "同じ意味のクエリ順序違いでサイト索引が存在しない記事IDを参照しない",
+      "pass": true,
+      "observed": {
+        "result": {
+          "siteId": "88e4873bb889",
+          "mode": "initial",
+          "listed": 2,
+          "added": 1,
+          "updated": 0,
+          "moved": 0,
+          "unchanged": 0,
+          "failed": 0,
+          "skippedByRobots": 0,
+          "missing": 0,
+          "gone": 0,
+          "restricted": 0,
+          "temporaryErrors": 0,
+          "status": "ok",
+          "error": null,
+          "warnings": [
+            "RSS/Atomで取れるのは最新の記事だけです（過去の記事は取得できません）"
+          ]
+        },
+        "siteIndexRows": 1,
+        "orphanReferences": [],
+        "sqliteForeignKeyCheck": []
+      }
+    },
+    {
+      "id": "site-save-atomicity",
+      "expectation": "サイト索引の保存に失敗したら、新規記事本体もロールバックされる",
+      "pass": true,
+      "observed": {
+        "result": {
+          "siteId": "0c79251a132d",
+          "mode": "initial",
+          "listed": 1,
+          "added": 0,
+          "updated": 0,
+          "moved": 0,
+          "unchanged": 0,
+          "failed": 0,
+          "skippedByRobots": 0,
+          "missing": 0,
+          "gone": 0,
+          "restricted": 0,
+          "temporaryErrors": 0,
+          "status": "error",
+          "error": "データベースに書き込めませんでした（空き容量などを確認してください）。今回の結果は保存していません",
+          "warnings": [
+            "RSS/Atomで取れるのは最新の記事だけです（過去の記事は取得できません）"
+          ]
+        },
+        "articleStillPersisted": false,
+        "siteIndexRows": 0
+      }
+    },
+    {
+      "id": "site-job-failure-status",
+      "expectation": "サイト収集でSQLite保存が失敗したジョブはfailedとして記録する",
+      "pass": true,
+      "observed": {
+        "registrationStatus": 201,
+        "jobStatus": "failed",
+        "jobResult": {
+          "siteId": "2c32f5aa761f",
+          "mode": "initial",
+          "listed": 1,
+          "added": 0,
+          "updated": 0,
+          "moved": 0,
+          "unchanged": 0,
+          "failed": 0,
+          "skippedByRobots": 0,
+          "missing": 0,
+          "gone": 0,
+          "restricted": 0,
+          "temporaryErrors": 0,
+          "status": "error",
+          "error": "データベースに書き込めませんでした（空き容量などを確認してください）。今回の結果は保存していません",
+          "warnings": [
+            "RSS/Atomで取れるのは最新の記事だけです（過去の記事は取得できません）"
+          ]
+        },
+        "siteStatus": "error"
+      }
+    },
+    {
+      "id": "site-unknown-date",
+      "expectation": "サイト記事の不明な公開日はSQLiteでもNULLのまま",
+      "pass": true,
+      "observed": {
+        "published_at": null
+      }
+    },
+    {
+      "id": "site-concurrent-sync",
+      "expectation": "同じサイトを手動/定期から同時実行しても取得は一回だけ",
+      "pass": true,
+      "observed": {
+        "inFlightRequests": 1,
+        "statuses": [
+          "ok",
+          "ok"
+        ]
+      }
+    },
+    {
+      "id": "site-redirect-scope",
+      "expectation": "登録サイト外へ転送された記事本文を元サイトの許可だけで保存しない",
+      "pass": true,
+      "observed": {
+        "status": "error",
+        "requestedUrl": "https://redirect.audit.test/blog/post",
+        "finalUrl": "https://outside.audit.test/foreign",
+        "storedForeignBody": false
+      }
+    },
+    {
+      "id": "site-http-content-type",
+      "expectation": "共通HTTP取得を使うサイトページ取得が非HTMLの応答を拒否する",
+      "pass": true,
+      "observed": {
+        "accepted": false,
+        "code": "http",
+        "status": 415
+      }
+    },
+    {
+      "id": "site-http-safety",
+      "expectation": "サイトページ取得にもprivate URL拒否・ストリーム容量制限が効く",
+      "pass": true,
+      "observed": {
+        "private": "blocked",
+        "size": "too_large"
+      }
+    }
+  ]
+}

@@ -13,6 +13,9 @@ export const realQualityGateThresholds = {
 export type SearchQualityMetricName = keyof typeof searchQualityThresholds;
 export type SearchQualityMetrics = Record<SearchQualityMetricName, number>;
 
+// The implementation-level reference text is exported from
+// search_quality_metrics.ts so artifacts and tests use the same metric map.
+
 export function assertSearchQualityMetrics(
   scope: string,
   metrics: Partial<SearchQualityMetrics>,

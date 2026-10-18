@@ -1,4 +1,8 @@
 import type express from 'express';
+import { db } from '../db/database.js';
+import { tokenizerName } from '../bm25_engine.js';
+import { resetInterruptedSiteChecks } from '../repositories/site_sources_repository.js';
+import { logger } from '../utils/logger.js';
 import { getArticleById } from '../repositories/articles_repository.js';
 import { expireCandidate, expireReviewedCandidates, getCandidate, getCandidates, reviewCandidate, saveCandidate } from './candidate_service.js';
 import { MODES, createSearchEngine } from './search_service.js';
@@ -96,6 +100,7 @@ export function createRouteContext(limiters: {
     ...limiters,
     ...collector,
     ...scheduler,
+    getCollectRunning: collector.getCollectRunning,
     collectAll: collector.collectAll,
     collectFixture: collector.collectFixture,
     startScheduler: scheduler.startScheduler,
@@ -162,15 +167,21 @@ export function createRouteContext(limiters: {
     kjAssignSchema,
     resolveCollectorConfig,
     bootstrap: async () => {
-      await backfillCardTokens();
+      // Search tokens are stored. When the tokenizer changes (TOKENIZER=segmenter / kuromoji), rebuild them once.
+      const storedTokenizer = (db.prepare("SELECT value FROM collector_settings WHERE key = 'search_tokenizer'").get() as { value: string } | undefined)?.value ?? 'kuromoji';
+      const tokenizerChanged = storedTokenizer !== tokenizerName();
+      if (tokenizerChanged) logger.info({ event: 'search_tokens_rebuild', from: storedTokenizer, to: tokenizerName() }, 'tokenizer changed: rebuilding search tokens');
+      resetInterruptedSiteChecks();
+      await backfillCardTokens(tokenizerChanged);
       const retentionDays = Number(process.env.CANDIDATE_RETENTION_DAYS ?? 14);
       if (Number.isInteger(retentionDays) && retentionDays >= 0) expireReviewedCandidates(retentionDays);
       const cachedArticles = collector.getCachedArticles();
       if (cachedArticles) {
-        const indexed = await collector.ensureArticleTokens(cachedArticles);
+        const indexed = await collector.ensureArticleTokens(cachedArticles, tokenizerChanged);
         collector.setCachedArticles(indexed);
         collector.saveArticles(indexed);
       }
+      db.prepare("INSERT INTO collector_settings(key, value) VALUES ('search_tokenizer', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(tokenizerName());
     },
   };
 }

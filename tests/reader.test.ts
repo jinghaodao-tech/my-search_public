@@ -41,6 +41,16 @@ describe('reader: extraction (no network, no AI)', () => {
     expect(article.paragraphs.filter(p => p.includes('再現性')).length).toBe(1);
   });
 
+  it('drops the site-name lines left by embedded link cards (Hatena blog cards), keeps real text', () => {
+    const html = ARTICLE_HTML.replace('<p>まとめると', `<p><iframe class="embed-card embed-blogcard" src="https://hatenablog-parts.com/embed?url=x"></iframe><cite class="hatena-citation"><a href="https://techblog.zozo.com/entry/x">techblog.zozo.com</a></cite></p>
+      <p><iframe class="embed-card"></iframe><cite class="hatena-citation"><a href="https://qiita.com/x">qiita.com</a></cite></p>
+      <p>設定の例は example.com にある。</p><p>まとめると`);
+    const article = extractReadable(html, 'https://blog.example.com/post', '2026-10-15T12:00:00.000Z');
+    expect(article.paragraphs).not.toContain('techblog.zozo.com');
+    expect(article.paragraphs).not.toContain('qiita.com');
+    expect(article.paragraphs).toContain('設定の例は example.com にある。');
+  });
+
   it('is deterministic: the same HTML gives the same paragraphs', () => {
     const a = extractReadable(ARTICLE_HTML, 'https://blog.example.com/post', '2026-10-15T12:00:00.000Z');
     const b = extractReadable(ARTICLE_HTML, 'https://blog.example.com/post', '2026-10-15T12:00:00.000Z');

@@ -16,17 +16,18 @@ async function loadCandidates() {
     }
     grid.innerHTML = candidates.map(candidate => {
       const article = candidate;
+      const url = safeLinkUrl(article.url);
       const label = candidateStatusLabels[candidate.status] || candidate.status;
       const actions = candidate.status === 'unreviewed'
-        ? `<button class="btn btn-secondary btn-sm" onclick="reviewCandidate('${esc(candidate.candidateId)}')">レビュー済み</button>` : '';
+        ? `<button class="btn btn-secondary btn-sm" onclick="reviewCandidate(${jsArg(candidate.candidateId)})">レビュー済み</button>` : '';
       const save = candidate.status === 'saved_as_card' || candidate.status === 'expired' ? ''
-        : `<button class="btn btn-primary btn-sm" onclick="saveCandidateAsCard('${esc(candidate.candidateId)}')">カードに保存</button>`;
-      const read = article.url && candidate.status !== 'saved_as_card' && candidate.status !== 'expired'
-        ? `<button class="btn btn-primary btn-sm" onclick="openReader('${esc(article.url)}','${esc(candidate.candidateId)}')">読んでメモ</button>` : '';
+        : `<button class="btn btn-primary btn-sm" onclick="saveCandidateAsCard(${jsArg(candidate.candidateId)})">カードに保存</button>`;
+      const read = url && candidate.status !== 'saved_as_card' && candidate.status !== 'expired'
+        ? `<button class="btn btn-primary btn-sm" onclick="openReader(${jsArg(url)},${jsArg(candidate.candidateId)})">読んでメモ</button>` : '';
       const expire = candidate.status === 'saved_as_card' || candidate.status === 'expired' ? ''
-        : `<button class="btn btn-secondary btn-sm" onclick="expireOneCandidate('${esc(candidate.candidateId)}')">見送る</button>`;
+        : `<button class="btn btn-secondary btn-sm" onclick="expireOneCandidate(${jsArg(candidate.candidateId)})">見送る</button>`;
       const published = article.publishedAt ? `公開: ${new Date(article.publishedAt).toLocaleDateString('ja-JP')} · ` : '';
-      return `<article class="candidate-card"><div class="candidate-card-header"><span class="candidate-status status-${candidate.status}">${label}</span><time>初回: ${new Date(candidate.firstSeenAt).toLocaleDateString('ja-JP')} / 最終: ${new Date(candidate.lastSeenAt).toLocaleDateString('ja-JP')}</time></div><h3>${esc(article.title || candidate.candidateId)}</h3><p>${esc((article.summary || article.body || '').slice(0, 220))}</p><div class="candidate-meta">${published}${article.score != null ? `スコア: ${Number(article.score).toFixed(3)} · ` : ''}${article.matchReason ? `${esc(article.matchReason)} · ` : ''}${esc(article.source || 'source')} ${article.url ? `<a href="${esc(article.url)}" target="_blank" rel="noreferrer">元記事</a>` : ''}</div><div class="candidate-actions">${actions}${read}${save}${expire}</div></article>`;    }).join('');
+      return `<article class="candidate-card"><div class="candidate-card-header"><span class="candidate-status status-${esc(candidate.status)}">${esc(label)}</span><time>初回: ${new Date(candidate.firstSeenAt).toLocaleDateString('ja-JP')} / 最終: ${new Date(candidate.lastSeenAt).toLocaleDateString('ja-JP')}</time></div><h3>${esc(article.title || candidate.candidateId)}</h3><p>${esc((article.summary || article.body || '').slice(0, 220))}</p><div class="candidate-meta">${published}${article.score != null ? `スコア: ${Number(article.score).toFixed(3)} · ` : ''}${article.matchReason ? `${esc(article.matchReason)} · ` : ''}${esc(article.source || 'source')} ${url ? `<a href="${esc(url)}" target="_blank" rel="noreferrer">元記事</a>` : ''}</div><div class="candidate-actions">${actions}${read}${save}${expire}</div></article>`;    }).join('');
   } catch (error) {
     grid.innerHTML = `<div class="empty-state"><p>候補の読み込みに失敗しました: ${esc(error.message)}</p></div>`;
   }

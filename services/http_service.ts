@@ -23,6 +23,7 @@ export type AppErrorCode =
   | 'link_invalid'
   | 'import_invalid'
   | 'collector_failed'
+  | 'collection_already_running'
   | 'search_failed'
   | 'export_failed'
   | 'ai_provider_unavailable'

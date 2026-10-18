@@ -19,7 +19,7 @@
     <button class="tab" onclick="switchView('candidates')">候補レビュー</button>
     <button class="tab" onclick="switchView('kj')">グルーピングボード</button>
     <button class="tab" onclick="switchView('zettel')">Zettelkasten</button>
-    <button class="tab" onclick="switchView('bm25')">BM25スコアリング</button>
+    <button class="tab" onclick="switchView('bm25')" title="登録したサイト・収集した記事・Webから探す">探す</button>
   </div>
   <div class="spacer"></div>
   <button class="btn btn-primary btn-sm" onclick="openReader()">読んでメモ</button>
@@ -65,6 +65,8 @@
         </div>
         <div class="tag-cloud" id="tag-cloud"></div>
         <button class="tag-more" id="tag-more" onclick="toggleAllTags()" style="display:none"></button>
+        <button class="tag-more" onclick="toggleTagTidy()">タグを整理</button>
+        <div id="tag-tidy" class="tag-tidy" hidden></div>
       </div>
     </div>
   </div>
@@ -118,39 +120,53 @@
           <!-- 左：設定パネル -->
           <div id="bm25-config">
             <div id="bm25-config-header">
-              <button class="btn btn-secondary btn-sm" onclick="toggleBM25Sidebar()" title="Toggle BM25 settings">=</button>
+              <button class="btn btn-secondary btn-sm" onclick="toggleBM25Sidebar()" title="設定欄の表示を切り替え">=</button>
               <h3>記事を探す</h3>
-              <button class="btn btn-primary btn-sm" onclick="runBM25()" id="bm25-run-btn">実行</button>
             </div>
             <div id="bm25-config-body">
 
+              <div class="search-main">
+                <label class="search-main-label" for="search-terms">何を調べる？（検索語でも文章でも）</label>
+                <div class="search-main-row">
+                  <input id="search-terms" placeholder="例: SQLiteの同時書き込み" autocomplete="off" onkeydown="if(event.key==='Enter'&&!event.isComposing)runSearchScreen()">
+                  <button class="btn btn-primary" onclick="runSearchScreen()" id="bm25-run-btn">検索</button>
+                </div>
+                <div class="search-targets-label">検索先 <button class="link-btn" type="button" onclick="openSourceModal()">＋ サイトを追加</button></div>
+                <div id="search-targets" class="search-targets"></div>
+                <details id="search-target-status" class="search-target-status"><summary>情報源の状態</summary><div id="search-target-status-body"></div></details>
+                <div class="search-saved-row">
+                  <select id="saved-search-select" onchange="restoreSavedSearch(this.value)" aria-label="保存した検索"><option value="">保存した検索</option></select>
+                  <button class="btn btn-secondary btn-sm" onclick="saveCurrentSearch()" title="この検索を保存すると、新しく集まった記事のうち合うものの数が出ます">条件を保存</button>
+                  <button class="btn btn-secondary btn-sm" onclick="markSearchChecked()" title="保存した検索で、ここまでを確認済みにする（次からは新着だけ数える）">ここまで確認した</button>
+                </div>
+              </div>
+
+              <details id="search-details"><summary>詳細条件</summary>
               <div class="search-controls">
-                <label>保存した検索<select id="saved-search-select" onchange="restoreSavedSearch(this.value)"><option value="">検索条件を選ぶ</option></select></label>
-                <input id="saved-search-name" maxlength="120" placeholder="検索名（例：TypeScriptの設計）" aria-label="検索名">
-                <div><button class="btn btn-secondary btn-sm" onclick="saveCurrentSearch()">条件を保存</button>
-                <button class="btn btn-secondary btn-sm" onclick="saveCurrentSearch(true)">別名で保存</button>
-                <button class="btn btn-secondary btn-sm" onclick="deleteSavedSearch()">削除</button></div>
-                <label>検索語<input id="search-terms" placeholder="SQLite 同時書き込み" oninput="setSimpleSearchTerms(this.value)" onkeydown="if(event.key==='Enter')runBM25()"></label>
+                <input id="saved-search-name" maxlength="120" placeholder="検索名（保存するとき）" aria-label="検索名">
+                <div><button class="btn btn-secondary btn-sm" onclick="saveCurrentSearch(true)">別名で保存</button>
+                <button class="btn btn-secondary btn-sm" onclick="deleteSavedSearch()">保存した検索を削除</button></div>
                 <label>除外語<input id="search-excluded" placeholder="スペース区切り"></label>
                 <label>並びの基準<select id="search-order" onchange="setSearchOrder(this.value)"><option value="relevance">関連度優先</option><option value="recent">新しさを加味</option><option value="custom">詳細設定</option></select></label>
-                <label><input type="checkbox" id="search-new-only">前回確認後の新着だけ</label><button class="btn btn-secondary" onclick="markSearchChecked()">ここまで確認した</button><label><input type="checkbox" id="search-group-similar" checked onchange="renderBM25Result()">似た記事をまとめる</label><label>状態<select id="search-status"><option value="all">すべて（見送りを除く）</option><option value="unreviewed">未確認</option><option value="deferred">保留</option><option value="saved_as_card">保存済み</option></select></label>
-                <label>情報源<select id="search-sources" multiple aria-label="検索する情報源"></select></label>
-                <small>情報源は未選択ならすべて。Ctrl / ⌘ で複数選択できます。</small>
+                <label><input type="checkbox" id="search-new-only">保存した検索で、前回確認後の新着だけ</label>
+                <label><input type="checkbox" id="search-group-similar" checked onchange="renderBM25Result()">似た記事をまとめる</label>
+                <label>状態<select id="search-status"><option value="all">すべて（見送りを除く）</option><option value="unreviewed">未確認</option><option value="deferred">保留</option><option value="saved_as_card">保存済み</option></select></label>
+                <select id="search-sources" multiple hidden aria-hidden="true"></select>
+                <div class="source-radio" id="bm25-source-radio" hidden>
+                  <label><input type="radio" name="bm25src" value="articles" checked> 収集記事</label>
+                  <label><input type="radio" name="bm25src" value="cards"> カード</label>
+                </div>
               </div>
-              <!-- データソース -->
-              <div class="section-sep">データソース</div>
-              <div class="source-radio" id="bm25-source-radio">
-                <label><input type="radio" name="bm25src" value="articles" checked> 収集記事</label>
-                <label><input type="radio" name="bm25src" value="cards"> カード</label>
-              </div>
+              <div class="section-sep">Webで使う検索語</div>
+              <div class="discover-ai" id="discover-ai-status"></div>
+              <div id="discover-queries" class="discover-queries"></div>
               <div id="bm25-source-info" style="font-size:11px;color:var(--text-dim);margin-bottom:6px"></div>
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
                 <span id="article-auto-status" style="font-size:11px;color:var(--text-dim)"></span>
-                <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="refreshInputArticlesNow()">Refresh</button>
-                <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="updateArticleAutoStatus()">Status</button>
+                <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="refreshInputArticlesNow()" title="RSS・arXiv・GitHubを今すぐ収集">フィードを収集</button>
               </div>
 
-              <details id="search-advanced"><summary>詳細設定・プリセット</summary>
+              <details id="search-advanced"><summary>BM25の設定・キーワードの重み</summary>
               <!-- モード選択 -->
               <div class="section-sep" style="display:flex;align-items:center">
                 モード
@@ -214,6 +230,7 @@
               <div class="kw-header"><span>キーワード</span><span>重み</span><span>同義語（カンマ区切り）</span><span></span></div>
               <div class="kw-list" id="kw-list"></div>
               </details>
+              </details>
 
             </div>
           </div>
@@ -232,10 +249,14 @@
               </div>
             </div>
             <div id="bm25-result-body">
-              <div class="empty-state">
-                <div class="icon">BM25</div>
-                <p>設定して「実行」を押してください</p>
+              <div id="search-collected">
+                <div class="empty-state">
+                  <div class="icon">探す</div>
+                  <p>調べたいことを入れて「検索」を押してください。登録したサイトや収集した記事から探し、選んでいればWebもその場で検索します。</p>
+                </div>
               </div>
+              <div id="search-cards"></div>
+              <div id="search-web"></div>
             </div>
           </div>
 
@@ -267,6 +288,7 @@
       <button class="btn btn-secondary btn-sm" onclick="loadReaderArticle()">読む</button>
       <button class="btn btn-secondary btn-sm" onclick="chooseReaderPdf()" title="手元のPDF（論文・技術書など、DRMの無いもの）を開く">PDFを開く</button>
       <input type="file" id="reader-pdf-file" accept="application/pdf,.pdf" style="display:none" onchange="openReaderPdf(this)">
+      <button class="btn btn-secondary btn-sm" onclick="registerReaderSite()" title="この記事が載っているブログを情報源に登録（新しい記事が自動で集まり、検索できるようになります）">このサイトを登録</button>
       <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-reader')">閉じる</button>
     </div>
     <div id="reader-search-actions" class="reader-bar" hidden>
@@ -287,11 +309,12 @@
           <button class="btn btn-secondary btn-sm" onclick="restoreReaderDraft()">復元</button>
           <button class="btn btn-secondary btn-sm" onclick="discardReaderDraft()">破棄</button>
         </div>
-        <div class="evidence-box needs-ai">
+        <div class="evidence-box">
           <div class="evidence-input">
-            <input type="text" id="evidence-purpose" maxlength="300" placeholder="何のために読む？（例: BM25がAI検索より有利な点を知りたい）" onkeydown="if(event.key==='Enter')runEvidence()">
-            <button class="btn btn-secondary btn-sm" id="evidence-run" onclick="runEvidence()" title="AIが目的に関係する主張と根拠の一節を提案し、一節が本文に実在するかを照合します">AIで根拠を探す</button>
+            <input type="text" id="evidence-purpose" maxlength="300" placeholder="何のために読む？（例: BM25がAI検索より有利な点を知りたい）" onkeydown="if(event.key==='Enter'&&!event.isComposing)runEvidence()">
+            <button class="btn btn-secondary btn-sm" id="evidence-run" onclick="runEvidence()" title="目的に関係する一節を本文から選び、本文に一字一句あるかを照合します">根拠を探す</button>
           </div>
+          <div id="evidence-engine" class="reader-note"></div>
           <div id="evidence-results" class="evidence-results"></div>
         </div>
         <div class="memo-mode">
@@ -490,13 +513,24 @@
 <!-- ソースURL管理モーダル -->
 <div class="modal-overlay" id="source-modal">
   <div class="modal" style="max-width:640px">
-    <h2>収集ソース管理</h2>
+    <h2>情報源を追加・管理</h2>
     <div class="modal-tabs">
-      <div class="modal-tab active" onclick="switchSourceTab('rss',this)">RSSフィード</div>
+      <div class="modal-tab active" onclick="switchSourceTab('site',this)">Webサイト</div>
+      <div class="modal-tab" onclick="switchSourceTab('rss',this)">RSSフィード</div>
       <div class="modal-tab" onclick="switchSourceTab('arxiv',this)">arXiv</div>
       <div class="modal-tab" onclick="switchSourceTab('github',this)">GitHub</div>
     </div>
-    <div id="source-rss-tab">
+    <div id="source-site-tab">
+      <p class="reader-note">よく読むブログのURL、またはその中の記事のURLを入れるだけで登録できます（RSSやサイトマップのURLは不要）。過去の記事と、これから出る新しい記事を検索できるようになります。</p>
+      <div class="site-add-row">
+        <input type="url" id="site-url" placeholder="ブログか記事のURL（例: https://tech.example.com/blog/ やその中の記事）" onkeydown="if(event.key==='Enter'&&!event.isComposing)previewSite()">
+        <button class="btn btn-primary btn-sm" id="site-preview-btn" onclick="previewSite()">調べる</button>
+      </div>
+      <div id="site-preview"></div>
+      <h4 class="site-list-title">登録済みのサイト</h4>
+      <div id="site-list"></div>
+    </div>
+    <div id="source-rss-tab" style="display:none">
       <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">URL・ラベル・信頼度(0-1)を設定します</div>
       <div id="src-rss-list"></div>
       <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('rss')">RSSを追加</button>
@@ -512,8 +546,8 @@
       <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addSrcRow('github')">言語を追加</button>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('source-modal')">キャンセル</button>
-      <button class="btn btn-primary" onclick="saveSourceConfig()">保存して適用</button>
+      <button class="btn btn-secondary" onclick="closeModal('source-modal')">閉じる</button>
+      <button class="btn btn-primary" id="source-config-save" style="display:none" onclick="saveSourceConfig()">RSS・arXiv・GitHubの設定を保存</button>
     </div>
   </div>
 </div>
@@ -535,7 +569,13 @@
 <script src="js/source_ui.js"></script>
 <script src="js/candidate_ui.js"></script>
 <script src="js/memo_table.js"></script>
+<script src="js/local_ai.js"></script>
 <script src="js/reader_ui.js"></script>
+<script src="js/reader_translation_ui.js"></script>
+<script src="js/discover_ui.js"></script>
+<script src="js/site_sources_ui.js"></script>
+<script src="js/search_screen_ui.js"></script>
+<script src="js/tag_tidy_ui.js"></script>
 <script src="js/features_ui.js"></script>
 <script type="module" src="js/typed/api_client.js"></script>
 </body>

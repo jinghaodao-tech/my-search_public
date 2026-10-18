@@ -13,13 +13,14 @@ function switchView(view) {
   if (view==='cards') applySidebarState();
   if (view==='bm25') applySidebarState();
   document.getElementById('content-header').style.display = view==='bm25' ? 'none' : 'flex';
-  const titles = {candidates:'候補レビュー',cards:currentFilter.archived?'アーカイブ一覧':'カード一覧',kj:'KJ法ボード',zettel:'Zettelkasten ネットワーク',bm25:'BM25スコアリング'};
+  const titles = {candidates:'候補レビュー',cards:currentFilter.archived?'アーカイブ一覧':'カード一覧',kj:'KJ法ボード',zettel:'Zettelkasten ネットワーク',bm25:'探す'};
   document.getElementById('view-title').textContent = titles[view];
   document.getElementById('header-actions').style.display = view==='cards' ? 'flex' : 'none';
   if (view==='candidates') loadCandidates();
   if (view==='kj') loadKJBoard();
   if (view==='zettel') loadZettelkasten();
   if (view==='bm25') updateBM25SourceInfo();
+  if (view==='bm25' && typeof initSearchScreen === 'function') initSearchScreen();
   if (view!=='cards') closeDetail();
 }
 

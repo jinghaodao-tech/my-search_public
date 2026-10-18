@@ -322,3 +322,53 @@ export async function buildEvidenceTable(
   for (const chunk of chunks) proposed.push(...parseProposedRows(await complete(buildEvidencePrompt(purpose, chunk), 2000)));
   return { ...verifyRows(proposed, sources), chunks: chunks.length };
 }
+
+/**
+ * Without any AI: the sentences that share the most (rarer) words with the purpose.
+ * A BM25-style score over sentences — idf across all sentences, saturated term frequency.
+ * The "claim" column names the matched words; the person writes their own reading.
+ */
+export async function pickPassagesByWords(
+  purpose: string,
+  sources: EvidenceSource[],
+  tokenizer: (text: string) => Promise<string[]>,
+  max = EVIDENCE_ROWS_PER_CALL,
+): Promise<ProposedRow[]> {
+  const queryTerms = [...new Set(await tokenizer(purpose))];
+  if (queryTerms.length === 0) return [];
+  type Sentence = { text: string; source: number; terms: Map<string, number> };
+  const sentences: Sentence[] = [];
+  for (const [s, source] of sources.entries()) {
+    for (const paragraph of source.paragraphs.filter(isText)) {
+      for (const raw of paragraph.match(/[^。！？!?]+[。！？!?]?|[^。！？!?]+$/g) ?? []) {
+        const text = raw.trim();
+        if (text.length < EVIDENCE_MIN_QUOTE_CHARS || text.length > 300) continue;
+        const counts = new Map<string, number>();
+        for (const token of await tokenizer(text)) counts.set(token, (counts.get(token) ?? 0) + 1);
+        sentences.push({ text, source: s, terms: counts });
+      }
+    }
+  }
+  const n = sentences.length;
+  const idf = new Map(queryTerms.map(term => {
+    const df = sentences.filter(sentence => sentence.terms.has(term)).length;
+    return [term, Math.log(1 + (n - df + 0.5) / (df + 0.5))];
+  }));
+  const scored = sentences.map(sentence => {
+    const matched = queryTerms.filter(term => sentence.terms.has(term));
+    const score = matched.reduce((sum, term) => {
+      const tf = sentence.terms.get(term)!;
+      return sum + idf.get(term)! * (tf * 2.2) / (tf + 1.2);
+    }, 0);
+    return { sentence, matched, score };
+  }).filter(item => item.score > 0).sort((a, b) => b.score - a.score || a.sentence.text.length - b.sentence.text.length);
+  const out: ProposedRow[] = [];
+  const seen = new Set<string>();
+  for (const item of scored) {
+    if (seen.has(item.sentence.text)) continue;
+    seen.add(item.sentence.text);
+    out.push({ claim: `（語の一致：${item.matched.slice(0, 4).join('・')}）`, quote: item.sentence.text, source: `S${item.sentence.source + 1}` });
+    if (out.length >= max) break;
+  }
+  return out;
+}

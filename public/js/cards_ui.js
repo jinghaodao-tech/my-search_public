@@ -10,7 +10,8 @@ function renderCardGrid() {
   if (typeof cardLayout !== 'undefined' && cardLayout === 'table') { renderCardTable(grid); return; }
   grid.classList.remove('as-table');
   grid.innerHTML = allCards.map(card => {
-    const strip = card.color ? `<div class="card-color-strip" style="background:${card.color}"></div>` : '';
+    const safeColor = /^(#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,30}|rgba?\([\d.,%\s]+\)|hsla?\([\d.,%\s]+\))$/.test(card.color || '') ? card.color : '';
+    const strip = safeColor ? `<div class="card-color-strip" style="background:${esc(safeColor)}"></div>` : '';
     const typeMap = {article:'📰 記事',memo:'📝 メモ',csv:'📊 CSV'};
     const typeCls = `card-type-${card.type}`;
     const tagHtml = card.tags.slice(0,4).map(t=>`<span class="card-tag">${esc(t)}</span>`).join('');
@@ -19,16 +20,16 @@ function renderCardGrid() {
     const disp = esc(sourceText||'').slice(0,120)+((sourceText||'').length>120?'...':'');
     const date = new Date(card.createdAt).toLocaleDateString('ja-JP',{month:'short',day:'numeric'});
     const restoreButton = currentFilter.archived
-      ? `<button class="btn-icon btn-sm" onclick="event.stopPropagation();restoreOne('${card.id}')" title="復元">↩</button>`
+      ? `<button class="btn-icon btn-sm" onclick="event.stopPropagation();restoreOne(${jsArg(card.id)})" title="復元">↩</button>`
       : '';
-    return `<div class="card ${selectedCards.has(card.id)?'selected':''}" id="card-${card.id}" onclick="cardClick('${card.id}')">
+    return `<div class="card ${selectedCards.has(card.id)?'selected':''}" id="card-${esc(card.id)}" onclick="cardClick(${jsArg(card.id)})">
       ${strip}
       <div style="display:flex;align-items:center;gap:6px">
         <span class="card-type-badge ${typeCls}">${typeMap[card.type]??card.type}</span>
         <div class="card-actions">
           ${restoreButton}
-          <button class="btn-icon btn-sm" onclick="event.stopPropagation();openEditModal('${card.id}')" title="編集">✏️</button>
-          <button class="btn-icon btn-sm needs-ai" onclick="event.stopPropagation();summarizeOne('${card.id}')" title="AI要約">⚡</button>
+          <button class="btn-icon btn-sm" onclick="event.stopPropagation();openEditModal(${jsArg(card.id)})" title="編集">✏️</button>
+          <button class="btn-icon btn-sm needs-ai" onclick="event.stopPropagation();summarizeOne(${jsArg(card.id)})" title="AI要約">⚡</button>
         </div>
       </div>
       <div class="card-title">${esc(card.title)}</div>
@@ -140,6 +141,8 @@ async function exportSelectedMarkdown() {
 }
 
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function jsArg(value) { return esc(JSON.stringify(String(value ?? ''))); }
+function safeLinkUrl(value) { try { const url = new URL(value); return /^https?:$/.test(url.protocol) ? url.href : ''; } catch { return ''; } }
 
 function escapeRegExp(s){return String(s??'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
 
@@ -194,7 +197,7 @@ function renderTagCloud() {
   }
   document.getElementById('tag-count').textContent = `(${allTags.length})`;
   cloud.innerHTML = shown.map(({tag,count})=>
-    `<span class="tag-pill ${currentFilter.tag===tag?'active':''}" onclick="filterTag('${esc(tag)}')">${esc(tag)} <small>${count}</small></span>`
+    `<span class="tag-pill ${currentFilter.tag===tag?'active':''}" onclick="filterTag(${jsArg(tag)})">${esc(tag)} <small>${count}</small></span>`
   ).join('') || '<span class="muted" style="font-size:12px">該当するタグはありません</span>';
   const more = document.getElementById('tag-more');
   if (more) {
@@ -250,21 +253,21 @@ function renderDetailBody(card) {
   if (!parts) return `<div class="detail-section"><h4>本文</h4><div class="detail-body-text">${esc(card.body).slice(0,400)}${card.body.length>400?'...':''}</div></div>`;
   const source = parts.sourceLines.map(line => `<div>${esc(line.replace(/^- /, ''))}</div>`).join('');
   return `<div class="detail-section"><h4>メモ</h4><div class="memo-view">${parts.memo ? renderMemoHtml(parts.memo) : '<span style="color:var(--text-dim)">（なし）</span>'}</div></div>`
-    + `<div class="detail-section"><h4>出典</h4><div class="detail-source">${source}</div><button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="openReaderForCard('${esc(card.id)}')">本文と一緒に開く</button></div>`;
+    + `<div class="detail-section"><h4>出典</h4><div class="detail-source">${source}</div><button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="openReaderForCard(${jsArg(card.id)})">本文と一緒に開く</button></div>`;
 }
 function renderDetailPanel(card) {
   document.getElementById('detail-title').textContent = card.title;
   const linksHtml = (card.links||[]).map(lid=>{
     const lc = allCards.find(c=>c.id===lid); if(!lc) return '';
-    return `<div class="linked-card" onclick="selectCard('${lid}')"><span>📇 ${esc(lc.title)}</span><button class="btn-icon btn-sm" onclick="event.stopPropagation();unlinkCard('${card.id}','${lid}')">✕</button></div>`;
+    return `<div class="linked-card" onclick="selectCard(${jsArg(lid)})"><span>📇 ${esc(lc.title)}</span><button class="btn-icon btn-sm" onclick="event.stopPropagation();unlinkCard(${jsArg(card.id)},${jsArg(lid)})">✕</button></div>`;
   }).join('');
-  const backHtml = (card.backlinks||[]).map(bl=>`<div class="linked-card" onclick="selectCard('${bl.id}')"><span>← ${esc(bl.title)}</span></div>`).join('');
-  const tagsHtml = (card.tags||[]).map(t=>`<span class="tag-edit-pill">${esc(t)}<button onclick="removeTagFromCard('${card.id}','${esc(t)}')">×</button></span>`).join('');
+  const backHtml = (card.backlinks||[]).map(bl=>`<div class="linked-card" onclick="selectCard(${jsArg(bl.id)})"><span>← ${esc(bl.title)}</span></div>`).join('');
+  const tagsHtml = (card.tags||[]).map(t=>`<span class="tag-edit-pill">${esc(t)}<button onclick="removeTagFromCard(${jsArg(card.id)},${jsArg(t)})">×</button></span>`).join('');
   document.getElementById('detail-body').innerHTML = `
-    ${card.url?`<div class="detail-section detail-url"><h4>リンク</h4><a href="${esc(card.url)}" target="_blank">🔗 ${esc(card.url)}</a></div>`:''}
+    ${safeLinkUrl(card.url)?`<div class="detail-section detail-url"><h4>リンク</h4><a href="${esc(safeLinkUrl(card.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(card.url)}</a></div>`:''}
     <div class="detail-section">
       <h4>AI要約${card.summary?'':'<span style="color:var(--text-dim);font-weight:400"> (未生成)</span>'}</h4>
-      ${card.summary?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="deleteSummary('${card.id}')">Delete</button></div><div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm needs-ai" onclick="summarizeOne('${card.id}')">⚡ AI要約を生成</button>`}
+      ${card.summary?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="deleteSummary(${jsArg(card.id)})">Delete</button></div><div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm needs-ai" onclick="summarizeOne(${jsArg(card.id)})">⚡ AI要約を生成</button>`}
     </div>
     ${renderDetailBody(card)}
     <div class="detail-section">
@@ -272,7 +275,7 @@ function renderDetailPanel(card) {
       <div class="tag-edit">${tagsHtml}</div>
       <div class="tag-input-row" style="margin-top:8px">
         <input type="text" id="tag-add-input" placeholder="タグ追加..." onkeydown="if(event.key==='Enter')addTagToCard('${card.id}')">
-        <button class="btn btn-secondary btn-sm" onclick="addTagToCard('${card.id}')">追加</button>
+        <button class="btn btn-secondary btn-sm" onclick="addTagToCard(${jsArg(card.id)})">追加</button>
       </div>
     </div>
     <div class="detail-section">
@@ -301,7 +304,7 @@ function searchLinkCandidates(q,currentId) {
   const cur=allCards.find(c=>c.id===currentId);
   if(!q.trim()){box.innerHTML='';return;}
   const res=allCards.filter(c=>c.id!==currentId&&!(cur?.links||[]).includes(c.id)&&(c.title.toLowerCase().includes(q.toLowerCase())||c.tags.some(t=>t.includes(q)))).slice(0,8);
-  box.innerHTML=res.map(c=>`<div class="link-candidate" onclick="addLink('${currentId}','${c.id}')">📇 ${esc(c.title)}</div>`).join('')||'<div class="link-candidate" style="color:var(--text-dim)">該当なし</div>';
+  box.innerHTML=res.map(c=>`<div class="link-candidate" onclick="addLink(${jsArg(currentId)},${jsArg(c.id)})">📇 ${esc(c.title)}</div>`).join('')||'<div class="link-candidate" style="color:var(--text-dim)">該当なし</div>';
 }
 async function addLink(id1,id2) {
   await api.post(`/api/cards/${id1}/links`,{targetId:id2});

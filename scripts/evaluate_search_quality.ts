@@ -4,6 +4,7 @@ import { looksLikeMojibake, runPipeline, type Article } from '../bm25_engine.js'
 import { tokenize } from '../search/tokenizer.js';
 import { excludesArticle, parseSearchQuery, type ParsedSearchQuery } from '../search/query_parser.js';
 import { assertSearchQualityMetrics, realQualityGateThresholds, searchQualityThresholds, type SearchQualityMetricName } from './search_quality_config.js';
+import { ndcgAt5, precisionAt, recallAt5, reciprocalRank, rPrecision, searchQualityMetricReferences } from './search_quality_metrics.js';
 
 type SearchCase = { id: string; query: string; keywords: Array<{ term: string; weight: number; synonyms?: string[] }>; expected: string[]; kind: string };
 type Variant = { name: string; description: string; synonym: boolean; lambda: number; morphologicalWeight?: number; ngramWeight?: number };
@@ -105,14 +106,9 @@ const variants: Variant[] = [
   { name: 'no_time_decay', description: '時間減衰を無効化した比較', synonym: true, lambda: 0 },
 ];
 const synonymMap: Record<string, string[]> = { bm25: ['ranking'], token: ['tokens_json'], csv: ['json'], validation: ['validate'] };
-function precisionAt(results: string[], expected: string[], k: number): number { const set = new Set(expected); return results.slice(0, k).filter(id => set.has(id)).length / Math.min(k, results.length || k); }
-function rPrecision(results: string[], expected: string[]): number { const set = new Set(expected); const r = Math.max(expected.length, 1); return results.slice(0, r).filter(id => set.has(id)).length / r; }
-function reciprocalRank(results: string[], expected: string[]): number { const set = new Set(expected); const index = results.findIndex(id => set.has(id)); return index < 0 ? 0 : 1 / (index + 1); }
-function recallAt5(results: string[], expected: string[]): number { const set = new Set(expected); return results.slice(0, 5).filter(id => set.has(id)).length / set.size; }
-function ndcgAt5(results: string[], expected: string[]): number { const set = new Set(expected); const dcg = results.slice(0, 5).reduce((sum, id, index) => sum + (set.has(id) ? 1 / Math.log2(index + 2) : 0), 0); const ideal = Array.from({ length: Math.min(5, set.size) }, (_, index) => 1 / Math.log2(index + 2)).reduce((a, b) => a + b, 0); return ideal ? dcg / ideal : 0; }
 function theoreticalUpperBounds(testCases: SearchCase[]): Record<SearchQualityMetricName, number> {
   const recallAt5 = testCases.reduce((sum, testCase) => sum + Math.min(1, 5 / Math.max(testCase.expected.length, 1)), 0) / testCases.length;
-  return { precisionAt1: 1, rPrecision: 1, mrr: 1, recallAt5, ndcgAt5: 1 };
+  return Object.fromEntries(Object.keys(searchQualityMetricReferences).map(metric => [metric, metric === 'recallAt5' ? recallAt5 : 1])) as Record<SearchQualityMetricName, number>;
 }
 function assertMetricsWithinUpperBounds(scope: string, metrics: Record<string, number>, upperBounds: Record<string, number>): void {
   for (const [metric, actual] of Object.entries(metrics)) {
@@ -195,6 +191,7 @@ function artifact(evaluation: Awaited<ReturnType<typeof evaluateVariant>>, scope
     rows: evaluation.rows,
     metrics,
     theoretical,
+    metricDefinitions: searchQualityMetricReferences,
     datasetQuality: assessDatasetDiscrimination(metrics, theoretical, scope, labelSource, testCases, evaluation.rows),
     thresholds: searchQualityThresholds,
     variants: [] as unknown[],

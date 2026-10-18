@@ -1,0 +1,165 @@
+{
+  "case_id": "TC08",
+  "input": "支払申請システムを見直したい。経理部は不正防止のため承認段階を増やしたい。\n現場部門は申請が遅いので承認段階を減らしたい。どちらも重要だ。\n最終的な優先順位はまだ決めていない。\n",
+  "goals": [
+    {
+      "id": "G1",
+      "statement": "支払申請システムを見直したい。",
+      "status": "confirmed",
+      "source": "cases/TC08.txt の明示記述"
+    },
+    {
+      "id": "G2",
+      "statement": "経理部は不正防止を重視する。",
+      "status": "confirmed",
+      "source": "cases/TC08.txt の明示記述"
+    },
+    {
+      "id": "G3",
+      "statement": "現場部門は申請の遅さを改善したい。",
+      "status": "confirmed",
+      "source": "cases/TC08.txt の明示記述"
+    },
+    {
+      "id": "GA",
+      "statement": "支払の統制と業務の迅速性を両立したい可能性がある。",
+      "status": "hypothesis",
+      "source": "原文から推定した上位目的。依頼者未確認。"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "経理部は承認段階を増やすことを希望する。",
+      "status": "confirmed",
+      "kind": "functional",
+      "source": "cases/TC08.txt の明示記述",
+      "goal_ids": [
+        "G1",
+        "G2",
+        "G3"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "現場部門は承認段階を減らすことを希望する。",
+      "status": "confirmed",
+      "kind": "functional",
+      "source": "cases/TC08.txt の明示記述",
+      "goal_ids": [
+        "G1",
+        "G2",
+        "G3"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "双方の目的を重要と扱う。",
+      "status": "confirmed",
+      "kind": "business",
+      "source": "cases/TC08.txt の明示記述",
+      "goal_ids": [
+        "G1",
+        "G2",
+        "G3"
+      ]
+    },
+    {
+      "id": "RP",
+      "statement": "不正リスクと待ち時間を測り、金額・リスク別の承認や統制代替案を合意にかける。",
+      "status": "proposed",
+      "kind": "business",
+      "source": "分析者の提案。依頼者未承認。",
+      "goal_ids": [
+        "G1",
+        "GA"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "H1",
+      "statement": "待ち時間は段階数より承認者不在や差し戻しに由来するかもしれない。",
+      "source": "分析者の原因・解決仮説。未検証。"
+    },
+    {
+      "id": "H2",
+      "statement": "段階追加だけでは不正防止につながらないかもしれない。",
+      "source": "分析者の原因・解決仮説。未検証。"
+    },
+    {
+      "id": "H3",
+      "statement": "申請リスク別に承認を変えることで両目的を満たせるかもしれない。",
+      "source": "分析者の原因・解決仮説。未検証。"
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "U1",
+      "statement": "最終優先順位と意思決定者が未定",
+      "impact": "対立を解決できない",
+      "resolution": "経理と現場を含む責任者に評価軸と決定権を合意してもらう。"
+    },
+    {
+      "id": "U2",
+      "statement": "不正事例・現行承認・時間内訳",
+      "impact": "代替案の効果を判断できない",
+      "resolution": "既存フローと案件記録を調査する。"
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q1",
+      "question": "双方の条件が両立しない場合、誰が何を基準に決定しますか？",
+      "reason": "採否の決定権と優先順位を決める。",
+      "priority": "high",
+      "unknown_ids": [
+        "U1"
+      ]
+    },
+    {
+      "id": "Q2",
+      "question": "防ぎたい不正と遅延の具体例は何ですか？",
+      "reason": "統制対象と改善すべき工程を選ぶ。",
+      "priority": "high",
+      "unknown_ids": [
+        "U2"
+      ]
+    }
+  ],
+  "verification": [
+    {
+      "id": "V1",
+      "claim": "表明された目的・制約の充足性と、提案・原因仮説の妥当性を調べる。",
+      "method": "申請の工程別時間と不正・検知事例を調べ、段階増減とリスク別承認案を同じシナリオで比較し、双方でレビューする。",
+      "metric": "承認所要時間、差し戻し、対象不正シナリオの防止・検知、承認者工数。",
+      "decision_rule": "許容リスク・遅延基準と優先順位は未合意。双方が承認するまで段階数を確定しない。",
+      "limitation": "稀な不正の実績だけでは防止効果を測れず、シナリオ試験は未知の不正を保証しない。",
+      "related_ids": [
+        "G1",
+        "G2",
+        "G3",
+        "GA",
+        "R1",
+        "R2",
+        "R3",
+        "RP",
+        "H1",
+        "H2",
+        "H3"
+      ],
+      "status": "planned"
+    }
+  ],
+  "risks": [
+    {
+      "id": "K1",
+      "description": "一方の手段を無断採用し、統制や処理速度を損なう。",
+      "mitigation": "原因調査と関係者の合意を先に行い、基準を明示して試行結果を判断する。"
+    }
+  ],
+  "warnings": [
+    "段階数の増減は同一範囲では対立する希望。目的と手段を分け、優先順位を代わりに決めない。",
+    "業務検証は未実施。仮説の網羅性は保証しない。構造検証の成功は意味的妥当性の証明ではない。"
+  ]
+}

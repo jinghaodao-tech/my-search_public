@@ -61,12 +61,15 @@ describe('continued research', () => {
     const id = 'reader-search-copy';
     const article = { id, title: '資料', body: '短い紹介', url: 'https://example.test/reader-search-copy', publishedAt: new Date(), sourceAuthority: 1, firstSeenAt: '2020-01-01T00:00:00.000Z' };
     saveArticlesToDb([article]);
-    database.db.prepare('INSERT INTO article_reader_content VALUES (?, ?, ?)').run(id, 'SQLite concurrency 本文の途中', new Date().toISOString());
+    database.db.prepare('INSERT INTO article_reader_content(article_id, body, fetched_at) VALUES (?, ?, ?)').run(id, 'SQLite concurrency 本文の途中', new Date().toISOString());
     saveArticlesToDb([article]);
     const { loadArticlesFromDb } = await import('../repositories/articles_repository.js');
     expect(loadArticlesFromDb().find(item => item.id === id)?.body).toContain('concurrency');
     const found = await request(app).post('/api/run').send({ config, options: { archiveScoreThreshold: -1 } }).expect(200);
     expect(found.body.active.some((item: { article: { id: string } }) => item.article.id === id)).toBe(true);
+    const cache = database.db.prepare('SELECT tokens_json, morphological_tokens_json, content_hash, fetched_at FROM article_reader_content WHERE article_id=?').get(id);
+    await request(app).post('/api/run').send({ config, options: { archiveScoreThreshold: -1 } }).expect(200);
+    expect(database.db.prepare('SELECT tokens_json, morphological_tokens_json, content_hash, fetched_at FROM article_reader_content WHERE article_id=?').get(id)).toEqual(cache);
     const response = await request(app).post('/api/run').send({ config, filters: { since: '2021-01-01T00:00:00.000Z' } }).expect(200);
     expect([...response.body.active, ...response.body.archived].some((item: { article: { id: string } }) => item.article.id === id)).toBe(false);
     database.db.prepare('DELETE FROM articles WHERE id = ?').run(id);

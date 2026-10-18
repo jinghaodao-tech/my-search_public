@@ -4,13 +4,11 @@
  */
 
 import fs   from 'fs';
+import { PROJECT_ROOT } from '../utils/project_root.js';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { performance } from 'node:perf_hooks';
 import { logger } from '../utils/logger.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.dirname(__dirname);
 const DATA_DIR   = path.join(PROJECT_ROOT, 'data');
 const CARDS_FILE = path.join(DATA_DIR, 'cards.json');
 const KJ_FILE    = process.env.KJ_FILE ?? path.join(DATA_DIR, 'kj_groups.json');
@@ -455,22 +453,13 @@ export function getCardsPage(filters: CardListFilters = {}): CardListPage {
 }
 
 export function saveCards(cards: Card[]): void {
-  const clear = db.prepare(`
-    DELETE FROM cards
-  `);
-  const clearTags = db.prepare(`DELETE FROM card_tags`);
-  const clearLinks = db.prepare(`DELETE FROM card_links`);
-
-  const insert = db.prepare(insertCardSql);
-
   const tx = db.transaction(() => {
-    clearTags.run();
-    clearLinks.run();
-    clear.run();
-
+    const currentIds = new Set((db.prepare('SELECT id FROM cards').all() as Array<{id: string}>).map(row => row.id));
+    const retainedIds = new Set(cards.map(card => card.id));
+    for (const id of currentIds) if (!retainedIds.has(id)) db.prepare('DELETE FROM cards WHERE id = ?').run(id);
     for (const card of cards) {
-      insert.run(cardToRow(card));
-      syncStoredRelations(card.id, card.tags ?? [], card.links ?? [], card.createdAt);
+      if (currentIds.has(card.id)) updateStoredCard(card);
+      else insertStoredCard(card);
     }
   });
 
@@ -550,14 +539,16 @@ export async function createCardWithTransaction(
     return card;
   })();
 }
-export async function updateCard(id: string, updates: Partial<Card>): Promise<Card | null> {
+export async function updateCard(id: string, updates: Partial<Card>, finalize?: (card: Card) => void): Promise<Card | null> {
   const existing = getCard(id);
   if (!existing) return null;
   const updated: Card = { ...existing, ...updates, id, updatedAt: new Date().toISOString() };
   const stored = await buildStoredTokenSet(`${updated.title} ${updated.body} ${(updated.tags ?? []).join(" ")}`);
   Object.assign(updated, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength, ...stored });
-  db.transaction(() => updateStoredCard(updated))();
-  return updated;
+  return db.transaction(() => {
+    if (!getCard(id)) return null;
+    updateStoredCard(updated); finalize?.(updated); return updated;
+  })();
 }
 
 export function deleteCard(id: string): boolean {
@@ -691,12 +682,12 @@ export function getAllTags(): { tag: string; count: number }[] {
 //  § 6. KJ法グループ管理
 // ════════════════════════════════════════════════════
 
-export async function backfillCardTokens(): Promise<number> {
+export async function backfillCardTokens(forceRebuild = false): Promise<number> {
   const cards = loadCards();
   let updated = 0;
 
   for (const card of cards) {
-    if ((card.morphologicalTokens?.length ?? 0) > 0 && (card.ngramTokens?.length ?? 0) > 0) continue;
+    if (!forceRebuild && (card.morphologicalTokens?.length ?? 0) > 0 && (card.ngramTokens?.length ?? 0) > 0) continue;
     const stored = await buildStoredTokenSet(`${card.title} ${card.body} ${(card.tags ?? []).join(" ")}`);
     Object.assign(card, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength, ...stored });
     updated += 1;

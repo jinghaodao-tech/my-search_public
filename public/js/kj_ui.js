@@ -4,12 +4,13 @@ async function loadKJBoard(){kjData=await api.get('/api/kj/groups');renderKJBoar
 function renderKJBoard(){
   const canvas=document.getElementById('kj-canvas');
   let html=kjData.groups.map(g=>{
-    const cardHtml=g.cards.map(c=>renderKJCard(c,g.color)).join('');
+    const color = /^(#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,30}|rgba?\([\d.,%\s]+\)|hsla?\([\d.,%\s]+\))$/.test(g.color || '') ? g.color : '#888888';
+    const cardHtml=g.cards.map(c=>renderKJCard(c,color)).join('');
     return `<div class="kj-group-col" data-group-id="${g.id}">
-      <div class="kj-group-header" style="background:${g.color}22;border-bottom:2px solid ${g.color}">
-        <span class="kj-group-name" style="color:${g.color}">${esc(g.name)}</span>
+      <div class="kj-group-header" style="background:${esc(color)};border-bottom:2px solid ${esc(color)}">
+        <span class="kj-group-name" style="color:${esc(color)}">${esc(g.name)}</span>
         <span style="font-size:11px;color:var(--text-dim)">${g.cards.length}</span>
-        <button class="btn-icon btn-sm" onclick="editGroup('${g.id}','${esc(g.name)}')">✏️</button>
+        <button class="btn-icon btn-sm" data-edit-group="${esc(g.id)}">✏️</button>
         <button class="btn-icon btn-sm" onclick="deleteGroup('${g.id}')">🗑</button>
       </div>
       <div class="kj-group-body kj-drop-zone" data-group-id="${g.id}" ondragover="kjDragOver(event)" ondrop="kjDrop(event,'${g.id}')">
@@ -22,6 +23,10 @@ function renderKJBoard(){
     <span style="font-size:11px;color:var(--text-dim)">${kjData.ungrouped.length}</span></div>
     <div class="kj-group-body kj-drop-zone" data-group-id="__none__" ondragover="kjDragOver(event)" ondrop="kjDrop(event,'__none__')">${ugHtml}</div></div>`;
   canvas.innerHTML=html;
+  canvas.querySelectorAll('[data-edit-group]').forEach(button => button.addEventListener('click', () => {
+    const group = kjData.groups.find(g => g.id === button.dataset.editGroup);
+    if (group) editGroup(group.id, group.name);
+  }));
 }
 function renderKJCard(card,col){
   const bc=col||'var(--border)';

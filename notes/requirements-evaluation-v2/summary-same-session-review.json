@@ -1,0 +1,121 @@
+{
+  "rubric_version": "2.0.0",
+  "reviewer": "same-session-review",
+  "cases": 10,
+  "complete": true,
+  "review_required": 0,
+  "unresolved": 0,
+  "results": [
+    {
+      "case_id": "TC01",
+      "status": "no_issues_flagged",
+      "pass": 9,
+      "fail": 0,
+      "pending": 0,
+      "not_applicable": 0,
+      "critical_failures": 0,
+      "conditional_score_pct": 100,
+      "complete": true
+    },
+    {
+      "case_id": "TC02",
+      "status": "no_issues_flagged",
+      "pass": 9,
+      "fail": 0,
+      "pending": 0,
+      "not_applicable": 0,
+      "critical_failures": 0,
+      "conditional_score_pct": 100,
+      "complete": true
+    },
+    {
+      "case_id": "TC03",
+      "status": "quality_issues",
+      "pass": 8,
+      "fail": 1,
+      "pending": 0,
+      "not_applicable": 0,
+      "critical_failures": 0,
+      "conditional_score_pct": 88.9,
+      "complete": true
+    },
+    {
+      "case_id": "TC04",
+      "status": "no_issues_flagged",
+      "pass": 9,
+      "fail": 0,
+      "pending": 0,
+      "not_applicable": 0,
+      "critical_failures": 0,
+      "conditional_score_pct": 100,
+      "complete": true
+    },
+    {
+      "case_id": "TC05",
+      "status": "no_issues_flagged",
+      "pass": 9,
+      "fail": 0,
+      "pending": 0,
+      "not_applicable": 0,
+      "critical_failures": 0,
+      "conditional_score_pct": 100,
+      "complete": true
+    },
+    {
+      "case_id": "TC06",
+      "status": "no_issues_flagged",
+      "pass": 9,
+      "fail": 0,
+      "pending": 0,
+      "not_applicable": 0,
+      "critical_failures": 0,
+      "conditional_score_pct": 100,
+      "complete": true
+    },
+    {
+      "case_id": "TC07",
+      "status": "no_issues_flagged",
+      "pass": 9,
+      "fail": 0,
+      "pending": 0,
+      "not_applicable": 0,
+      "critical_failures": 0,
+      "conditional_score_pct": 100,
+      "complete": true
+    },
+    {
+      "case_id": "TC08",
+      "status": "quality_issues",
+      "pass": 8,
+      "fail": 1,
+      "pending": 0,
+      "not_applicable": 0,
+      "critical_failures": 0,
+      "conditional_score_pct": 88.9,
+      "complete": true
+    },
+    {
+      "case_id": "TC09",
+      "status": "quality_issues",
+      "pass": 8,
+      "fail": 1,
+      "pending": 0,
+      "not_applicable": 0,
+      "critical_failures": 0,
+      "conditional_score_pct": 88.9,
+      "complete": true
+    },
+    {
+      "case_id": "TC10",
+      "status": "no_issues_flagged",
+      "pass": 9,
+      "fail": 0,
+      "pending": 0,
+      "not_applicable": 0,
+      "critical_failures": 0,
+      "conditional_score_pct": 100,
+      "complete": true
+    }
+  ],
+  "warning": "採点は人間またはAI評価者による。検出率・AI精度ではない。pass/fail の割合は条件付き参考値。"
+}

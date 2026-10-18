@@ -25,6 +25,8 @@ function renderKeywords() {
   if (!list) return;
   const simple = document.getElementById('search-terms');
   if (simple) simple.value = bm25Keywords.map(keyword => keyword.term).filter(Boolean).join(' ');
+  // the box now shows exactly these keywords: searching it again keeps their weights
+  if (simple && typeof searchKeywordsText !== 'undefined') searchKeywordsText = simple.value.trim();
   list.innerHTML = bm25Keywords.map((keyword, index) => `<div class="kw-row"><input class="kw-term" value="${esc(keyword.term)}" oninput="bm25Keywords[${index}].term=this.value; syncSimpleTerms()"><input class="kw-weight" type="number" value="${keyword.weight}" oninput="bm25Keywords[${index}].weight=parseFloat(this.value)||1"><input class="kw-syn" value="${esc(keyword.synonyms || '')}" oninput="bm25Keywords[${index}].synonyms=this.value"><button type="button" onclick="removeKeyword(${index})">Remove</button></div>`).join('');
 }
 function addKeyword() { bm25Keywords.push({ term: '', weight: 1, synonyms: '' }); renderKeywords(); }

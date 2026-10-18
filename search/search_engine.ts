@@ -1,7 +1,7 @@
 import { db } from '../db/database.js';
 import { runPipeline, type Article, type BenchmarkTimings, type ModeConfig } from './bm25.js';
 
-export type SearchOptions = { archiveScoreThreshold?: number; dedupThreshold?: number; resultLimit?: number; bm25Weight?: number; ftsWeight?: number };
+export type SearchOptions = { archiveScoreThreshold?: number; dedupThreshold?: number; resultLimit?: number; bm25Weight?: number; ftsWeight?: number; corpus?: 'cards' | 'articles' };
 export type SearchResult = Awaited<ReturnType<typeof runPipeline>>;
 
 export interface SearchEngine {
@@ -21,6 +21,7 @@ export class HybridSearchEngine implements SearchEngine {
   readonly name = 'hybrid';
   async run(articles: Article[], mode: ModeConfig, modeId: string, options: SearchOptions = {}) {
     const base = await runPipeline(articles, mode, modeId, options);
+    if (options.corpus === 'articles') return base;
     const terms = mode.keywords.flatMap(keyword => keyword.term.split(/\s+/)).filter(Boolean);
     const query = terms.map(term => `"${term.replace(/"/g, '""')}"`).join(' OR ');
     const rows = query ? db.prepare('SELECT id FROM cards_fts WHERE cards_fts MATCH ? ORDER BY bm25(cards_fts)').all(query) as Array<{ id: string }> : [];

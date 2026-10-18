@@ -1,0 +1,57 @@
+{
+  "results": [
+    {
+      "case_id": "TC01",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "case_id": "TC02",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "case_id": "TC03",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "case_id": "TC04",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "case_id": "TC05",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "case_id": "TC06",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "case_id": "TC07",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "case_id": "TC08",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "case_id": "TC09",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "case_id": "TC10",
+      "ok": true,
+      "errors": []
+    }
+  ],
+  "passed": 10,
+  "total": 10,
+  "semantic_evaluation": false
+}

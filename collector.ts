@@ -7,22 +7,20 @@
 
 import RSSParser from 'rss-parser';
 import cron      from 'node-cron';
-import https     from 'https';
+import { safeFetch } from './services/safe_fetch.js';
+import { articleIdentityKey, stableArticleId } from './services/article_identity.js';
 import { buildStoredTokenSet, type Article } from './bm25_engine.js';
 import {
   loadArticlesFromDb,
+  getArticleById,
   loadArticleStats,
   reuseArticleTokenCache,
   saveArticlesToDb,
 } from './repositories/articles_repository.js';
 
 export function saveArticles(result: CollectResult): void {
-  try {
     const saved = saveArticlesToDb(result.articles, result.stats.fetchedAt);
     console.log(`  saved articles to SQLite (${result.articles.length} items, inserted=${saved.inserted}, updated=${saved.updated}, skippedDuplicateUrls=${saved.skippedDuplicateUrls})`);
-  } catch (e) {
-    console.warn('  saveArticles failed:', (e as Error).message);
-  }
 }
 
 export function loadArticles(): CollectResult | null {
@@ -45,7 +43,7 @@ export function loadArticles(): CollectResult | null {
 }
 
 export async function ensureArticleTokens(result: CollectResult, forceRebuild = false): Promise<CollectResult> {
-  const cachedArticles = forceRebuild ? result.articles : reuseArticleTokenCache(result.articles);
+  const cachedArticles = forceRebuild ? result.articles.map(article => ({ ...article, tokens: undefined, morphologicalTokens: undefined, ngramTokens: undefined })) : reuseArticleTokenCache(result.articles);
   const articles = await Promise.all(cachedArticles.map(async (article) => {
     if (Array.isArray(article.morphologicalTokens) && article.morphologicalTokens.length > 0 && Array.isArray(article.ngramTokens) && article.ngramTokens.length > 0) {
       return {
@@ -135,26 +133,9 @@ export const DEFAULT_CONFIG: CollectorConfig = {
 // ════════════════════════════════════════════════════
 
 function httpsGet(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers: { 'User-Agent': 'DigitalCommons/1.0' } }, (res) => {
-      // リダイレクト追従
-      if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
-        return httpsGet(res.headers.location).then(resolve).catch(reject);
-      }
-      if (res.statusCode !== 200) {
-        return reject(new Error(`HTTP ${res.statusCode} for ${url}`));
-      }
-      let data = '';
-      res.on('data', (c: string) => data += c);
-      res.on('end', () => resolve(data));
-    });
-    req.on('error', reject);
-    req.setTimeout(10000, () => { req.destroy(); reject(new Error(`Timeout: ${url}`)); });
-  });
-}
-
-function slug(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 48);
+  return safeFetch(url, { maxBytes: 3 * 1024 * 1024, timeoutMs: 10_000,
+    allowedContentTypes: /(?:xml|rss|atom|json|text\/plain)/i,
+  }).then(response => response.text());
 }
 
 function stripHtml(html: string): string {
@@ -174,17 +155,18 @@ export async function collectRSS(
 
   for (const src of sources) {
     try {
-      const feed = await parser.parseURL(src.url);
+      const feed = await parser.parseString(await httpsGet(src.url));
       for (const item of (feed.items ?? []).slice(0, 20)) {
         if (!item.title) continue;
         articles.push({
-          id:              `rss_${slug(src.label)}_${slug(item.title)}`,
+          id:              stableArticleId('rss', item.guid ? `${src.url}\0${item.guid}` : item.link ? articleIdentityKey(item.link) : `${src.url}\0${item.title}\0${item.content ?? item.summary ?? ''}`),
           title:           item.title,
           body:            stripHtml(item.contentSnippet ?? item.content ?? item.summary ?? ''),
-          publishedAt:     item.pubDate ? new Date(item.pubDate) : new Date(),
+          publishedAt:     new Date(item.isoDate ?? item.pubDate ?? NaN),
           sourceAuthority: src.authority,
-          url:             item.link ?? src.url,
+          url:             item.link ?? '',
           source:          `rss:${src.label}`,
+          bodyKind:        'excerpt',
         });
       }
       console.log(`  [RSS] ${src.label}: ${feed.items?.length ?? 0} 件`);
@@ -225,13 +207,14 @@ export async function collectArxiv(
 
         if (!title) continue;
         articles.push({
-          id:              `arxiv_${slug(title)}`,
+          id:              stableArticleId('arxiv', link.replace(/^http:/, 'https:') || `${title}\0${summary}`),
           title,
           body:            `${summary} [Authors: ${authors}]`,
-          publishedAt:     pubRaw ? new Date(pubRaw) : new Date(),
+          publishedAt:     new Date(pubRaw || NaN),
           sourceAuthority: src.authority,
           url:             link,
           source:          `arxiv:${src.query}`,
+          bodyKind:        'excerpt',
         });
       }
       console.log(`  [arXiv] "${src.query}": ${entries.length} 件`);
@@ -289,6 +272,7 @@ export async function collectGitHub(
           sourceAuthority: src.authority,
           url:             repo.html_url,
           source:          `github:${src.language}`,
+          bodyKind:        'excerpt',
         });
       }
       console.log(`  [GitHub] ${src.language}/${src.since}: ${data.items?.length ?? 0} 件`);
@@ -332,9 +316,10 @@ export async function collectAll(
 
   console.log(`✓ 収集完了: RSS=${result.stats.rss} arXiv=${result.stats.arxiv} GitHub=${result.stats.github} 合計=${result.stats.total}`);
   const indexedResult = await ensureArticleTokens(result);
-  saveArticles(indexedResult); // ← data/articles.json に自動保存
+  saveArticles(indexedResult);
   if (errors.length) console.warn(`⚠ エラー ${errors.length} 件:`, errors);
-  return indexedResult;
+  // Return canonical persisted IDs, including aliases matched to legacy articles.
+  return { ...indexedResult, articles: indexedResult.articles.map(article => getArticleById(article.id) ?? article) };
 }
 
 // ════════════════════════════════════════════════════
@@ -345,6 +330,9 @@ export interface SchedulerOptions {
   /** cron式 デフォルト: 30分ごと */
   cronExpr?:  string;
   config?:    CollectorConfig;
+  getConfig?: () => CollectorConfig;
+  collect?: (config: CollectorConfig) => Promise<CollectResult>;
+  onError?: (error: unknown) => void;
   onCollect?: (result: CollectResult) => void;
 }
 
@@ -355,13 +343,19 @@ export function startScheduler(opts: SchedulerOptions = {}): () => void {
 
   console.log(`\n⏰ スケジューラー起動: "${expr}"`);
 
-  const task = cron.schedule(expr, async () => {
-    const result = await collectAll(config);
-    callback(result);
-  });
+  let running = false;
+  let stopped = false;
+  const run = async () => {
+    if (running || stopped) return;
+    running = true;
+    try { callback(await (opts.collect ?? collectAll)(opts.getConfig?.() ?? config)); }
+    catch (error) { (opts.onError ?? console.error)(error); }
+    finally { running = false; }
+  };
+  const task = cron.schedule(expr, run);
 
   // 起動直後に1回実行
-  collectAll(config).then(callback);
+  void run();
 
-  return () => task.stop();
+  return () => { stopped = true; task.stop(); };
 }

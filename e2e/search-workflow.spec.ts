@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 
 test('saved search survives reload and ranked reading saves a candidate once', async ({ page, request }) => {
   await request.post('/api/collect', { data: { fixture: 'portfolio-demo' } });
+  const previous = await (await request.get('/api/candidates/fixture-portfolio-search')).json();
+  if (previous.savedCardId) expect((await request.delete(`/api/cards/${previous.savedCardId}`)).ok()).toBeTruthy();
   // Fixture candidates may already be saved by another flow; choose one still actionable.
   const candidates = await (await request.get('/api/candidates')).json();
   const candidate = candidates.find((item: { status: string; source: string }) => item.source === 'fixture' && ['unreviewed', 'reviewed_not_saved', 'deferred'].includes(item.status));
@@ -14,6 +16,7 @@ test('saved search survives reload and ranked reading saves a candidate once', a
   await page.locator('button[onclick="switchView(\'bm25\')"]').click();
   await expect(page.locator('#mode-tabs button').first()).toBeAttached();
   const name = `継続調査 ${Date.now()}`;
+  await page.locator('#search-details > summary').click();
   await page.locator('#saved-search-name').fill(name);
   await page.locator('#search-terms').fill('portfolio');
   await page.getByRole('button', { name: '条件を保存', exact: true }).click();

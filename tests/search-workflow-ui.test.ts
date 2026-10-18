@@ -9,7 +9,8 @@ it('restores search conditions, reviews ranked candidates and advances after rea
   const dom = new JSDOM(fs.readFileSync('public/index.html', 'utf8'), { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
   w.confirm = () => true;
-  w.fetch = (async (url: string, options: { method?: string; body?: string } = {}) => {
+  const pendingRequests = new Set<Promise<unknown>>();
+  const fetchFixture = async (url: string, options: { method?: string; body?: string } = {}) => {
     if (url === '/api/reader/extract') {
       const { url: articleUrl } = JSON.parse(options.body!);
       return { ok: true, headers: new Headers({ 'content-type': 'application/json' }), json: async () => ({ url: articleUrl, title: 'Reader fixture', fetchedAt: new Date().toISOString(), paragraphs: ['<script>unsafe</script> Portfolio body'], byline: null, siteName: 'fixture' }) };
@@ -17,6 +18,13 @@ it('restores search conditions, reviews ranked candidates and advances after rea
     const method = (options.method || 'GET').toLowerCase() as 'get' | 'post' | 'put' | 'delete';
     const response = await request(app)[method](url).send(options.body ? JSON.parse(options.body) : undefined);
     return { ok: response.status < 400, status: response.status, headers: new Headers({ 'content-type': 'application/json' }), json: async () => response.body };
+  };
+  w.fetch = ((...args: Parameters<typeof fetchFixture>) => {
+    const pending = fetchFixture(...args);
+    pendingRequests.add(pending);
+    const remove = () => { pendingRequests.delete(pending); };
+    void pending.then(remove, remove);
+    return pending;
   }) as unknown as typeof w.fetch;
   // Run the actual scripts in one realm, preserving their shared lexical globals.
   const scripts = [...w.document.querySelectorAll('script[src]')].map(script => script.getAttribute('src')!).filter(src => !src.startsWith('vendor/') && !src.includes('/typed/'));
@@ -56,7 +64,14 @@ it('restores search conditions, reviews ranked candidates and advances after rea
     const row = w.document.querySelector(`[data-article-id="${id}"]`)!;
     expect(row.textContent).toContain('保存済みメモを読む');
     expect(row.textContent).not.toContain('カードに保存');
-  } finally { w.close(); }
+  } finally {
+    // Let response/DOM continuations finish before destroying the window.
+    while (pendingRequests.size) {
+      await Promise.allSettled([...pendingRequests]);
+      await new Promise<void>(resolve => setImmediate(resolve));
+    }
+    w.close();
+  }
 }, 20000);
 
 it('groups similar titles without removing comparison articles', () => {

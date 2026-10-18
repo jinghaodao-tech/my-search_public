@@ -3219,6 +3219,13 @@
     "recallAt5": 1,
     "ndcgAt5": 1
   },
+  "metricDefinitions": {
+    "precisionAt1": "Precision@k = relevant documents in the first k results divided by k",
+    "rPrecision": "R-Precision = relevant documents in the first R results divided by R, where R is the number of known relevant documents",
+    "mrr": "MRR = mean reciprocal rank of the first relevant result",
+    "recallAt5": "Recall@5 = relevant documents in the first five results divided by all known relevant documents",
+    "ndcgAt5": "nDCG@5 = discounted cumulative gain at five divided by ideal discounted cumulative gain at five"
+  },
   "datasetQuality": {
     "status": "discriminative-signal-present",
     "issues": [],

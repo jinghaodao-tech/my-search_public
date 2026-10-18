@@ -4,6 +4,8 @@ import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, parseBody, sendError } from '../services/http_service.js';
 import type { CollectResult } from '../collector.js';
 import { isDemoMode } from '../services/demo_service.js';
+import { CollectionBusyError } from '../services/collector_service.js';
+import cron from 'node-cron';
 
 export function createCollectRouter(ctx: RouteContext) {
   const router = express.Router();
@@ -34,13 +36,13 @@ export function createCollectRouter(ctx: RouteContext) {
   router.post(['/collect', '/articles/refresh'], ctx.apiLimiter, async (req, res) => {
     const body = parseBody(ctx.collectBodySchema, req, res);
     if (!body) return;
+    if (ctx.getCollectRunning()) { sendError(req, res, 409, 'Collection already running', undefined, 'collection_already_running'); return; }
     try {
       if (body.fixture === 'portfolio-demo') {
         if (body.background) {
           const job = ctx.submitJob('collect-fixture', async () => {
             const fixture = await ctx.collectFixture();
             ctx.setCachedArticles(fixture);
-            ctx.saveArticles(fixture);
             return fixture;
           });
           res.status(202).json({ ok: true, running: true, jobId: job.id, status: job.status, fixture: 'portfolio-demo' });
@@ -48,7 +50,6 @@ export function createCollectRouter(ctx: RouteContext) {
         }
         const fixture = await ctx.collectFixture();
         ctx.setCachedArticles(fixture);
-        ctx.saveArticles(fixture);
         res.json({ ...fixture, fixture: 'portfolio-demo' });
         return;
       }
@@ -67,6 +68,7 @@ export function createCollectRouter(ctx: RouteContext) {
       ctx.setCachedArticles(result);
       res.json(result);
     } catch (err) {
+      if (err instanceof CollectionBusyError) { sendError(req, res, 409, err.message, undefined, 'collection_already_running'); return; }
       logger.error({ event: 'collect_error', requestId: getRequestId(req), error: errorMeta(err) }, 'collect failed');
       sendError(req, res, 500, 'Internal server error', undefined, 'collector_failed');
     }
@@ -89,13 +91,24 @@ export function createCollectRouter(ctx: RouteContext) {
       return;
     }
     const expr = body.cronExpr ?? '*/30 * * * *';
+    if (!cron.validate(expr)) { sendError(req, res, 400, 'Invalid cron expression', undefined, 'validation_failed'); return; }
     ctx.setSchedulerCronExpr(expr);
     const stop = ctx.startScheduler({
       cronExpr: expr,
       config: ctx.getCollectorConfig(),
+      getConfig: ctx.getCollectorConfig,
+      collect: async config => {
+        if (ctx.getCollectRunning()) throw new CollectionBusyError();
+        return await new Promise<CollectResult>((resolve, reject) => {
+          ctx.submitJob('scheduled-collect', async () => {
+            try { const result = await ctx.collectAll(config); resolve(result); return result; }
+            catch (error) { reject(error); throw error; }
+          });
+        });
+      },
+      onError: error => logger.error({ event: 'scheduled_collect_error', error: errorMeta(error) }, 'Scheduled collection failed'),
       onCollect: (result: CollectResult) => {
         ctx.setCachedArticles(result);
-        ctx.saveArticles(result);
       },
     });
     ctx.setSchedulerStop(stop);
@@ -119,7 +132,8 @@ export function createCollectRouter(ctx: RouteContext) {
       collecting: ctx.getCollectRunning(),
       cronExpr: ctx.getSchedulerCronExpr(),
       lastFetchedAt: cachedArticles?.stats?.fetchedAt ?? null,
-      articleCount: cachedArticles?.articles?.length ?? 0,
+      articleCount: ctx.getCollectionStatus().accumulatedArticleCount,
+      ...ctx.getCollectionStatus(),
     });
   });
 

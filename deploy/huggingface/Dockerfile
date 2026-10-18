@@ -17,7 +17,7 @@ WORKDIR /home/node/app
 
 # Changes whenever the branch moves, so a rebuild picks up new commits instead of a cached clone.
 ADD --chown=node:node https://api.github.com/repos/jinghaodao-tech/my-search_public/commits/${REF} /tmp/latest-commit.json
-RUN git clone --depth 1 --branch "${REF}" "${REPO}" . && npm ci --omit=dev
+RUN git clone --depth 1 --branch "${REF}" "${REPO}" . && npm ci --omit=dev && npm run build
 
 ENV HOST=0.0.0.0 \
     PORT=7860 \
@@ -25,7 +25,10 @@ ENV HOST=0.0.0.0 \
     DB_PATH=/tmp/my-search-demo.db \
     READER_RATE_LIMIT=10 \
     READER_PDF_MAX_MB=10 \
-    API_RATE_LIMIT=120
+    API_RATE_LIMIT=120 \
+    TOKENIZER=segmenter \
+    NODE_ENV=production
 
 EXPOSE 7860
-CMD ["npm", "start"]
+# Plain node on the compiled JavaScript: no npm / tsx processes (about 250MB less memory).
+CMD ["node", "dist/server.js"]

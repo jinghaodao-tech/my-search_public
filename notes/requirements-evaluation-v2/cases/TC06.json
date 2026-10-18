@@ -1,0 +1,171 @@
+{
+  "case_id": "TC06",
+  "input": "紙で運用している勤怠申請をデジタル化したい。\n従業員情報は社外のクラウドへ保存できない社内規程がある。\n現場の端末はWindows PCのみで、試験導入の期限は半年後だ。\n",
+  "goals": [
+    {
+      "id": "G1",
+      "statement": "紙の勤怠申請をデジタル化したい。",
+      "status": "confirmed",
+      "source": "cases/TC06.txt の明示記述"
+    },
+    {
+      "id": "GA",
+      "statement": "勤怠申請の転記・確認・保管の負担を減らしたい可能性がある。",
+      "status": "hypothesis",
+      "source": "原文から推定した上位目的。依頼者未確認。"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "statement": "勤怠申請をデジタル化する。",
+      "status": "confirmed",
+      "kind": "functional",
+      "source": "cases/TC06.txt の明示記述",
+      "goal_ids": [
+        "G1"
+      ]
+    },
+    {
+      "id": "R2",
+      "statement": "従業員情報を社外クラウドへ保存しない。",
+      "status": "confirmed",
+      "kind": "constraint",
+      "source": "cases/TC06.txt の明示記述",
+      "goal_ids": [
+        "G1"
+      ]
+    },
+    {
+      "id": "R3",
+      "statement": "現場端末はWindows PCのみ。",
+      "status": "confirmed",
+      "kind": "constraint",
+      "source": "cases/TC06.txt の明示記述",
+      "goal_ids": [
+        "G1"
+      ]
+    },
+    {
+      "id": "R4",
+      "statement": "試験導入期限は半年後。",
+      "status": "confirmed",
+      "kind": "constraint",
+      "source": "cases/TC06.txt の明示記述",
+      "goal_ids": [
+        "G1"
+      ]
+    },
+    {
+      "id": "RP",
+      "statement": "社内保存で申請と承認を試行できる最小範囲を合意する。",
+      "status": "proposed",
+      "kind": "business",
+      "source": "分析者の提案。依頼者未承認。",
+      "goal_ids": [
+        "G1",
+        "GA"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "H1",
+      "statement": "紙の転記や承認待ちに負担があるかもしれない。",
+      "source": "分析者の原因・解決仮説。未検証。"
+    },
+    {
+      "id": "H2",
+      "statement": "例外申請や代理承認が試験範囲を広げるかもしれない。",
+      "source": "分析者の原因・解決仮説。未検証。"
+    },
+    {
+      "id": "H3",
+      "statement": "社内の運用・バックアップ体制が導入を制約するかもしれない。",
+      "source": "分析者の原因・解決仮説。未検証。"
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "U1",
+      "statement": "申請・承認フローと試験対象",
+      "impact": "最小範囲を決められない",
+      "resolution": "紙の様式と運用を調査して対象部署と例外を合意する。"
+    },
+    {
+      "id": "U2",
+      "statement": "社内規程の適用範囲・保存先と運用体制",
+      "impact": "実装・配備方式を選べない",
+      "resolution": "規程本文と社内基盤を担当者に確認する。"
+    },
+    {
+      "id": "U3",
+      "statement": "半年後の具体日と試験合格条件",
+      "impact": "工程と終了判断を確定できない",
+      "resolution": "依頼日を基準に責任者と日程・判定条件を合意する。"
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q1",
+      "question": "試験で対象にする部署・申請・承認の範囲はどこですか？",
+      "reason": "半年以内の実施範囲を決める。",
+      "priority": "high",
+      "unknown_ids": [
+        "U1"
+      ]
+    },
+    {
+      "id": "Q2",
+      "question": "規程上、社内保存に加え外部処理・バックアップ・通信にも制限がありますか？",
+      "reason": "配備とデータ処理の境界を決める。",
+      "priority": "high",
+      "unknown_ids": [
+        "U2"
+      ]
+    },
+    {
+      "id": "Q3",
+      "question": "試験期限の具体日と成功判定者・条件は何ですか？",
+      "reason": "工程と受け入れ条件を決める。",
+      "priority": "high",
+      "unknown_ids": [
+        "U3"
+      ]
+    }
+  ],
+  "verification": [
+    {
+      "id": "V1",
+      "claim": "表明された目的・制約の充足性と、提案・原因仮説の妥当性を調べる。",
+      "method": "規程とデータフローを照合し、Windows PCで代表申請・承認・訂正を試行する。保存先とバックアップ経路も点検する。",
+      "metric": "社外クラウド保存の有無、タスク完了率、処理時間、訂正の追跡性、試験導入日。",
+      "decision_rule": "社外クラウド保存は禁止という明示条件を満たす。具体日と操作・業務の合格基準は未合意。",
+      "limitation": "社内保存だけで規程全体への適合は証明できない。試験は全例外や本番負荷を保証しない。",
+      "related_ids": [
+        "G1",
+        "GA",
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "RP",
+        "H1",
+        "H2",
+        "H3"
+      ],
+      "status": "planned"
+    }
+  ],
+  "risks": [
+    {
+      "id": "K1",
+      "description": "便利な外部サービスやバックアップが保存禁止に抵触する。",
+      "mitigation": "原因調査と関係者の合意を先に行い、基準を明示して試行結果を判断する。"
+    }
+  ],
+  "warnings": [
+    "半年後の起点日はケース原文にないため、実行日の半年後を勝手に期限としない。",
+    "業務検証は未実施。仮説の網羅性は保証しない。構造検証の成功は意味的妥当性の証明ではない。"
+  ]
+}

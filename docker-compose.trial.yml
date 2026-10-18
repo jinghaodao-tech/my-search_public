@@ -1,0 +1,13 @@
+# Try the app in demo mode with Docker (no Node.js needed on the host):
+#   docker compose -f docker-compose.trial.yml up --build
+# then open http://localhost:3000
+services:
+  my-search-trial:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DEMO_MODE=true
+      - HOST=0.0.0.0
+      - PORT=3000
+      - DB_PATH=/tmp/my-search-trial.db

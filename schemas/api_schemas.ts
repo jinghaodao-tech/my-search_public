@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const authoritySchema = z.number().min(0).max(1);
+const colorSchema = z.string().trim().max(50).regex(/^(#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,30}|rgba?\([\d.,%\s]+\)|hsla?\([\d.,%\s]+\))$/, 'Invalid color');
 
 export const collectorConfigSchema = z.object({
   rss: z.array(z.object({
@@ -76,6 +77,8 @@ export const savedSearchSchema = z.object({
   options: runOptionsSchema,
   source: z.enum(['articles', 'cards']),
   filters: searchFiltersSchema,
+  /** where the search screen looks: collected sources, "cards", "web:<id>" (optional for older saved searches) */
+  targets: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
 }).strict();
 
 export const runBodySchema = z.object({
@@ -93,7 +96,7 @@ const urlSchema = z
   .string()
   .trim()
   .max(2048)
-  .refine(value => value === '' || z.string().url().safeParse(value).success, {
+  .refine(value => value === '' || (/^https?:\/\//i.test(value) && z.string().url().safeParse(value).success), {
     message: 'Invalid url',
   })
   .optional();
@@ -106,7 +109,7 @@ const cardFieldsSchema = {
   url: urlSchema,
   tags: tagsSchema.default([]),
   type: z.enum(['article', 'memo', 'csv']).optional(),
-  color: z.string().trim().max(50).optional(),
+  color: colorSchema.optional(),
   kjGroupId: z.string().trim().max(200).nullable().optional(),
   summary: z.string().max(20000).optional(),
 };
@@ -159,7 +162,7 @@ export const keywordExpandSchema = z.object({
 export const kjGroupCreateSchema = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().max(1000).optional(),
-  color: z.string().trim().min(1).max(50),
+  color: colorSchema,
 }).strict();
 
 export const kjGroupUpdateSchema = kjGroupCreateSchema.partial().strict();

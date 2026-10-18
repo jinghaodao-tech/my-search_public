@@ -4,6 +4,7 @@ import { errorMeta, logger } from '../utils/logger.js';
 import { getRequestId, invalidRequest, parseBody } from '../services/http_service.js';
 import type { Article } from '../bm25_engine.js';
 import type { Card } from '../domain/card.js';
+import { getArticleById, loadArticlesFromDb } from '../repositories/articles_repository.js';
 
 export function createArticlesRouter(ctx: RouteContext) {
   const router = express.Router();
@@ -45,13 +46,23 @@ export function createArticlesRouter(ctx: RouteContext) {
     if (!body) return;
     try {
       const { articleIds } = body;
-      const articles = ctx.getCachedArticles()?.articles ?? [];
-      const targets = articleIds ? articles.filter((article: Article) => articleIds.includes(article.id)) : articles;
-      const existing = new Set(ctx.loadCards().map((card: Card) => card.id));
+      const targets = articleIds ? articleIds.map(getArticleById).filter((a): a is Article => !!a) : loadArticlesFromDb();
+      const existing = new Set(ctx.loadCards().filter(card => card.type === 'article').map(card => card.id));
       const imported: Card[] = [];
       for (const article of targets) {
-        if (existing.has(`card_from_${article.id}`)) continue;
-        imported.push(await ctx.createCard({ title: article.title, body: article.body, url: article.url, tags: [], type: 'article' }));
+        const candidate = ctx.getCandidate(article.id);
+        if (candidate?.savedCardId || candidate?.status === 'expired') continue;
+        if (existing.has(`card_from_${article.id}`)) {
+          ctx.saveCandidate(article.id, `card_from_${article.id}`);
+          continue;
+        }
+        try {
+          imported.push(await ctx.createCardWithTransaction({ title: article.title, body: article.body, url: article.url, tags: article.tags ?? [], type: 'article' }, card => {
+            if (!ctx.saveCandidate(article.id, card.id)) throw new Error('article_import_conflict');
+          }));
+        } catch (error) {
+          if ((error as Error).message !== 'article_import_conflict') throw error;
+        }
       }
       res.json({ ok: true, count: imported.length });
     } catch (err) {

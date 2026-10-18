@@ -4,8 +4,11 @@ let appFeatures = { demo: false, ai: false, pdfMaxMb: 30, samples: [] };
 
 async function loadAppFeatures() {
   try { appFeatures = await api.get('/api/features'); } catch { return; }
-  // AI features (summaries, evidence search) only when an AI key is configured
-  document.body.classList.toggle('no-ai', !appFeatures.ai);
+  // AI buttons (summaries, synonyms) are shown when Chrome's on-device AI can be used
+  // (downloaded on first use) or, failing that, when this instance has an AI key.
+  const localState = typeof localAi !== 'undefined' ? await localAi.availability('prompt') : 'unavailable';
+  appFeatures.localAi = localState;
+  document.body.classList.toggle('no-ai', localState === 'unavailable' && !appFeatures.ai);
   const pdfButton = document.querySelector('[onclick="chooseReaderPdf()"]');
   if (pdfButton) pdfButton.title = `手元のPDF（論文・技術書など、DRMの無いもの・${appFeatures.pdfMaxMb}MBまで）を開く`;
   if (appFeatures.demo) {

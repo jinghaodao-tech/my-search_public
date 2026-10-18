@@ -1,4 +1,6 @@
 import type Database from "better-sqlite3";
+import { canonicalArticleUrl } from '../services/article_identity.js';
+import { migrateSiteIntegration } from './migrate_site_integration.js';
 
 type Migration = { id: string; sql: string };
 
@@ -88,6 +90,66 @@ const migrations: Migration[] = [
     CREATE TABLE IF NOT EXISTS reader_texts (card_id TEXT PRIMARY KEY, paragraphs_json TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TRIGGER IF NOT EXISTS reader_texts_after_card_delete AFTER DELETE ON cards BEGIN DELETE FROM reader_texts WHERE card_id = OLD.id; END;
   ` },
+  { id: "018_add_reader_text_translation", sql: "" },
+  { id: "019_create_site_sources", sql: `
+    CREATE TABLE IF NOT EXISTS site_sources (
+      id TEXT PRIMARY KEY,
+      site_url TEXT NOT NULL,
+      name TEXT NOT NULL,
+      hosts_json TEXT NOT NULL,
+      scope_path TEXT NOT NULL,
+      adapter_json TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'checking',
+      body_policy TEXT NOT NULL DEFAULT 'pending',
+      max_initial INTEGER NOT NULL DEFAULT 50,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      last_checked_at TEXT,
+      last_success_at TEXT,
+      last_error TEXT,
+      last_result_json TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_site_sources_url ON site_sources(site_url);
+    CREATE TABLE IF NOT EXISTS site_articles (
+      site_id TEXT NOT NULL REFERENCES site_sources(id) ON DELETE CASCADE,
+      article_key TEXT NOT NULL,
+      article_id TEXT NOT NULL,
+      url TEXT NOT NULL,
+      lastmod TEXT,
+      has_body INTEGER NOT NULL DEFAULT 0,
+      first_seen_at TEXT NOT NULL,
+      PRIMARY KEY (site_id, article_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_site_articles_article ON site_articles(article_id);
+  ` },
+  { id: "020_site_scope_and_article_state", sql: "" },
+  { id: "021_collection_reader_integrity", sql: `
+    CREATE TABLE IF NOT EXISTS article_aliases (
+      alias_id TEXT PRIMARY KEY, article_id TEXT NOT NULL REFERENCES articles(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS collector_settings (
+      key TEXT PRIMARY KEY, value TEXT NOT NULL
+    );
+    ALTER TABLE articles ADD COLUMN normalized_url TEXT;
+    CREATE INDEX idx_articles_normalized_url ON articles(normalized_url);
+    DROP INDEX IF EXISTS idx_articles_url_unique;
+    CREATE UNIQUE INDEX idx_articles_url_unique ON articles(url) WHERE url <> '';
+    ALTER TABLE article_reader_content ADD COLUMN tokens_json TEXT;
+    ALTER TABLE article_reader_content ADD COLUMN morphological_tokens_json TEXT;
+    ALTER TABLE article_reader_content ADD COLUMN content_hash TEXT;
+    CREATE TRIGGER reset_candidate_before_card_delete BEFORE DELETE ON cards BEGIN
+      UPDATE articles SET candidate_status = 'reviewed_not_saved', saved_card_id = NULL,
+        saved_at = NULL, reviewed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'),
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+      WHERE saved_card_id = OLD.id;
+    END;
+    UPDATE articles SET candidate_status = 'reviewed_not_saved', saved_at = NULL
+      WHERE candidate_status = 'saved_as_card' AND saved_card_id IS NULL;
+  ` },
+  { id: '022_site_article_integration', sql: '' },
+  // 015 accepted numbers such as '60' as dates (Date.parse('60') is a valid year); repair those too.
+  { id: '023_repair_numeric_card_timestamps', sql: '' },
 ];
 
 function columns(db: Database.Database, table: string): Set<string> {
@@ -95,6 +157,42 @@ function columns(db: Database.Database, table: string): Set<string> {
 }
 
 function applyMigration(db: Database.Database, migration: Migration): void {
+  if (migration.id === '022_site_article_integration') { migrateSiteIntegration(db); return; }
+  if (migration.id === "021_collection_reader_integrity") {
+    if (columns(db, 'articles').size === 0) return;
+    db.exec(`CREATE TABLE IF NOT EXISTS article_reader_content (
+      article_id TEXT PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE,
+      body TEXT NOT NULL, fetched_at TEXT NOT NULL
+    )`);
+    db.exec(migration.sql);
+    const updateUrl = db.prepare('UPDATE articles SET normalized_url=? WHERE id=?');
+    for (const row of db.prepare('SELECT id, url FROM articles').all() as Array<{id: string; url: string}>) {
+      updateUrl.run(canonicalArticleUrl(row.url), row.id);
+    }
+    return;
+  }
+  if (migration.id === "020_site_scope_and_article_state") {
+    const sites = columns(db, "site_sources");
+    if (!sites.has("scope_extra_json")) db.exec("ALTER TABLE site_sources ADD COLUMN scope_extra_json TEXT NOT NULL DEFAULT '[]'");
+    const items = columns(db, "site_articles");
+    const add = (name: string, type: string) => { if (!items.has(name)) db.exec(`ALTER TABLE site_articles ADD COLUMN ${name} ${type}`); };
+    add("external_id", "TEXT");
+    add("state", "TEXT NOT NULL DEFAULT 'active'"); // active | missing | gone | restricted | error
+    add("etag", "TEXT");
+    add("last_modified", "TEXT");
+    add("http_status", "INTEGER");
+    add("fail_count", "INTEGER NOT NULL DEFAULT 0");
+    add("missing_since", "TEXT");
+    add("last_seen_at", "TEXT");
+    add("last_fetched_at", "TEXT");
+    add("content_hash", "TEXT");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_site_articles_external ON site_articles(site_id, external_id)");
+    return;
+  }
+  if (migration.id === "018_add_reader_text_translation") {
+    if (!columns(db, "reader_texts").has("translation_json")) db.exec("ALTER TABLE reader_texts ADD COLUMN translation_json TEXT");
+    return;
+  }
   if (migration.id === "002_add_search_token_columns") {
     const names = columns(db, "cards");
     if (!names.has("tokens_json")) db.exec("ALTER TABLE cards ADD COLUMN tokens_json TEXT NOT NULL DEFAULT '[]'");
@@ -144,23 +242,38 @@ function applyMigration(db: Database.Database, migration: Migration): void {
     }
     return;
   }
-  if (migration.id === "015_repair_invalid_card_timestamps") {
-    const names = columns(db, "cards");
-    if (names.size === 0) return;
-    const rows = db.prepare("SELECT id, created_at, updated_at FROM cards").all() as Array<{ id: string; created_at: string; updated_at: string }>;
-    const update = db.prepare("UPDATE cards SET created_at = ?, updated_at = ? WHERE id = ?");
-    const isValidTimestamp = (value: string | null | undefined): boolean => Boolean(value && !Number.isNaN(Date.parse(value)));
-    for (const row of rows) {
-      if (isValidTimestamp(row.created_at) && isValidTimestamp(row.updated_at)) continue;
-      const idTimestamp = /^card_(\d+)_/.exec(row.id)?.[1];
-      const recoveredCreated = idTimestamp ? new Date(Number(idTimestamp)).toISOString() : new Date().toISOString();
-      const createdAt = isValidTimestamp(row.created_at) ? row.created_at : recoveredCreated;
-      const updatedAt = isValidTimestamp(row.updated_at) ? row.updated_at : createdAt;
-      update.run(createdAt, updatedAt, row.id);
-    }
+  if (migration.id === "015_repair_invalid_card_timestamps" || migration.id === "023_repair_numeric_card_timestamps") {
+    repairCardTimestamps(db);
     return;
   }
   if (migration.sql.trim()) db.exec(migration.sql);
+}
+
+/** An ISO 8601 date-time as the app writes it (2026-10-18T02:38:57.616Z). Plain numbers like '60' are not dates. */
+export function isValidCardTimestamp(value: string | null | undefined): boolean {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) && !Number.isNaN(Date.parse(value)));
+}
+
+/** Cards whose created_at / updated_at are not dates (an old column shift stored token data or lengths there). */
+function repairCardTimestamps(db: Database.Database): void {
+  if (columns(db, "cards").size === 0) return;
+  const rows = db.prepare("SELECT id, created_at, updated_at FROM cards").all() as Array<{ id: string; created_at: string; updated_at: string }>;
+  const update = db.prepare("UPDATE cards SET created_at = ?, updated_at = ? WHERE id = ?");
+  for (const row of rows) {
+    if (isValidCardTimestamp(row.created_at) && isValidCardTimestamp(row.updated_at)) continue;
+    const idTimestamp = /^card_(\d+)_/.exec(row.id)?.[1];
+    const recoveredCreated = idTimestamp ? new Date(Number(idTimestamp)).toISOString() : new Date().toISOString();
+    const createdAt = isValidCardTimestamp(row.created_at) ? row.created_at : recoveredCreated;
+    const updatedAt = isValidCardTimestamp(row.updated_at) ? row.updated_at : createdAt;
+    update.run(createdAt, updatedAt, row.id);
+  }
+}
+
+/** Migrations not yet applied to this database, and how many were applied before. */
+export function migrationStatus(db: Database.Database): { pending: string[]; applied: number } {
+  const hasTable = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'").get();
+  const applied = hasTable ? new Set((db.prepare("SELECT id FROM schema_migrations").all() as Array<{ id: string }>).map(row => row.id)) : new Set<string>();
+  return { pending: migrations.map(migration => migration.id).filter(id => !applied.has(id)), applied: applied.size };
 }
 
 export function runMigrations(db: Database.Database): string[] {

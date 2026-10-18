@@ -9,8 +9,8 @@
  * - No personal data, and no third-party text: all sample text was written for the demo.
  */
 import fs from 'node:fs';
+import { PROJECT_ROOT } from '../utils/project_root.js';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { Article } from '../bm25_engine.js';
 import type { CollectResult } from '../collector.js';
 import { saveArticlesToDb } from '../repositories/articles_repository.js';
@@ -19,7 +19,7 @@ import { composeReaderCardBody, extractReadable, readPdf, type ReadableArticle }
 import { logger } from '../utils/logger.js';
 
 export const DEMO_HOST = 'demo.my-search.invalid';
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = PROJECT_ROOT;
 export const DEMO_DIR = path.join(ROOT, 'demo');
 
 export function isDemoMode(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -42,7 +42,7 @@ export const DEMO_SEARCH_MODE = {
   k1: 1.2,
   b: 0.75,
   lambda: 0,
-  contextBonus: 0,
+  contextBonus: 1.2,
   morphologicalWeight: 0.5,
   ngramWeight: 0.5,
   keywords: [

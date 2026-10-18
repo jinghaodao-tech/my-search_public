@@ -60,7 +60,7 @@
     "updateSnapshots": "missing",
     "updateSourceMethod": "patch",
     "version": "1.61.1",
-    "workers": 8,
+    "workers": 1,
     "webServer": {
       "command": "npx tsx scripts/start_e2e_server.ts",
       "url": "http://127.0.0.1:3100",
@@ -98,12 +98,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1079,
+                  "duration": 1229,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-12T14:15:43.616Z",
+                  "startTime": "2026-10-18T14:08:20.491Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -113,7 +113,7 @@
           ],
           "id": "28695e5e3430c54ac89e-c953235c413a7cb10027",
           "file": "core-flows.spec.ts",
-          "line": 154,
+          "line": 168,
           "column": 4
         },
         {
@@ -132,12 +132,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 83,
+                  "duration": 111,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-12T14:15:44.724Z",
+                  "startTime": "2026-10-18T14:08:21.746Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -147,7 +147,7 @@
           ],
           "id": "28695e5e3430c54ac89e-2b01bacefebb228b677e",
           "file": "core-flows.spec.ts",
-          "line": 182,
+          "line": 198,
           "column": 1
         },
         {
@@ -166,12 +166,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 658,
+                  "duration": 680,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-12T14:15:44.827Z",
+                  "startTime": "2026-10-18T14:08:21.876Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -181,7 +181,7 @@
           ],
           "id": "28695e5e3430c54ac89e-322c2e34eafaf135e729",
           "file": "core-flows.spec.ts",
-          "line": 206,
+          "line": 223,
           "column": 1
         }
       ],
@@ -189,7 +189,7 @@
         {
           "title": "core user flows",
           "file": "core-flows.spec.ts",
-          "line": 39,
+          "line": 46,
           "column": 6,
           "specs": [
             {
@@ -208,12 +208,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1834,
+                      "duration": 1799,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-12T14:15:34.785Z",
+                      "startTime": "2026-10-18T14:08:11.691Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -223,7 +223,7 @@
               ],
               "id": "28695e5e3430c54ac89e-f7d5e32b2db393e5068c",
               "file": "core-flows.spec.ts",
-              "line": 40,
+              "line": 47,
               "column": 3
             },
             {
@@ -242,12 +242,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1163,
+                      "duration": 1126,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-12T14:15:37.048Z",
+                      "startTime": "2026-10-18T14:08:13.852Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -257,7 +257,7 @@
               ],
               "id": "28695e5e3430c54ac89e-964a58f5c8e553828db4",
               "file": "core-flows.spec.ts",
-              "line": 45,
+              "line": 52,
               "column": 3
             },
             {
@@ -276,12 +276,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1420,
+                      "duration": 1358,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-12T14:15:38.244Z",
+                      "startTime": "2026-10-18T14:08:15.003Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -291,7 +291,7 @@
               ],
               "id": "28695e5e3430c54ac89e-9f81e74a455e2543fa07",
               "file": "core-flows.spec.ts",
-              "line": 71,
+              "line": 83,
               "column": 3
             },
             {
@@ -310,12 +310,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1457,
+                      "duration": 1490,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-12T14:15:39.685Z",
+                      "startTime": "2026-10-18T14:08:16.382Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -325,7 +325,7 @@
               ],
               "id": "28695e5e3430c54ac89e-1d50b9c353e5215fbee0",
               "file": "core-flows.spec.ts",
-              "line": 93,
+              "line": 105,
               "column": 3
             },
             {
@@ -344,12 +344,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1435,
+                      "duration": 1456,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-12T14:15:41.161Z",
+                      "startTime": "2026-10-18T14:08:17.904Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -359,7 +359,7 @@
               ],
               "id": "28695e5e3430c54ac89e-a64a6d46a43c84e79ce3",
               "file": "core-flows.spec.ts",
-              "line": 124,
+              "line": 136,
               "column": 3
             },
             {
@@ -378,12 +378,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 972,
+                      "duration": 1096,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-08-12T14:15:42.615Z",
+                      "startTime": "2026-10-18T14:08:19.379Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -393,19 +393,61 @@
               ],
               "id": "28695e5e3430c54ac89e-f345682b82cb180da97d",
               "file": "core-flows.spec.ts",
-              "line": 143,
+              "line": 155,
               "column": 3
             }
           ]
+        }
+      ]
+    },
+    {
+      "title": "search-workflow.spec.ts",
+      "file": "search-workflow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "saved search survives reload and ranked reading saves a candidate once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1772,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T14:08:22.613Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "685b3073630e86a4a164-b34b5adc2639e6dfbf5e",
+          "file": "search-workflow.spec.ts",
+          "line": 3,
+          "column": 1
         }
       ]
     }
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-08-12T14:15:29.781Z",
-    "duration": 16606.556,
-    "expected": 9,
+    "startTime": "2026-10-18T14:08:04.395Z",
+    "duration": 22568.380999999998,
+    "expected": 10,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

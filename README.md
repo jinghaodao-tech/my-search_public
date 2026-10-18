@@ -1,5 +1,7 @@
 # My Search App
 
+> **Try it (hackathon judges):** `npm install` then `npm run trial`, and open http://localhost:3000 — see [docs/trial.md](docs/trial.md) (Japanese).
+
 [![CI](https://github.com/jinghaodao-tech/my-search_public/actions/workflows/ci.yml/badge.svg)](https://github.com/jinghaodao-tech/my-search_public/actions/workflows/ci.yml)
 
 [Japanese README](README_ja.md)

@@ -262,7 +262,7 @@ const performanceFailures = [
 const benchmarkArtifact = { generatedAt: new Date().toISOString(), resultLimit, results, scopes, candidateScopes, performanceThresholds, performanceFailures };
 fs.mkdirSync(path.join(projectRoot, "artifacts"), { recursive: true });
 fs.writeFileSync(path.join(projectRoot, "artifacts", "benchmark-results.json"), JSON.stringify(benchmarkArtifact, null, 2), "utf-8");
-console.log(JSON.stringify({ ok: true, ...benchmarkArtifact }, null, 2));
+console.log(JSON.stringify({ ok: performanceFailures.length === 0, ...benchmarkArtifact }, null, 2));
 if (performanceFailures.length) process.exitCode = 1;
 
 console.time = originalConsoleTime;

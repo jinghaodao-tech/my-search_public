@@ -1,4 +1,6 @@
 import express from 'express';
+import { z } from 'zod';
+import { mergeTagList, tagVariantGroups } from '../services/tag_tidy.js';
 import type { RouteContext } from '../services/route_context.js';
 import { markdownContentDisposition } from '../utils/markdown_export.js';
 import { errorMeta, logger } from '../utils/logger.js';
@@ -213,6 +215,25 @@ export function createCardsRouter(ctx: RouteContext) {
       }
     }
     res.json({ nodes, edges, total: allVisibleCards.length, limit, offset });
+  });
+
+  // Tidying tags: spellings of the same tag, tags used once, and merging (with a dry run first).
+  router.get('/tags/tidy', (_req, res) => {
+    const tags = ctx.getAllTags() as Array<{ tag: string; count: number }>;
+    res.json({ variants: tagVariantGroups(tags), usedOnce: tags.filter(item => item.count === 1).map(item => item.tag).sort((a, b) => a.localeCompare(b, 'ja')), total: tags.length });
+  });
+
+  router.post('/tags/merge', async (req, res) => {
+    const body = parseBody(z.object({ from: z.array(z.string().trim().min(1).max(100)).min(1).max(50), to: z.string().trim().min(1).max(100), dryRun: z.boolean().default(false) }).strict(), req, res);
+    if (!body) return;
+    const from = body.from.filter(tag => tag !== body.to);
+    const cards = (ctx.loadCards() as Card[]).filter(card => (card.tags ?? []).some(tag => from.includes(tag)));
+    if (body.dryRun) { res.json({ cards: cards.length, titles: cards.slice(0, 10).map(card => card.title) }); return; }
+    let changed = 0;
+    for (const card of cards) {
+      if (await ctx.updateCard(card.id, { tags: mergeTagList(card.tags ?? [], from, body.to) })) changed += 1;
+    }
+    res.json({ changed, to: body.to });
   });
 
   router.get('/tags', (req, res) => {

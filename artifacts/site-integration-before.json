@@ -1,0 +1,237 @@
+{
+  "scope": "site integration verification; no production code changes",
+  "passed": 2,
+  "failed": 9,
+  "results": [
+    {
+      "id": "registration-to-card",
+      "expectation": "API登録→初回ジョブ→SQLite→日本語/英語検索→候補保存→削除後再保存が成立する",
+      "pass": true,
+      "observed": {
+        "registrationStatus": 201,
+        "jobStatus": "succeeded",
+        "articleCount": 1,
+        "englishHits": 1,
+        "japaneseHits": 1,
+        "dualTokens": true,
+        "save": 201,
+        "repeat": 409,
+        "resave": 201
+      }
+    },
+    {
+      "id": "cross-source-fulltext",
+      "expectation": "サイト取得済みの全文は、後から来た同一URLのRSS抜粋で失われない",
+      "pass": false,
+      "observed": {
+        "idPreserved": true,
+        "beforeLength": 358,
+        "afterBody": "RSS excerpt only",
+        "source": "rss:Integration"
+      }
+    },
+    {
+      "id": "cross-source-search",
+      "expectation": "RSS再収集後も登録サイトを選んで全文を検索できる",
+      "pass": false,
+      "observed": {
+        "siteIndexRows": 1,
+        "target": {
+          "value": "site:0b3baff2856a",
+          "label": "https://shared.audit.test",
+          "kind": "site",
+          "count": 0,
+          "bodyCount": 1,
+          "lastCheckedAt": "2026-10-18T10:28:51.810Z",
+          "status": "ok",
+          "statusLabel": "正常",
+          "bodyPolicy": "body",
+          "bodyPolicyLabel": "本文も取得（利用条件を確認済み）",
+          "pastArticles": false,
+          "lastError": null,
+          "enabled": true,
+          "missingCount": 0,
+          "searchable": "fulltext"
+        },
+        "scope": {
+          "corpus": "articles",
+          "totalCount": 2,
+          "searchedCount": 0,
+          "sources": [],
+          "availableSources": [
+            "rss:Integration",
+            "site:d59c488c07b0"
+          ],
+          "bySource": {
+            "rss:Integration": {
+              "total": 1,
+              "searched": 0
+            },
+            "site:d59c488c07b0": {
+              "total": 1,
+              "searched": 0
+            }
+          },
+          "filtersApplied": {
+            "excludedTerms": [],
+            "status": "all",
+            "since": null,
+            "sources": [
+              "site:0b3baff2856a"
+            ]
+          }
+        },
+        "hits": 0
+      }
+    },
+    {
+      "id": "query-order-id-join",
+      "expectation": "同じ意味のクエリ順序違いでサイト索引が存在しない記事IDを参照しない",
+      "pass": false,
+      "observed": {
+        "result": {
+          "siteId": "8f68118d7567",
+          "mode": "initial",
+          "listed": 2,
+          "added": 2,
+          "updated": 0,
+          "moved": 0,
+          "unchanged": 0,
+          "failed": 0,
+          "skippedByRobots": 0,
+          "missing": 0,
+          "gone": 0,
+          "restricted": 0,
+          "temporaryErrors": 0,
+          "status": "ok",
+          "error": null,
+          "warnings": [
+            "RSS/Atomで取れるのは最新の記事だけです（過去の記事は取得できません）"
+          ]
+        },
+        "siteIndexRows": 2,
+        "orphanReferences": [
+          {
+            "article_id": "site_8f68118d7567_e09475a11b4b3e87"
+          }
+        ],
+        "sqliteForeignKeyCheck": []
+      }
+    },
+    {
+      "id": "site-save-atomicity",
+      "expectation": "サイト索引の保存に失敗したら、新規記事本体もロールバックされる",
+      "pass": false,
+      "observed": {
+        "result": {
+          "siteId": "9682f52917ca",
+          "mode": "initial",
+          "listed": 1,
+          "added": 1,
+          "updated": 0,
+          "moved": 0,
+          "unchanged": 0,
+          "failed": 0,
+          "skippedByRobots": 0,
+          "missing": 0,
+          "gone": 0,
+          "restricted": 0,
+          "temporaryErrors": 0,
+          "status": "error",
+          "error": "injected association failure",
+          "warnings": [
+            "RSS/Atomで取れるのは最新の記事だけです（過去の記事は取得できません）"
+          ]
+        },
+        "articleStillPersisted": true,
+        "siteIndexRows": 0
+      }
+    },
+    {
+      "id": "site-job-failure-status",
+      "expectation": "サイト収集でSQLite保存が失敗したジョブはfailedとして記録する",
+      "pass": false,
+      "observed": {
+        "registrationStatus": 201,
+        "jobStatus": "succeeded",
+        "jobResult": {
+          "siteId": "f6b840bd164f",
+          "mode": "initial",
+          "listed": 1,
+          "added": 1,
+          "updated": 0,
+          "moved": 0,
+          "unchanged": 0,
+          "failed": 0,
+          "skippedByRobots": 0,
+          "missing": 0,
+          "gone": 0,
+          "restricted": 0,
+          "temporaryErrors": 0,
+          "status": "error",
+          "error": "injected article failure",
+          "warnings": [
+            "RSS/Atomで取れるのは最新の記事だけです（過去の記事は取得できません）"
+          ]
+        },
+        "siteStatus": "error"
+      }
+    },
+    {
+      "id": "site-unknown-date",
+      "expectation": "サイト記事の不明な公開日はSQLiteでもNULLのまま",
+      "pass": false,
+      "observed": {
+        "published_at": "2026-10-18T10:28:52.074Z"
+      }
+    },
+    {
+      "id": "site-concurrent-sync",
+      "expectation": "同じサイトを手動/定期から同時実行しても取得は一回だけ",
+      "pass": false,
+      "observed": {
+        "inFlightRequests": 2,
+        "statuses": [
+          "ok",
+          "ok"
+        ]
+      }
+    },
+    {
+      "id": "site-redirect-scope",
+      "expectation": "登録サイト外へ転送された記事本文を元サイトの許可だけで保存しない",
+      "pass": false,
+      "observed": {
+        "status": "ok",
+        "requestedUrl": "https://redirect.audit.test/blog/post",
+        "finalUrl": "https://outside.audit.test/foreign",
+        "storedForeignBody": true
+      }
+    },
+    {
+      "id": "site-http-content-type",
+      "expectation": "共通HTTP取得を使うサイトページ取得が非HTMLの応答を拒否する",
+      "pass": false,
+      "observed": {
+        "accepted": true,
+        "result": {
+          "meta": {},
+          "body": null,
+          "finalUrl": "http://127.0.0.1:63888/badtype",
+          "notModified": false,
+          "etag": null,
+          "lastModified": null
+        }
+      }
+    },
+    {
+      "id": "site-http-safety",
+      "expectation": "サイトページ取得にもprivate URL拒否・ストリーム容量制限が効く",
+      "pass": true,
+      "observed": {
+        "private": "blocked",
+        "size": "too_large"
+      }
+    }
+  ]
+}

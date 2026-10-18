@@ -8,6 +8,8 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 7_500 },
   fullyParallel: false,
+  // All files use one local SQLite server and the same fixture candidate IDs.
+  workers: 1,
   reporter: process.env.E2E_JSON_OUTPUT_FILE
     ? [["list"], ["json", { outputFile: process.env.E2E_JSON_OUTPUT_FILE }]]
     : [["list"]],

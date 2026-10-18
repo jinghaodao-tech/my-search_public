@@ -1,0 +1,28 @@
+# Render Blueprint for the public demo (free plan, 512MB).
+# Render: New > Blueprint > pick this repository. The demo resets to the sample data when it restarts.
+services:
+  - type: web
+    name: my-search-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: DEMO_MODE
+        value: "true"
+      # word splitting built into Node: ~250MB instead of ~490MB (docs/deploy-demo.md)
+      - key: TOKENIZER
+        value: segmenter
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_PATH
+        value: /tmp/my-search-demo.db
+      - key: READER_PDF_MAX_MB
+        value: "5"
+      - key: READER_RATE_LIMIT
+        value: "10"
+      - key: API_RATE_LIMIT
+        value: "120"

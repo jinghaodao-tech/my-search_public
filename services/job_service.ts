@@ -19,7 +19,7 @@ export function createJobService() {
     logger.warn({ event: 'jobs_recovered_after_restart', interruptedJobs }, 'marked unfinished jobs as failed after process restart');
   }
 
-  function submit<T>(type: string, handler: () => Promise<T>) {
+  function submit<T>(type: string, handler: () => Promise<T>, assess?: (result: T) => {status: 'succeeded' | 'failed'; error?: string}) {
     const now = new Date().toISOString();
     const job: Job<T> = { id: randomUUID(), type, status: 'queued', createdAt: now, updatedAt: now };
     insertJob(job);
@@ -29,7 +29,9 @@ export function createJobService() {
       updateJob(job);
       try {
         job.result = await handler();
-        job.status = 'succeeded';
+        const outcome = assess?.(job.result);
+        job.status = outcome?.status ?? 'succeeded';
+        job.error = outcome?.error;
       } catch (error) {
         job.status = 'failed';
         job.error = error instanceof Error ? error.message : 'Job failed';

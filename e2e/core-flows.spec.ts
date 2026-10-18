@@ -24,6 +24,13 @@ async function openApp(page: Page) {
   await expect(page.locator("#card-grid")).toBeVisible();
 }
 
+async function releaseFixtureCard(request: APIRequestContext, id: string) {
+  const response = await request.get(`/api/candidates/${id}`);
+  if (!response.ok()) return;
+  const candidate = await response.json();
+  if (candidate.savedCardId) expect((await request.delete(`/api/cards/${candidate.savedCardId}`)).ok()).toBeTruthy();
+}
+
 async function createCardViaUi(page: Page, title: string, body: string, tags = "e2e") {
   await openApp(page);
   await page.locator('button[onclick="openNewCardModal()"]').first().click();
@@ -50,8 +57,13 @@ test.describe("core user flows", () => {
     await createCard(request, noiseTitle, "unrelated noise", ["noise"]);
 
     await openApp(page);
-    await page.getByRole("button", { name: /BM25/ }).click();
-    await page.locator('input[name="bm25src"][value="cards"]').check();
+    await page.locator(`button[onclick="switchView('bm25')"]`).click();
+    // search only the user's own cards
+    await expect(page.locator('#search-targets input[value="cards"]')).toBeAttached();
+    // sources without articles sit in a folded group: clear every box, folded or not
+    await page.evaluate(() => { for (const box of document.querySelectorAll<HTMLInputElement>('#search-targets input[type=checkbox]')) box.checked = false; });
+    await page.locator('#search-targets input[value="cards"]').check();
+    await page.locator("#search-terms").fill("search");
     await page.evaluate(() => {
       // @ts-expect-error Browser globals from the app.
       bm25Keywords = [{ term: "search", weight: 2, synonyms: "implementation" }];
@@ -143,28 +155,32 @@ test.describe("core user flows", () => {
   test("reviews and saves a collected candidate from the browser UI", async ({ page, request }) => {
     const collected = await request.post("/api/collect", { data: { fixture: "portfolio-demo" } });
     expect(collected.ok()).toBeTruthy();
+    await releaseFixtureCard(request, 'fixture-portfolio-search');
     await openApp(page);
     await page.locator('button[onclick="switchView(\'candidates\')"]').click();
     await expect(page.locator("#candidate-grid")).toContainText("Portfolio search architecture");
     const candidate = page.locator("#candidate-grid .candidate-card", { hasText: "Portfolio search architecture" });
-    await candidate.locator(".candidate-actions button").first().click();
-    await page.locator("#candidate-grid .candidate-card", { hasText: "Portfolio search architecture" }).locator(".candidate-actions button").first().click();
+    const review = candidate.getByRole('button', { name: 'レビュー済み', exact: true });
+    if (await review.count()) { await review.click(); await expect(candidate).toContainText('確認済み'); }
+    await candidate.getByRole('button', { name: 'カードに保存', exact: true }).click();
     await expect(candidate).toContainText("保存済み");
   });
 });test("completes the candidate-to-knowledge workflow", async ({ page, request }) => {
   const collected = await request.post("/api/collect", { data: { fixture: "portfolio-demo" } });
   expect(collected.ok()).toBeTruthy();
+  await releaseFixtureCard(request, 'fixture-portfolio-ops');
   const title = "Portfolio operations and verification";
   await openApp(page);
   await page.locator('button[onclick="switchView(\'candidates\')"]').click();
   const candidate = page.locator("#candidate-grid .candidate-card", { hasText: title });
   await expect(candidate).toBeVisible();
-  await candidate.locator(".candidate-actions button").first().click();
+  const review = candidate.getByRole('button', { name: 'レビュー済み', exact: true });
+  if (await review.count()) await review.click();
   await expect(candidate).toContainText("確認済み");
   const saveResponse = page.waitForResponse(response =>
     response.url().includes("/api/candidates/fixture-portfolio-ops/save") && response.request().method() === "POST",
   );
-  await candidate.locator(".candidate-actions button").first().click();
+  await candidate.getByRole('button', { name: 'カードに保存', exact: true }).click();
   const saved = await saveResponse;
   expect(saved.status()).toBe(201);
   await expect(candidate).toContainText("保存済み");
@@ -182,6 +198,7 @@ test.describe("core user flows", () => {
 test("returns stable errors for invalid candidate and search operations", async ({ request }) => {
   const collected = await request.post("/api/collect", { data: { fixture: "portfolio-demo" } });
   expect(collected.ok()).toBeTruthy();
+  await releaseFixtureCard(request, 'fixture-portfolio-design');
 
   const firstSave = await request.post("/api/candidates/fixture-portfolio-design/save");
   const secondSave = await request.post("/api/candidates/fixture-portfolio-design/save");

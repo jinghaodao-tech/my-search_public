@@ -3,13 +3,13 @@
  * server.ts stays thin and only starts the HTTP listener.
  */
 import { createSavedSearchRouter } from './routes/saved_search_routes.js';
+import { PROJECT_ROOT } from './utils/project_root.js';
 import fs                from 'fs';
 import dotenv            from 'dotenv';
 import express           from 'express';
 import cors              from 'cors';
 import helmet            from 'helmet';
 import path              from 'path';
-import { fileURLToPath } from 'url';
 import { logger } from './utils/logger.js';
 import { createRateLimiters } from './middlewares/rate_limiters.js';
 import { createSystemRouter } from './routes/system_routes.js';
@@ -22,6 +22,10 @@ import { createSearchRouter } from './routes/search_routes.js';
 import { createCandidateRouter } from './routes/candidate_routes.js';
 import { createJobsRouter } from './routes/jobs_routes.js';
 import { createReaderRouter } from './routes/reader_routes.js';
+import { createDiscoverRouter } from './routes/discover_routes.js';
+import { createSiteRouter } from './routes/site_routes.js';
+import { assessSiteRun, startSiteScheduler, syncSite } from './services/site_collector.js';
+import { safeFetch } from './services/safe_fetch.js';
 import {
   requestLogger,
   notFoundHandler,
@@ -41,7 +45,7 @@ declare global {
   }
 }
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = PROJECT_ROOT;
 
 for (const envPath of [
   path.join(__dirname, '.env'),
@@ -90,6 +94,8 @@ app.use('/api', createAiRouter(routeContext));
 app.use('/api', createKjRouter(routeContext));
 app.use('/api', createArticlesRouter(routeContext));
 app.use('/api', createReaderRouter(routeContext));
+app.use('/api', createDiscoverRouter(routeContext));
+app.use('/api', createSiteRouter(routeContext));
 if (process.env.NODE_ENV === 'test') {
   app.get('/api/test/error', () => {
     throw new Error('synthetic test failure');
@@ -103,6 +109,12 @@ app.use(errorHandler);
 if (process.env.NODE_ENV !== 'test') {
   if (isDemoMode()) await seedDemoData(routeContext);
   await routeContext.bootstrap();
+  // Registered sites: each one is checked for new articles about once a day.
+  if (process.env.SITE_SYNC !== 'off') startSiteScheduler(safeFetch, () => routeContext.setCachedArticles(routeContext.loadArticles()), (site, fetch, mode) => {
+    const completed = syncSite(site, fetch, mode);
+    routeContext.submitJob('site-scheduled-sync', () => completed, assessSiteRun);
+    return completed;
+  });
 }
 
 const PORT = runtimeConfig.PORT;
