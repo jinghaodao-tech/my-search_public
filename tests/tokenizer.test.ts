@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildStoredTokenSet, computeJapanesePhraseWeight, expandJapaneseTokens, looksLikeMojibake } from '../bm25_engine.js';
+import { buildStoredTokenSet, computeJapanesePhraseWeight, expandJapaneseTokens, looksLikeMojibake, tokenizeMorphological } from '../bm25_engine.js';
 
 describe('Japanese tokenizer safeguards', () => {
   it('adds character bigrams to unknown Japanese terms', () => {
@@ -26,4 +26,12 @@ describe('Japanese tokenizer safeguards', () => {
     expect(stored.morphologicalDocLength).toBe(stored.morphologicalTokens.length);
     expect(stored.ngramDocLength).toBe(stored.ngramTokens.length);
   });
+
+  it('tokenizes a 100k-character article in bounded chunks without losing sentence tokens', async () => {
+    const text = 'Background. '.repeat(8_340);
+    const tokens = await tokenizeMorphological(text);
+    expect(text.length).toBeGreaterThan(100_000);
+    expect(tokens).toHaveLength(8_340);
+    expect(tokens.every(token => token === 'background')).toBe(true);
+  }, 30_000);
 });

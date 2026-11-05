@@ -1,0 +1,1 @@
+Python 3.10+ standard library only. `get_tomt.py` fetches official data; `benchmark_api.py` runs the real my-search API on a *temporary isolated DB*; `compare.py` measures paired changes; `live_study.py` collects human trials. Run `python tests/self_test.py` before using.

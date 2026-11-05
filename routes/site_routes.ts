@@ -79,7 +79,7 @@ function present(site: SiteSource, counts: ReturnType<typeof siteArticleCounts>)
 export function createSiteRouter(ctx: RouteContext, fetch: SafeFetcher = safeFetch) {
   const router = express.Router();
 
-  const refreshArticles = () => ctx.setCachedArticles(ctx.loadArticles());
+  const refreshArticles = () => ctx.setCachedArticles(null);
 
   router.get('/sites', (_req, res) => {
     const counts = siteArticleCounts();

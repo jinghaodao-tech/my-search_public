@@ -305,6 +305,7 @@ describe("DB migration", () => {
     db.exec("CREATE TABLE schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL);");
     db.prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)").run("001_create_migrations_table", "now");
     for (const id of ["002_add_search_token_columns", "003_create_kj_groups", "004_create_card_relation_tables", "005_create_articles_table", "006_add_candidate_lifecycle"]) db.prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)").run(id, "now");
+    for (const id of ["008_add_candidate_ranking_metadata", "009_add_candidate_saved_card", "010_repair_candidate_saved_card", "011_create_jobs", "012_create_cards_fts", "013_sync_cards_fts_tags", "014_add_dual_token_columns", "015_repair_invalid_card_timestamps", "016_saved_searches", "017_create_reader_texts", "018_add_reader_text_translation", "019_create_site_sources", "020_site_scope_and_article_state", "021_collection_reader_integrity", "022_site_article_integration", "023_repair_numeric_card_timestamps", "024_create_article_search_fts", "025_create_saved_card_token_fts", "026_create_reader_tool_state"]) db.prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)").run(id, "now");
     const applied = runMigrations(db);
     expect(applied).toContain("007_enforce_relation_foreign_keys");
     const rerun = runMigrations(db);

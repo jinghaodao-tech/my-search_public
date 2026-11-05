@@ -1,4 +1,4 @@
-import { loadArticlesFromDb, prepareReaderContent, storeReaderContent } from '../repositories/articles_repository.js';
+import { articleSearchFtsAvailable, articleSearchIndexStatus, getArticleSearchScope, invalidateArticleSearchIndexStatus, loadArticlesFromDb, loadArticlesFromDbByIds, prepareReaderContent, searchArticleIdsFts5, searchArticleIdsFts5MorphologicalTopK, searchArticleIdsFts5Rrf, storeReaderContent } from '../repositories/articles_repository.js';
 import { overviewTopics, titleTerms, trendTopics } from '../services/topic_insights.js';
 import { analyzeQuery } from '../services/query_analysis.js';
 import { buildSearchSnippet } from '../services/search_match_service.js';
@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { DISCOVER_SOURCES, PROVIDERS, purposeTermWeight, purposeWords } from '../services/discover_service.js';
 import { articleAvailability, listSites, siteArticleCounts } from '../repositories/site_sources_repository.js';
 import { BODY_POLICY_LABELS, STATUS_LABELS } from './site_routes.js';
+import { rerankByTitleCoverage } from '../services/title_rerank.js';
 
 type SearchInputArticle = Partial<Article> & Pick<Article, 'id' | 'title' | 'body'> & {
   publishedAt: string | Date;
@@ -36,11 +37,51 @@ export function createSearchRouter(ctx: RouteContext) {
     const body = parseBody(ctx.runBodySchema, req, res);
     if (!body) return;
     try {
+      const searchStartedAt = performance.now();
+      const traceSearchStage = (stage: string) => {
+        if (process.env.SEARCH_ROUTE_TRACE === '1') console.log(JSON.stringify({ searchRouteStage: stage, elapsedMs: Number((performance.now() - searchStartedAt).toFixed(1)) }));
+      };
       const { modeId, config, articles: reqArticles, options, filters } = body;
-      const rawArticles = (reqArticles ?? loadArticlesFromDb()) as SearchInputArticle[];
+      const articleSearchEngine = process.env.ARTICLE_SEARCH_ENGINE ?? 'bm25';
+      const isTitleRerank = articleSearchEngine === 'fts5-title-rerank';
+      const titleWeightEnv = process.env.ARTICLE_SEARCH_TITLE_RERANK_WEIGHT;
+      const titleRerankWeight = titleWeightEnv === undefined ? 0.2 : Number(titleWeightEnv);
+      if (!Number.isFinite(titleRerankWeight) || titleRerankWeight < 0) throw new Error('ARTICLE_SEARCH_TITLE_RERANK_WEIGHT must be a finite non-negative number');
+      const canUseArticleFts = !reqArticles && ['fts5-rerank', 'fts5-rrf', 'fts5-title-rerank'].includes(articleSearchEngine)
+        && !(filters?.excludedTerms.length)
+        && articleSearchFtsAvailable();
+      const requestedResultLimit = Math.max(1, Math.min(500, options?.resultLimit ?? 50));
+      let titleQueryTerms: string[] = [];
+      const ftsSearch = canUseArticleFts
+        ? await (async () => {
+          const terms = config.keywords.flatMap(keyword => [keyword.term, ...(keyword.synonyms ?? [])]);
+          const queryTokens = await buildStoredTokenSet(terms.join(' '));
+          if (isTitleRerank) titleQueryTerms = queryTokens.morphologicalTokens;
+          return articleSearchEngine === 'fts5-rrf'
+            ? searchArticleIdsFts5Rrf(queryTokens.morphologicalTokens, queryTokens.ngramTokens, requestedResultLimit, filters)
+            : isTitleRerank
+              ? searchArticleIdsFts5MorphologicalTopK(queryTokens.morphologicalTokens, 1000, filters)
+              : searchArticleIdsFts5(queryTokens.morphologicalTokens, queryTokens.ngramTokens, filters);
+        })()
+        : null;
+      traceSearchStage('candidate-query');
+      const ftsRanks = ftsSearch?.ranks ?? null;
+      const rrfScore = (item: {morphRank: number | null; ngramRank: number | null}) =>
+        (item.morphRank ? 1 / (60 + item.morphRank) : 0) + (item.ngramRank ? 1 / (60 + item.ngramRank) : 0);
+      const rrfOrdered = articleSearchEngine === 'fts5-rrf' && ftsRanks
+        ? ftsRanks
+        : null;
+      const ftsCandidateCount = ftsSearch?.matchedCount ?? 0;
+      const retrievalRanks = rrfOrdered
+        ? rrfOrdered
+        : isTitleRerank && ftsRanks ? ftsRanks.slice(0, 1000) : ftsRanks;
+      const rawArticles = (reqArticles ?? (canUseArticleFts
+        ? loadArticlesFromDbByIds(retrievalRanks!.map(item => item.id))
+        : loadArticlesFromDb())) as SearchInputArticle[];
+      traceSearchStage('candidate-load');
       // Older DBs may have reader copies without dual token caches: repair once, persist for reuse.
       if (!reqArticles) for (const article of rawArticles) {
-        if (!article.ngramTokens?.length || !article.morphologicalTokens?.length) {
+        if (!article.ngramTokens?.length && !article.morphologicalTokens?.length) {
           const hasReader = db.prepare('SELECT 1 FROM article_reader_content WHERE article_id = ?').get(article.id);
           const content = hasReader ? await prepareReaderContent(article.url ?? null, article.body) : null;
           storeReaderContent(content, new Date().toISOString());
@@ -48,27 +89,42 @@ export function createSearchRouter(ctx: RouteContext) {
           Object.assign(article, stored, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength });
           if (!content) db.prepare(`UPDATE articles SET tokens_json=?, morphological_tokens_json=?, ngram_tokens_json=?, doc_length=?, morphological_doc_length=?, ngram_doc_length=? WHERE id=?`)
             .run(JSON.stringify(stored.ngramTokens), JSON.stringify(stored.morphologicalTokens), JSON.stringify(stored.ngramTokens), stored.ngramDocLength, stored.morphologicalDocLength, stored.ngramDocLength, article.id);
+          if (!content) invalidateArticleSearchIndexStatus();
         }
       }
-      const candidates = new Map(ctx.getCandidates().map(candidate => [candidate.candidateId, candidate]));
+      const candidateRows = canUseArticleFts
+        ? ctx.getCandidatesByIds(rawArticles.map(article => article.id))
+        : ctx.getCandidates();
+      traceSearchStage('candidate-status');
+      const candidates = new Map(candidateRows.map(candidate => [candidate.candidateId, candidate]));
       const normalize = (value: string) => value.normalize('NFKC').toLowerCase();
       const filteredArticles = rawArticles.filter(article => {
         const candidate = reqArticles ? undefined : candidates.get(article.id);
-        if (filters?.since && (!candidate || candidate.firstSeenAt <= filters.since)) return false;
-        if (candidate?.status === 'expired') return false;
-        if (filters?.status && filters.status !== 'all' && candidate?.status !== filters.status) return false;
-        if (filters?.sources.length && !articleSources(article).some(source => filters.sources.includes(source))) return false;
+        if (!canUseArticleFts) {
+          if (filters?.since && (!candidate || candidate.firstSeenAt <= filters.since)) return false;
+          if (candidate?.status === 'expired') return false;
+          if (filters?.status && filters.status !== 'all' && candidate?.status !== filters.status) return false;
+          if (filters?.sources.length && !articleSources(article).some(source => filters.sources.includes(source))) return false;
+        }
         const content = normalize(`${article.title} ${article.body} ${article.summary ?? ''}`);
         return !filters?.excludedTerms.some(term => content.includes(normalize(term)));
       });
+      const indexedScope = canUseArticleFts && !isTitleRerank ? getArticleSearchScope(filters) : null;
+      traceSearchStage('scope-aggregation');
       const scope = {
         corpus: reqArticles ? 'cards' : 'articles',
-        totalCount: rawArticles.length,
-        searchedCount: filteredArticles.length,
-        sources: [...new Set(filteredArticles.flatMap(articleSources))],
-        availableSources: [...new Set(rawArticles.flatMap(articleSources))],
+        searchMethod: reqArticles ? 'bm25-provided-corpus' : canUseArticleFts ? articleSearchEngine : 'bm25-full-corpus',
+        candidateCount: ftsCandidateCount || rawArticles.length,
+        candidateCountIsLowerBound: !!ftsSearch?.matchedCountIsLowerBound,
+        retrievedCandidateCount: rawArticles.length,
+        scopeCountsExact: !canUseArticleFts || !!indexedScope,
+        totalCount: isTitleRerank && canUseArticleFts ? null : indexedScope?.totalCount ?? rawArticles.length,
+        searchedCount: isTitleRerank && canUseArticleFts ? null : indexedScope?.searchedCount ?? filteredArticles.length,
+        sources: indexedScope?.sources ?? [...new Set(filteredArticles.flatMap(articleSources))],
+        availableSources: indexedScope?.availableSources ?? [...new Set(rawArticles.flatMap(articleSources))],
         // per source: how many articles exist and how many were left after the filters (for "0 results" help)
         bySource: (() => {
+          if (indexedScope) return indexedScope.bySource;
           const out: Record<string, { total: number; searched: number }> = {};
           for (const article of rawArticles) for (const key of articleSources(article)) { (out[key] ??= { total: 0, searched: 0 }).total += 1; }
           for (const article of filteredArticles) for (const key of articleSources(article)) { (out[key] ??= { total: 0, searched: 0 }).searched += 1; }
@@ -115,7 +171,80 @@ export function createSearchRouter(ctx: RouteContext) {
           Object.assign(article, stored, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength });
         }
       }
-      const result = await ctx.runPipeline(parsed, config, modeId ?? 'custom', { ...options, corpus: reqArticles ? 'cards' : 'articles', ...(!reqArticles ? { dedupThreshold: 1 } : {}) });
+      const pipelineStartedAt = performance.now();
+      const result = isTitleRerank && canUseArticleFts && ftsRanks
+        ? (() => {
+          const articleById = new Map(parsed.map(article => [article.id, article]));
+          const scoreById = new Map(ftsRanks.map(rank => [rank.id, rank.score ?? 0]));
+          const active = filteredArticles.flatMap(item => {
+            const article = articleById.get(item.id);
+            if (!article) return [];
+            const score = scoreById.get(article.id) ?? 0;
+            return [{ article, score, breakdown: {
+              bm25Raw: score,
+              bm25Morphological: score,
+              bm25Ngram: 0,
+              normalizedMorphological: 0,
+              normalizedNgram: 0,
+              tokenWeights: { morphological: 1, ngram: 0 },
+              contextBonus: 1,
+              timeDecay: 1,
+              finalScore: score,
+              matchedTerms: [],
+            } }];
+          });
+          return {
+            active,
+            belowThreshold: [],
+            archived: [],
+            stats: {
+              inputCount: rawArticles.length,
+              afterDedup: active.length,
+              activeCount: active.length,
+              archivedCount: 0,
+              modeUsed: modeId ?? 'custom',
+              avgScore: active.length ? active.reduce((sum, item) => sum + item.score, 0) / active.length : 0,
+              timings: { tokenPreparationMs: 0, scoringMs: 0, sortingLimitMs: 0, totalSearchMs: 0 },
+            },
+          };
+        })()
+        : await ctx.runPipeline(parsed, config, modeId ?? 'custom', {
+          ...options,
+          ...(articleSearchEngine === 'fts5-rrf' && canUseArticleFts ? { archiveScoreThreshold: -1, resultLimit: Math.max(1, parsed.length) } : {}),
+          corpus: reqArticles ? 'cards' : 'articles',
+          ...(!reqArticles ? { dedupThreshold: 1 } : {}),
+        });
+      if (isTitleRerank && canUseArticleFts) {
+        result.stats.timings = {
+          tokenPreparationMs: 0,
+          scoringMs: 0,
+          sortingLimitMs: 0,
+          ...result.stats.timings,
+          totalSearchMs: Number((performance.now() - pipelineStartedAt).toFixed(3)),
+        };
+      }
+      traceSearchStage('pipeline-ranking');
+      if (isTitleRerank && canUseArticleFts) {
+        const reranked = rerankByTitleCoverage(result.active, titleQueryTerms, titleRerankWeight);
+        result.active = reranked.slice(0, requestedResultLimit);
+        result.stats.avgScore = result.active.length
+          ? result.active.reduce((sum, item) => sum + item.score, 0) / result.active.length
+          : 0;
+      }
+      if (articleSearchEngine === 'fts5-rrf' && canUseArticleFts && rrfOrdered) {
+        const maxRrf = Math.max(...rrfOrdered.map(rrfScore), 0);
+        const ranksById = new Map(ftsRanks!.map(rank => [rank.id, rank]));
+        const rrfOrderById = new Map(rrfOrdered.map((rank, index) => [rank.id, index]));
+        result.active = result.active.map(item => {
+          const ranks = ranksById.get(item.article.id)!;
+          const fusedScore = maxRrf > 0 ? rrfScore(ranks) / maxRrf : 0;
+          return { ...item, score: fusedScore, scoreSources: { method: 'rrf', rrf: rrfScore(ranks), normalizedRrf: fusedScore, morphologicalRank: ranks.morphRank, ngramRank: ranks.ngramRank, k: 60 } };
+        }).sort((a, b) => b.score - a.score || rrfOrderById.get(a.article.id)! - rrfOrderById.get(b.article.id)!);
+        result.stats.inputCount = rawArticles.length;
+        result.stats.afterDedup = rawArticles.length;
+        result.stats.activeCount = result.active.length;
+        result.stats.avgScore = result.active.length ? result.active.reduce((sum, item) => sum + item.score, 0) / result.active.length : 0;
+      }
       const stripSearchFields = (article: Article) => {
         const { tokens: _tokens, docLength: _docLength, ...publicArticle } = article;
         return {
@@ -140,7 +269,9 @@ export function createSearchRouter(ctx: RouteContext) {
         active: result.active.map(item => {
           const article = stripSearchFields(item.article);
           const meta = ctx.buildSearchMatchMeta(article, ctx.buildSearchKeywordCandidates(config), item.breakdown?.matchedTerms);
-          updateRankingMetadata.run(item.score, rankingReason(item, meta), item.article.id);
+          if (process.env.SEARCH_READ_ONLY_AUDIT !== '1') {
+            updateRankingMetadata.run(item.score, rankingReason(item, meta), item.article.id);
+          }
           return { ...item, article, ...meta,
             snippet: buildSearchSnippet(article, [...meta.matchedKeywords, ...ctx.buildSearchKeywordCandidates(config)]),
             candidate: reqArticles ? null : candidates.get(article.id) ? { status: candidates.get(article.id)!.status, savedCardId: candidates.get(article.id)!.savedCardId } : null,
@@ -267,7 +398,7 @@ export function createSearchRouter(ctx: RouteContext) {
   });
 
   router.post('/search/terms', async (req, res) => {
-    const body = parseBody(z.object({ text: z.string().trim().min(1).max(500) }).strict(), req, res);
+    const body = parseBody(z.object({ text: z.string().trim().min(1).max(10_000) }).strict(), req, res);
     if (!body) return;
     const spaced = body.text.split(/\s+/).filter(Boolean);
     const words = await purposeWords(body.text);

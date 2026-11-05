@@ -26,7 +26,7 @@ function portfolioFixture(): CollectResult {
 }
 
 export function createCollectorService(collect = collectAll) {
-  let cachedArticles: CollectResult | null = loadArticles();
+  let cachedArticles: CollectResult | null = null;
   const readSetting = (key: string) => (db.prepare('SELECT value FROM collector_settings WHERE key = ?').get(key) as {value: string} | undefined)?.value;
   const writeSetting = (key: string, value: string) => db.prepare('INSERT INTO collector_settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(key,value);
   let collectorConfig: CollectorConfig = structuredClone(DEFAULT_CONFIG);
@@ -64,7 +64,10 @@ export function createCollectorService(collect = collectAll) {
     collectAll: (config = collectorConfig) => run(config),
     collectFixture: () => run(collectorConfig, true),
     getCollectRunning: () => running,
-    getCollectionStatus: () => ({ lastAttemptAt, lastSuccessAt, lastError, accumulatedArticleCount: loadArticleStats()?.total ?? 0, latestFetchedCount }),
+    getCollectionStatus: () => {
+      const stats = loadArticleStats();
+      return { lastAttemptAt, lastSuccessAt, lastError, lastFetchedAt: stats?.fetchedAt ?? null, accumulatedArticleCount: stats?.total ?? 0, latestFetchedCount };
+    },
     loadArticles,
     saveArticles,
     ensureArticleTokens,

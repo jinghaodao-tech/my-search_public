@@ -5,6 +5,7 @@ data/search-evaluation/*
 !data/search-evaluation/real-queries-v2.json
 !data/search-evaluation/real-queries.json
 !data/search-evaluation/anonymized-corpus.json
+local_article_corpus/
 backups/
 .env
 *.db
@@ -13,3 +14,6 @@ backups/
 dist/
 test-results/
 playwright-report/
+.tmp-ir-transfer/
+quality/e0e6/local/
+quality/e0e6/test-local/

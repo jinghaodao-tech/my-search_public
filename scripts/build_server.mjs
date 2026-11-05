@@ -19,4 +19,10 @@ const entryPoints = [];
 
 fs.rmSync(path.join(root, 'dist'), { recursive: true, force: true });
 await build({ entryPoints, outdir: path.join(root, 'dist'), outbase: root, bundle: false, platform: 'node', format: 'esm', target: 'node22', sourcemap: false, logLevel: 'warning' });
+const kuromojiNotices = path.join(root, 'node_modules', 'kuromoji');
+const noticeOutput = path.join(root, 'dist', 'THIRD_PARTY_NOTICES', 'kuromoji');
+fs.mkdirSync(noticeOutput, { recursive: true });
+for (const name of ['LICENSE-2.0.txt', 'NOTICE.md']) {
+  fs.copyFileSync(path.join(kuromojiNotices, name), path.join(noticeOutput, name));
+}
 console.log(`built ${entryPoints.length} files into dist/ — start with: node dist/server.js`);

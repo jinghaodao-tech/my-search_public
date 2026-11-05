@@ -11,12 +11,28 @@ import { IS_MOCK_AI, completeWithProvider } from '../services/ai_service.js';
 import { buildEvidenceTable, pickPassagesByWords, verifyRows, type EvidenceSource } from '../services/evidence_service.js';
 import { tokenizeMorphological } from '../bm25_engine.js';
 import { prepareReaderContent, storeReaderContent } from '../repositories/articles_repository.js';
+import { getReaderTools, saveReaderTools } from '../repositories/reader_tools_repository.js';
+import { assessReaderTools, normalizeReaderToolsPayload, readerToolsSourceHash } from '../services/reader_tools_service.js';
+import { logger } from '../utils/logger.js';
+
+const readerToolsEnabled = () => process.env.READER_TOOLS_ENABLED !== 'false';
+function readerToolAssessment(paragraphs: string[]) {
+  const assessment = assessReaderTools(paragraphs, readerToolsEnabled());
+  logger.debug({ event: 'reader_tool_assessment', status: assessment.status, reason: assessment.reason, count: assessment.tools.length }, 'reader tool applicability');
+  return assessment;
+}
+const toolStateSchema = z.object({
+  version: z.literal(1),
+  sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+  values: z.record(z.string().max(120), z.record(z.string().max(120), z.number().finite())),
+}).strict();
 
 const extractSchema = z.object({ url: z.string().trim().url().max(2000) }).strict();
 const sourceUrlSchema = z.string().trim().url().max(2000).refine(value => /^https?:\/\//i.test(value), 'Only HTTP(S) source URLs are allowed');
 
 // Paragraph lists can be long (a whole book as a PDF): up to 50,000 paragraphs.
 const paragraphsSchema = z.array(z.string().max(20000)).max(50000);
+const prepareToolsSchema = z.object({ paragraphs: paragraphsSchema }).strict();
 // Japanese machine translation made in the browser (Chrome's on-device Translator), aligned to paragraphs.
 const translationSchema = z.object({
   from: z.string().trim().min(2).max(10),
@@ -41,6 +57,7 @@ const updateSchema = z.object({
   paragraphs: paragraphsSchema,
   translation: translationSchema.nullable().optional(),
   memo: z.string().max(10000).default(''),
+  toolState: toolStateSchema.optional(),
   tags: z.array(z.string().trim().min(1).max(50)).max(30).optional(),
 }).strict().refine(body => !body.translation || body.translation.paragraphs.length === body.paragraphs.length, { message: 'translation.paragraphs must match paragraphs' });
 
@@ -51,6 +68,7 @@ const saveSchema = z.object({
   paragraphs: paragraphsSchema,
   translation: translationSchema.nullable().optional(),
   memo: z.string().max(10000).default(''),
+  toolState: toolStateSchema.optional(),
   tags: z.array(z.string().trim().min(1).max(50)).max(30).default([]),
   candidateId: z.string().trim().min(1).max(200).optional(),
 }).strict()
@@ -101,9 +119,17 @@ export function createReaderRouter(ctx: RouteContext) {
     res.json({
       demo,
       ai: IS_MOCK_AI || ctx.hasConfiguredProviderKey(),
+      readerTools: readerToolsEnabled(),
       pdfMaxMb: Math.round(pdfMaxBytes() / 1024 / 1024),
       samples: demo ? Object.entries(DEMO_DOCUMENTS).map(([pathname, doc]) => ({ title: doc.title, url: demoUrl(pathname), download: pathname.endsWith('.pdf') ? `/demo/${doc.file}` : null })) : [],
     });
+  });
+
+  router.post('/reader/tools/prepare', (req, res) => {
+    const body = parseBody(prepareToolsSchema, req, res);
+    if (!body) return;
+    const assessment = readerToolAssessment(body.paragraphs);
+    res.json({ enabled: readerToolsEnabled(), sourceHash: readerToolsSourceHash(body.paragraphs), status: assessment.status, tools: assessment.tools });
   });
 
   router.post('/reader/extract', ctx.readerLimiter, async (req, res) => {
@@ -112,7 +138,8 @@ export function createReaderRouter(ctx: RouteContext) {
     try {
       const article = (await readDemoDocument(body.url)) ?? await fetchReadable(body.url);
       await cacheReaderText(body.url, article.paragraphs, article.fetchedAt);
-      res.json(article);
+      const assessment = readerToolAssessment(article.paragraphs);
+      res.json({ ...article, toolsSourceHash: readerToolsSourceHash(article.paragraphs), tools: assessment.tools });
     } catch (error) {
       if (error instanceof ReaderError) {
         sendError(req, res, error.status, error.message, undefined, error.status === 400 ? 'validation_failed' : 'reader_fetch_failed');
@@ -131,7 +158,9 @@ export function createReaderRouter(ctx: RouteContext) {
     let fileName: string | null = null;
     try { fileName = decodeURIComponent(String(req.get('x-file-name') ?? '')).slice(0, 300) || null; } catch { fileName = null; }
     try {
-      res.json(await readPdf(new Uint8Array(req.body), { url: null, fileName }));
+      const article = await readPdf(new Uint8Array(req.body), { url: null, fileName });
+      const assessment = readerToolAssessment(article.paragraphs);
+      res.json({ ...article, toolsSourceHash: readerToolsSourceHash(article.paragraphs), tools: assessment.tools });
     } catch (error) {
       if (error instanceof ReaderError) { sendError(req, res, error.status, error.message, undefined, 'reader_fetch_failed'); return; }
       throw error;
@@ -155,6 +184,11 @@ export function createReaderRouter(ctx: RouteContext) {
       const card = await ctx.createCardWithTransaction(fields, card => {
         saveReaderText(card.id, body.paragraphs, (body.translation ?? null) as ReaderTranslation | null);
         storeReaderContent(content, body.fetchedAt);
+        if (readerToolsEnabled()) {
+          const sourceHash = readerToolsSourceHash(body.paragraphs);
+          const state = normalizeReaderToolsPayload(body.paragraphs, body.toolState ?? { version: 1, sourceHash, values: {} });
+          if (state?.tools.length) saveReaderTools(card.id, state);
+        }
       });
       res.status(201).json({ card, candidate: null });
       return;
@@ -174,6 +208,11 @@ export function createReaderRouter(ctx: RouteContext) {
         if (!savedCandidate) throw new CandidateSaveConflict();
         saveReaderText(createdCard.id, body.paragraphs, (body.translation ?? null) as ReaderTranslation | null);
         storeReaderContent(content, body.fetchedAt);
+        if (readerToolsEnabled()) {
+          const sourceHash = readerToolsSourceHash(body.paragraphs);
+          const state = normalizeReaderToolsPayload(body.paragraphs, body.toolState ?? { version: 1, sourceHash, values: {} });
+          if (state?.tools.length) saveReaderTools(createdCard.id, state);
+        }
       });
       res.status(201).json({ card, candidate: savedCandidate });
     } catch (error) {
@@ -187,6 +226,13 @@ export function createReaderRouter(ctx: RouteContext) {
     const card = ctx.getCard(req.params.id);
     if (!card) { sendError(req, res, 404, 'Not found', undefined, 'card_not_found'); return; }
     const parsed = parseReaderCardBody(card.body ?? '');
+    const paragraphs = getReaderText(card.id) ?? parsed.paragraphs;
+    const toolAssessment = readerToolAssessment(paragraphs);
+    const storedToolState = readerToolsEnabled() ? getReaderTools(card.id) : null;
+    const currentToolsHash = readerToolsSourceHash(paragraphs);
+    const safeToolState = storedToolState?.sourceHash === currentToolsHash
+      ? normalizeReaderToolsPayload(paragraphs, storedToolState)
+      : storedToolState ? { version: 1 as const, sourceHash: storedToolState.sourceHash, tools: [], values: {} } : null;
     res.json({
       id: card.id,
       title: parsed.source.title ?? card.title,
@@ -197,8 +243,11 @@ export function createReaderRouter(ctx: RouteContext) {
       fileName: parsed.source.fileName,
       fetchedAt: parsed.source.fetchedAt,
       memo: parsed.memo,
-      paragraphs: getReaderText(card.id) ?? parsed.paragraphs,
+      paragraphs,
       translation: getReaderTranslation(card.id),
+      toolsSourceHash: currentToolsHash,
+      tools: toolAssessment.tools,
+      toolState: safeToolState,
       tags: card.tags ?? [],
       isReaderFormat: parsed.isReaderFormat,
     });
@@ -226,6 +275,10 @@ export function createReaderRouter(ctx: RouteContext) {
     const card = await ctx.updateCard(req.params.id, { title: body.title, url: url ?? undefined, body: cardBody, ...(body.tags ? { tags: body.tags } : {}) }, () => {
       saveReaderText(req.params.id, body.paragraphs, translation);
       storeReaderContent(content, body.fetchedAt ?? new Date().toISOString());
+      if (readerToolsEnabled() && body.toolState) {
+        const state = normalizeReaderToolsPayload(body.paragraphs, body.toolState);
+        if (state?.tools.length) saveReaderTools(req.params.id, state);
+      }
     });
     res.json(card);
   });

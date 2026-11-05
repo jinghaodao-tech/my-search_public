@@ -4,6 +4,8 @@
 let currentView = 'cards';
 let currentCardId = null;
 let currentFilter = { tag: null, type: null, q: '', archived: false };
+let cardLoadSequence = 0;
+let cardListSearchCaptureRequested = false;
 let allCards = [];
 let allTags = [];
 let kjData = { groups: [], ungrouped: [] };
@@ -15,7 +17,7 @@ let importTab = 'csv';
 // BM25 状態
 let bm25Modes = {};
 let bm25ActiveMode = '';
-let bm25Params = { k1:1.5, b:0.75, lambda:0.1, ctx:1.5, dedup:0.8, arch:0.5, limit:50 };
+let bm25Params = { k1:1.5, b:0.75, lambda:0.1, ctx:1.5, dedup:1, arch:0.5, limit:50 };
 let bm25Keywords = [];
 let bm25Result = null;
 let showArchived = false;
@@ -98,21 +100,78 @@ function toggleBM25Sidebar(){
 async function init() {
   buildColorStrips();
   await Promise.all([loadCards(), loadTags(), loadBM25Modes()]);
+  if (typeof loadRefindStudyControl === 'function') await loadRefindStudyControl();
   const summaryToggle = document.getElementById('summary-toggle');
   if(summaryToggle) summaryToggle.checked = showCardSummaries;
 }
 
 async function loadCards() {
+  const sequence = ++cardLoadSequence;
+  const captureRequested = cardListSearchCaptureRequested;
+  cardListSearchCaptureRequested = false;
   const params = new URLSearchParams();
   params.set('archived', String(currentFilter.archived));
   if (currentFilter.tag)  params.set('tag', currentFilter.tag);
   if (currentFilter.type) params.set('type', currentFilter.type);
-  if (currentFilter.q)    params.set('q', currentFilter.q);
-  allCards = await api.get('/api/cards?' + params);
+  let cards;
+  if (currentFilter.q.trim()) {
+    const query = currentFilter.q.trim();
+    let studySession = null;
+    if (captureRequested && typeof beginRefindStudy === 'function') {
+      studySession = await beginRefindStudy(query);
+    }
+    const searchStarted = performance.now();
+    try {
+      let keywords;
+      try {
+        const analysis = await api.post('/api/search/terms', { text: query });
+        keywords = analysis.keywords;
+      } catch {
+        keywords = query.split(/\s+/).filter(Boolean).map(term => ({ term, weight: 1 }));
+      }
+      const result = await api.post('/api/cards/search', {
+        config: {
+          label: 'カード一覧検索', description: '', k1: bm25Params.k1, b: bm25Params.b,
+          lambda: 0, contextBonus: 1,
+          keywords: keywords.length ? keywords : query.split(/\s+/).filter(Boolean).map(term => ({ term, weight: 1 })),
+        },
+        options: { dedupThreshold: 1, archiveScoreThreshold: 0, resultLimit: 500 },
+        filters: { excludedTerms: [], sources: [], status: 'all' },
+        cardFilters: {
+          ...(currentFilter.tag ? { tag: currentFilter.tag } : {}),
+          ...(currentFilter.type ? { type: currentFilter.type } : {}),
+          archived: currentFilter.archived,
+        },
+      });
+      cards = [...result.active, ...(result.belowThreshold ?? result.archived ?? [])].map(item => item.article);
+      if (studySession && activeRefindStudy === studySession) {
+        await recordRefindInteraction({ action: 'search_response',
+          top10: cards.slice(0, 10).map(card => card.id),
+          candidateIdsBeforeRerank: Array.isArray(result.scope?.candidateIdsBeforeRerank) ? result.scope.candidateIdsBeforeRerank : null,
+          actualEngine: result.scope?.searchMethod ?? null, fallbackUsed: result.scope?.fallbackUsed ?? null,
+          httpStatus: 200, latencyMs: performance.now() - searchStarted });
+      }
+    } catch (error) {
+      if (studySession && activeRefindStudy === studySession) {
+        await recordRefindInteraction({ action: 'search_response', top10: [],
+          httpStatus: Number.isInteger(error?.status) ? error.status : null,
+          error: formatApiError(error), latencyMs: performance.now() - searchStarted }).catch(() => {});
+        if (typeof renderRefindStudyReview === 'function') await renderRefindStudyReview('refind-study-review-list');
+      }
+      throw error;
+    }
+  } else {
+    cards = await api.get('/api/cards?' + params);
+  }
+  if (sequence !== cardLoadSequence) return;
+  allCards = cards;
   selectedCards = new Set([...selectedCards].filter(id => allCards.some(card => card.id === id)));
   renderCardGrid();
   updateSelectedUI();
   updateBM25SourceInfo();
+  if (captureRequested && typeof renderRefindStudyReview === 'function') {
+    await renderRefindStudyReview('refind-study-review-list');
+  }
 }
 
 async function loadTags() {

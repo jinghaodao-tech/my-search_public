@@ -18,6 +18,9 @@ describe('demo mode', () => {
     expect(await readDemoDocument('https://example.com/reading-notes', { DEMO_MODE: 'true' })).toBeNull();
     const article = await readDemoDocument(demoUrl('/reading-notes'), { DEMO_MODE: 'true' });
     expect(article?.title).toContain('読みながらメモを取るための三つの習慣');
+    const interactive = await readDemoDocument(demoUrl('/reader-tools'), { DEMO_MODE: 'true' });
+    expect(interactive?.title).toContain('記事内の計算と比較を操作する見本');
+    expect(interactive?.paragraphs).toContain('計算: 月額料金の簡易見積もり');
     const pdf = await readDemoDocument(demoUrl('/sample-paper.pdf'), { DEMO_MODE: 'true' });
     expect(pdf?.paragraphs).toContain('[[page:2|41]]');
     expect(pdf?.paragraphs.join('\n')).not.toContain('見本紀要 第3号'); // running head removed
@@ -42,6 +45,9 @@ describe('demo mode', () => {
     const read = await request(app).post('/api/reader/extract').send({ url: demoUrl('/citation-pages') });
     expect(read.status).toBe(200);
     expect(read.body.title).toContain('引用にページ番号を付ける理由');
+    const interactive = await request(app).post('/api/reader/extract').send({ url: demoUrl('/reader-tools') });
+    expect(interactive.status).toBe(200);
+    expect(interactive.body.tools.map((tool: { kind: string }) => tool.kind)).toEqual(['calculator', 'comparison']);
     expect((await request(app).post('/api/collect').send({})).status).toBe(403);
     const modes = await request(app).get('/api/modes');
     expect(Object.keys(modes.body)[0]).toBe('demo');

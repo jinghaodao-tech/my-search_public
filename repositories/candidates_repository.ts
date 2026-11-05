@@ -32,6 +32,15 @@ export function getCandidates(status?: CandidateStatus): CandidateLifecycle[] {
   const rows = (status ? db.prepare(`${select} WHERE candidate_status = ? ORDER BY first_seen_at DESC`).all(status) : db.prepare(`${select} ORDER BY first_seen_at DESC`).all()) as CandidateRow[];
   return rows.map(toCandidate);
 }
+export function getCandidatesByIds(ids: string[]): CandidateLifecycle[] {
+  const unique = [...new Set(ids)];
+  const rows: CandidateRow[] = [];
+  for (let offset = 0; offset < unique.length; offset += 400) {
+    const batch = unique.slice(offset, offset + 400);
+    rows.push(...db.prepare(`${select} WHERE id IN (${batch.map(() => '?').join(',')})`).all(...batch) as CandidateRow[]);
+  }
+  return rows.map(toCandidate);
+}
 export function getCandidate(id: string): CandidateLifecycle | null {
   const row = db.prepare(`${select} WHERE id = ?`).get(id) as CandidateRow | undefined;
   return row ? toCandidate(row) : null;

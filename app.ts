@@ -24,6 +24,8 @@ import { createJobsRouter } from './routes/jobs_routes.js';
 import { createReaderRouter } from './routes/reader_routes.js';
 import { createDiscoverRouter } from './routes/discover_routes.js';
 import { createSiteRouter } from './routes/site_routes.js';
+import { createRefindStudyRouter } from './routes/refind_study_routes.js';
+import { createResearchExperimentRouter, isTrustedLocalRequest } from './routes/research_experiment_routes.js';
 import { assessSiteRun, startSiteScheduler, syncSite } from './services/site_collector.js';
 import { safeFetch } from './services/safe_fetch.js';
 import {
@@ -73,13 +75,40 @@ if (isDemoMode()) {
   app.use((_req, res, next) => { res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://huggingface.co"); next(); });
 }
 app.use(cors({ origin: corsOrigin }));
+if (runtimeConfig.RESEARCH_EXPERIMENTS_ENABLED) {
+  app.use('/api/research-experiments', express.json({ limit: '8kb' }));
+  app.use('/api/research-experiments', (error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const type = typeof error === 'object' && error !== null && 'type' in error ? error.type : undefined;
+    if (type === 'entity.too.large') return res.status(413).json({ error: 'payload_too_large' });
+    next(error);
+  });
+}
 app.use(express.json({ limit: '10mb' }));
 app.use(requestLogger);
 app.use(metricsMiddleware);
 app.use('/api', apiKeyGuard);
 app.get('/metrics', (_req, res) => res.json({ ok: true, metrics: metricsSnapshot() }));
 const publicDir = path.join(__dirname, 'public');
+if (runtimeConfig.RESEARCH_EXPERIMENTS_ENABLED) {
+  app.get('/research-lab', (req, res, next) => {
+    if (!isTrustedLocalRequest({ remoteAddress: req.socket.remoteAddress ?? '', localAddress: req.socket.localAddress ?? '', host: req.header('host') ?? '', origin: req.header('origin') })) return res.status(403).json({ error: 'local_only' });
+    res.sendFile(path.join(__dirname, 'quality', 'e0e6', 'research-lab.html'), error => { if (error) next(error); });
+  });
+  app.get('/research-lab.js', (req, res, next) => {
+    if (!isTrustedLocalRequest({ remoteAddress: req.socket.remoteAddress ?? '', localAddress: req.socket.localAddress ?? '', host: req.header('host') ?? '', origin: req.header('origin') })) return res.status(403).json({ error: 'local_only' });
+    res.type('application/javascript').sendFile(path.join(__dirname, 'quality', 'e0e6', 'research-lab.js'), error => { if (error) next(error); });
+  });
+  app.get('/research-lab/tasks.json', (req, res, next) => {
+    if (!isTrustedLocalRequest({ remoteAddress: req.socket.remoteAddress ?? '', localAddress: req.socket.localAddress ?? '', host: req.header('host') ?? '', origin: req.header('origin') })) return res.status(403).json({ error: 'local_only' });
+    res.type('application/json').sendFile(path.join(__dirname, 'quality', 'e0e6', 'synthetic_tasks.json'), error => { if (error) next(error); });
+  });
+}
 app.use(express.static(publicDir));
+// IR benchmarks (scripts/bench/README.md): only when BENCH_DIR is set, never in the public demo.
+if (process.env.BENCH_DIR && !isDemoMode()) {
+  app.use('/bench', express.static(path.resolve(process.env.BENCH_DIR)));
+  app.use('/bench', express.static(path.join(PROJECT_ROOT, 'scripts', 'bench')));
+}
 // Sample documents for the demo (written for the demo; served for download, e.g. the sample PDF).
 app.use('/demo', express.static(DEMO_DIR));
 app.use(createSystemRouter(publicDir));
@@ -90,6 +119,16 @@ app.use('/api', createSavedSearchRouter());
 app.use('/api', createCandidateRouter(routeContext));
 app.use('/api', createJobsRouter(routeContext));
 app.use('/api', createCardsRouter(routeContext));
+app.use('/api', createRefindStudyRouter({
+  directory: path.join(__dirname, 'quality', 'e2e', 'local', 'personal-refind', 'study'),
+  root: __dirname,
+  getCards: routeContext.loadCards,
+  getCard: routeContext.getCard,
+}));
+if (runtimeConfig.RESEARCH_EXPERIMENTS_ENABLED) {
+  const storeDirectory = runtimeConfig.RESEARCH_EXPERIMENTS_STORAGE === 'test' ? 'test-local' : 'local';
+  app.use('/api', createResearchExperimentRouter({ directory: path.join(__dirname, 'quality', 'e0e6', storeDirectory), retentionDays: runtimeConfig.RESEARCH_EXPERIMENT_RETENTION_DAYS, startRetentionTimer: true }));
+}
 app.use('/api', createAiRouter(routeContext));
 app.use('/api', createKjRouter(routeContext));
 app.use('/api', createArticlesRouter(routeContext));
@@ -110,7 +149,7 @@ if (process.env.NODE_ENV !== 'test') {
   if (isDemoMode()) await seedDemoData(routeContext);
   await routeContext.bootstrap();
   // Registered sites: each one is checked for new articles about once a day.
-  if (process.env.SITE_SYNC !== 'off') startSiteScheduler(safeFetch, () => routeContext.setCachedArticles(routeContext.loadArticles()), (site, fetch, mode) => {
+  if (process.env.SITE_SYNC !== 'off') startSiteScheduler(safeFetch, () => routeContext.setCachedArticles(null), (site, fetch, mode) => {
     const completed = syncSite(site, fetch, mode);
     routeContext.submitJob('site-scheduled-sync', () => completed, assessSiteRun);
     return completed;

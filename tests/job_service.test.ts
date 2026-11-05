@@ -1,3 +1,4 @@
+import './helpers.js';
 import { describe, expect, it } from 'vitest';
 import { createJobService } from '../services/job_service.js';
 

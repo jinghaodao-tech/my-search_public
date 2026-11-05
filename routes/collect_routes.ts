@@ -25,12 +25,12 @@ export function createCollectRouter(ctx: RouteContext) {
   });
 
   router.get('/articles', (_req, res) => {
-    const cachedArticles = ctx.getCachedArticles();
-    if (!cachedArticles) {
+    const articles = ctx.getCachedArticles() ?? ctx.loadArticles();
+    if (!articles) {
       res.json({ articles: [], stats: null, message: '未収集。/api/collect を呼んでください' });
       return;
     }
-    res.json(cachedArticles);
+    res.json(articles);
   });
 
   router.post(['/collect', '/articles/refresh'], ctx.apiLimiter, async (req, res) => {
@@ -127,13 +127,14 @@ export function createCollectRouter(ctx: RouteContext) {
 
   router.get('/scheduler/status', (_req, res) => {
     const cachedArticles = ctx.getCachedArticles();
+    const collectionStatus = ctx.getCollectionStatus();
     res.json({
+      ...collectionStatus,
       running: !!ctx.getSchedulerStop(),
       collecting: ctx.getCollectRunning(),
       cronExpr: ctx.getSchedulerCronExpr(),
-      lastFetchedAt: cachedArticles?.stats?.fetchedAt ?? null,
-      articleCount: ctx.getCollectionStatus().accumulatedArticleCount,
-      ...ctx.getCollectionStatus(),
+      lastFetchedAt: cachedArticles?.stats?.fetchedAt ?? collectionStatus.lastFetchedAt,
+      articleCount: collectionStatus.accumulatedArticleCount,
     });
   });
 

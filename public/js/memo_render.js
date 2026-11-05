@@ -108,6 +108,73 @@ function findMarkerIn(text) {
   return found ? Number(found[1]) - 1 : null;
 }
 
+function memoQuoteTextAtMarker(memo, paragraphIndex) {
+  const lines = String(memo ?? '').replace(/\r\n/g, '\n').split('\n');
+  for (let index = 0; index < lines.length; index++) {
+    const marker = QUOTE_MARKER.exec(lines[index]);
+    if (!marker || Number(marker[1]) - 1 !== paragraphIndex) continue;
+    if (lines[index].trimStart().startsWith('>')) {
+      let start = index;
+      while (start > 0 && lines[start - 1].trimStart().startsWith('>')) start--;
+      return lines.slice(start, index + 1)
+        .map(line => line.replace(/^\s*>\s?/, '').replace(QUOTE_MARKER, '').trim())
+        .filter(Boolean).join(' ');
+    }
+    const withoutMarker = lines[index].replace(QUOTE_MARKER, '').trim();
+    const cellQuote = /「([\s\S]*?)」/.exec(withoutMarker);
+    return cellQuote ? cellQuote[1].trim() : '';
+  }
+  return '';
+}
+
+function normalizeQuoteAnchorText(text) {
+  return String(text ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+}
+
+function memoQuoteAnchorStatus(memo, paragraphIndex, paragraphs) {
+  const quote = normalizeQuoteAnchorText(memoQuoteTextAtMarker(memo, paragraphIndex));
+  if (!quote) return 'legacy'; // old plain paragraph markers remain usable when they contain no quote text
+  const paragraph = normalizeQuoteAnchorText(paragraphs?.[paragraphIndex]);
+  if (!paragraph || !paragraph.includes(quote)) return 'stale';
+  let occurrenceCount = 0;
+  for (const sourceParagraph of paragraphs ?? []) {
+    const source = normalizeQuoteAnchorText(sourceParagraph);
+    let offset = 0;
+    while (offset <= source.length - quote.length) {
+      const found = source.indexOf(quote, offset);
+      if (found < 0) break;
+      occurrenceCount++;
+      if (occurrenceCount > 1) return 'ambiguous';
+      offset = found + Math.max(quote.length, 1);
+    }
+  }
+  return occurrenceCount === 1 ? 'matched' : 'stale';
+}
+
+function memoQuoteAnchorMatches(memo, paragraphIndex, paragraphs) {
+  const status = memoQuoteAnchorStatus(memo, paragraphIndex, paragraphs);
+  return status === 'matched' || status === 'legacy';
+}
+
+function findStaleMemoQuoteAnchors(memo, paragraphs) {
+  const stale = new Set();
+  for (const match of String(memo ?? '').matchAll(/\[¶(\d+)(?:\|[^\]]*)?\]/g)) {
+    const paragraphIndex = Number(match[1]) - 1;
+    const quote = memoQuoteTextAtMarker(memo, paragraphIndex);
+    if (quote && memoQuoteAnchorStatus(memo, paragraphIndex, paragraphs) === 'stale') stale.add(paragraphIndex);
+  }
+  return [...stale].sort((a, b) => a - b);
+}
+
+function findAmbiguousMemoQuoteAnchors(memo, paragraphs) {
+  const ambiguous = new Set();
+  for (const match of String(memo ?? '').matchAll(/\[¶(\d+)(?:\|[^\]]*)?\]/g)) {
+    const paragraphIndex = Number(match[1]) - 1;
+    if (memoQuoteAnchorStatus(memo, paragraphIndex, paragraphs) === 'ambiguous') ambiguous.add(paragraphIndex);
+  }
+  return [...ambiguous].sort((a, b) => a - b);
+}
+
 function escapeMemoHtml(value) {
   return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

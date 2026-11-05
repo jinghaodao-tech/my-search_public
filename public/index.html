@@ -17,14 +17,24 @@
   <div class="tab-group">
     <button class="tab active" onclick="switchView('cards')">カード一覧</button>
     <button class="tab" onclick="switchView('candidates')">候補レビュー</button>
-    <button class="tab" onclick="switchView('kj')">グルーピングボード</button>
-    <button class="tab" onclick="switchView('zettel')">Zettelkasten</button>
+    <details class="topbar-more">
+      <summary>整理</summary>
+      <div class="topbar-more-menu tab-group">
+        <button class="tab" onclick="switchView('kj');this.closest('details').open=false">グルーピングボード</button>
+        <button class="tab" onclick="switchView('zettel');this.closest('details').open=false">Zettelkasten</button>
+      </div>
+    </details>
     <button class="tab" onclick="switchView('bm25')" title="登録したサイト・収集した記事・Webから探す">探す</button>
   </div>
   <div class="spacer"></div>
   <button class="btn btn-primary btn-sm" onclick="openReader()">読んでメモ</button>
-<button class="btn btn-secondary btn-sm" onclick="openSourceModal()">ソース管理</button>
-  <button class="btn btn-secondary btn-sm" onclick="openCSVModal()">データ取り込み</button>
+  <details class="topbar-more topbar-admin">
+    <summary>管理</summary>
+    <div class="topbar-more-menu topbar-admin-menu">
+      <button class="btn btn-secondary btn-sm" onclick="openSourceModal();this.closest('details').open=false">ソース管理</button>
+      <button class="btn btn-secondary btn-sm" onclick="openCSVModal();this.closest('details').open=false">データ取り込み</button>
+    </div>
+  </details>
 </div>
 
 <!-- メイン -->
@@ -35,10 +45,10 @@
     <button id="sidebar-toggle" class="btn btn-secondary btn-sm" onclick="toggleCardSidebar()" title="Toggle sidebar">=</button>
     <div id="sidebar-body">
       <div class="sidebar-section">
-        <h3>Display</h3>
-        <label class="needs-ai" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)">
-          <input type="checkbox" id="summary-toggle" onchange="toggleSummaryVisibility(this.checked)"> AI summary
-        </label>
+        <details class="sidebar-options needs-ai">
+          <summary>表示オプション</summary>
+          <label><input type="checkbox" id="summary-toggle" onchange="toggleSummaryVisibility(this.checked)"> AI要約を表示</label>
+        </details>
       </div>
 
       <div class="sidebar-section">
@@ -92,6 +102,15 @@
         <button class="btn btn-secondary btn-sm needs-ai" onclick="summarizeBulk()">一括要約</button>
       </div>
     </div>
+    <div id="refind-study-list-control" class="refind-study-control refind-study-list-control">
+      <details class="refind-study-optin">
+        <summary>検索評価への任意協力</summary>
+        <label><input type="checkbox" id="refind-study-consent-list" class="refind-study-consent"> 保存カード一覧での自然検索をローカル評価へ記録する</label>
+        <span id="refind-study-status-list" class="refind-study-status">初期状態はOFFです。参加は任意で、記録はこのPCだけに保存します。</span>
+        <button class="link-btn" type="button" onclick="withdrawRefindStudy()">参加を撤回してローカル記録を削除</button>
+      </details>
+    </div>
+    <div id="refind-study-review-list"></div>
     <div id="content-body">
 
       <!-- カードグリッド -->
@@ -133,6 +152,12 @@
                 </div>
                 <div class="search-targets-label">検索先 <button class="link-btn" type="button" onclick="openSourceModal()">＋ サイトを追加</button></div>
                 <div id="search-targets" class="search-targets"></div>
+                <div class="refind-study-control">
+                  <label><input type="checkbox" id="refind-study-consent" class="refind-study-consent"> 自然に保存記事を探す検索をローカル評価へ記録する</label>
+                  <span id="refind-study-status" class="refind-study-status">初期状態はOFFです。参加は任意で、検索文・初回結果・後日の正解確認はこのPC内だけに記録します。</span>
+                  <button class="link-btn" type="button" onclick="withdrawRefindStudy()">参加を撤回してローカル記録を削除</button>
+                </div>
+                <div id="refind-study-review"></div>
                 <details id="search-target-status" class="search-target-status"><summary>情報源の状態</summary><div id="search-target-status-body"></div></details>
                 <div class="search-saved-row">
                   <select id="saved-search-select" onchange="restoreSavedSearch(this.value)" aria-label="保存した検索"><option value="">保存した検索</option></select>
@@ -201,9 +226,9 @@
                 <span class="param-val" id="v-ctx">1.5</span>
               </div>
               <div class="param-row">
-                <label>重複閾値</label>
-                <input type="range" min="0.5" max="1" step="0.05" id="p-dedup" oninput="syncParam('dedup',this.value)">
-                <span class="param-val" id="v-dedup">0.8</span>
+                <label>重複排除（1.0で無効）</label>
+                <input type="range" min="0.5" max="1" step="0.05" value="1" id="p-dedup" oninput="syncParam('dedup',this.value)">
+                <span class="param-val" id="v-dedup">1</span>
               </div>
               <div class="param-row">
                 <label>アーカイブ閾値</label>
@@ -286,9 +311,14 @@
     <div class="reader-bar">
       <input type="url" id="reader-url" placeholder="https://... 記事やPDFのURL" onkeydown="if(event.key==='Enter')loadReaderArticle()">
       <button class="btn btn-secondary btn-sm" onclick="loadReaderArticle()">読む</button>
-      <button class="btn btn-secondary btn-sm" onclick="chooseReaderPdf()" title="手元のPDF（論文・技術書など、DRMの無いもの）を開く">PDFを開く</button>
-      <input type="file" id="reader-pdf-file" accept="application/pdf,.pdf" style="display:none" onchange="openReaderPdf(this)">
-      <button class="btn btn-secondary btn-sm" onclick="registerReaderSite()" title="この記事が載っているブログを情報源に登録（新しい記事が自動で集まり、検索できるようになります）">このサイトを登録</button>
+      <details class="reader-secondary-actions">
+        <summary>ほかの読み込み</summary>
+        <div class="reader-secondary-actions-menu">
+          <button class="btn btn-secondary btn-sm" onclick="chooseReaderPdf()" title="手元のPDF（論文・技術書など、DRMの無いもの）を開く">PDFを開く</button>
+          <input type="file" id="reader-pdf-file" accept="application/pdf,.pdf" style="display:none" onchange="openReaderPdf(this)">
+          <button class="btn btn-secondary btn-sm" onclick="registerReaderSite()" title="この記事が載っているブログを情報源に登録（新しい記事が自動で集まり、検索できます）">このサイトを登録</button>
+        </div>
+      </details>
       <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-reader')">閉じる</button>
     </div>
     <div id="reader-search-actions" class="reader-bar" hidden>
@@ -299,7 +329,12 @@
     </div>
     <div class="reader-split">
       <div class="reader-left">
-        <label>タイトル（本文なしで保存する場合）<input id="reader-fallback-title" maxlength="200"></label><details><summary>本文を貼り付ける</summary><textarea id="reader-manual-text" placeholder="本文を貼り付けて保存"></textarea><button class="btn btn-secondary" onclick="applyManualReaderText()">本文に反映</button></details><div id="reader-meta" class="reader-meta"></div>
+        <details class="reader-manual-source"><summary>本文を貼り付ける／タイトルを入力</summary>
+          <label>タイトル（本文なしで保存する場合）<input id="reader-fallback-title" maxlength="200"></label>
+          <textarea id="reader-manual-text" placeholder="本文を貼り付けて保存"></textarea>
+          <button class="btn btn-secondary" onclick="applyManualReaderText()">本文に反映</button>
+        </details>
+        <div id="reader-meta" class="reader-meta"></div>
         <div id="reader-article" class="reader-article"></div>
       </div>
       <div class="reader-divider" id="reader-divider" title="ドラッグで幅を調整（ダブルクリックで元に戻す）"></div>
@@ -309,14 +344,17 @@
           <button class="btn btn-secondary btn-sm" onclick="restoreReaderDraft()">復元</button>
           <button class="btn btn-secondary btn-sm" onclick="discardReaderDraft()">破棄</button>
         </div>
-        <div class="evidence-box">
-          <div class="evidence-input">
-            <input type="text" id="evidence-purpose" maxlength="300" placeholder="何のために読む？（例: BM25がAI検索より有利な点を知りたい）" onkeydown="if(event.key==='Enter'&&!event.isComposing)runEvidence()">
-            <button class="btn btn-secondary btn-sm" id="evidence-run" onclick="runEvidence()" title="目的に関係する一節を本文から選び、本文に一字一句あるかを照合します">根拠を探す</button>
+        <details class="reader-evidence-details" id="reader-evidence-details">
+          <summary>目的に沿って根拠を整理</summary>
+          <div class="evidence-box">
+            <div class="evidence-input">
+              <input type="text" id="evidence-purpose" maxlength="300" placeholder="何のために読む？（例: BM25がAI検索より有利な点を知りたい）" onkeydown="if(event.key==='Enter'&&!event.isComposing)runEvidence()">
+              <button class="btn btn-secondary btn-sm" id="evidence-run" onclick="runEvidence()" title="目的に関係する一節を本文から選び、本文に一字一句あるかを照合します">根拠を探す</button>
+            </div>
+            <div id="evidence-engine" class="reader-note"></div>
+            <div id="evidence-results" class="evidence-results"></div>
           </div>
-          <div id="evidence-engine" class="reader-note"></div>
-          <div id="evidence-results" class="evidence-results"></div>
-        </div>
+        </details>
         <div class="memo-mode">
           <label>メモ</label>
           <button class="type-btn active" id="memo-mode-text" onclick="setMemoMode('text')">テキスト</button>

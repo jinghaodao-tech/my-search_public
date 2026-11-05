@@ -6,6 +6,7 @@
  */
 
 import RSSParser from 'rss-parser';
+import { selectRssContent } from './services/rss_content.js';
 import cron      from 'node-cron';
 import { safeFetch } from './services/safe_fetch.js';
 import { articleIdentityKey, stableArticleId } from './services/article_identity.js';
@@ -138,10 +139,6 @@ function httpsGet(url: string): Promise<string> {
   }).then(response => response.text());
 }
 
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1200);
-}
-
 // ════════════════════════════════════════════════════
 //  § 4. RSS コレクター
 // ════════════════════════════════════════════════════
@@ -158,15 +155,17 @@ export async function collectRSS(
       const feed = await parser.parseString(await httpsGet(src.url));
       for (const item of (feed.items ?? []).slice(0, 20)) {
         if (!item.title) continue;
+        const selected = selectRssContent(item);
         articles.push({
           id:              stableArticleId('rss', item.guid ? `${src.url}\0${item.guid}` : item.link ? articleIdentityKey(item.link) : `${src.url}\0${item.title}\0${item.content ?? item.summary ?? ''}`),
           title:           item.title,
-          body:            stripHtml(item.contentSnippet ?? item.content ?? item.summary ?? ''),
+          body:            selected.body,
+          summary:         selected.summary,
           publishedAt:     new Date(item.isoDate ?? item.pubDate ?? NaN),
           sourceAuthority: src.authority,
           url:             item.link ?? '',
           source:          `rss:${src.label}`,
-          bodyKind:        'excerpt',
+          bodyKind:        selected.bodyKind,
         });
       }
       console.log(`  [RSS] ${src.label}: ${feed.items?.length ?? 0} 件`);

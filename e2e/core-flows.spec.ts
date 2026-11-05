@@ -74,10 +74,71 @@ test.describe("core user flows", () => {
       // @ts-expect-error Browser globals from the app.
       renderKeywords();
     });
+    const savedCardSearch = page.waitForResponse(response =>
+      response.url().includes("/api/cards/search") && response.request().method() === "POST",
+    );
     await page.locator("#bm25-run-btn").click();
+    const savedCardResponse = await savedCardSearch;
+    expect(savedCardResponse.ok()).toBeTruthy();
+    const savedCardSearchBody = await savedCardResponse.json();
+    const expectedSearchMethod = process.env.E2E_CARD_SEARCH_ENGINE === "fts5-raw"
+      ? "fts5-raw-saved-cards"
+      : process.env.E2E_CARD_SEARCH_ENGINE === "fts5-morph"
+        ? "fts5-morph-saved-cards"
+        : "fts5-rrf-saved-cards";
+    expect(savedCardSearchBody.scope.searchMethod).toBe(expectedSearchMethod);
+    expect(savedCardSearchBody.active[0]?.scoreSources?.method).toBe(
+      process.env.E2E_CARD_SEARCH_ENGINE === "fts5-raw" ? "sqlite-fts5-raw-bm25"
+        : process.env.E2E_CARD_SEARCH_ENGINE === "fts5-morph" ? "sqlite-fts5-morphological-bm25" : "sqlite-fts5-rrf",
+    );
     const resultBody = page.locator("#bm25-result-body");
     await expect(resultBody).toContainText(targetTitle);
     await expect(resultBody.locator(".score-card").first()).toContainText(targetTitle);
+  });
+
+  test("keeps distinct FAQ cards in saved-card search unless deduplication is selected", async ({ page, request }) => {
+    const title = `E2E origin rule ${stamp()}`;
+    await createCard(request, title, "購入した材料・部品についても、輸出する産品と同様、当該材料・部品に適用される原産地規則を満たしていれば原産品として扱うことができます。");
+    await createCard(request, title, "自社で内製した材料・部品についても、輸出する産品と同様、当該材料・部品に適用される原産地規則を満たしていれば原産品として扱うことができます。");
+
+    await openApp(page);
+    await page.locator(`button[onclick="switchView('bm25')"]`).click();
+    await expect(page.locator('#search-targets input[value="cards"]')).toBeAttached();
+    await page.evaluate(() => { for (const box of document.querySelectorAll<HTMLInputElement>('#search-targets input[type=checkbox]')) box.checked = false; });
+    await page.locator('#search-targets input[value="cards"]').check();
+    await page.locator('#search-terms').fill('購入 材料 部品 原産');
+    await page.evaluate(() => {
+      // @ts-expect-error Browser globals from the app.
+      bm25Keywords = ['購入', '材料', '部品', '原産'].map(term => ({ term, weight: 1, synonyms: '' }));
+      // @ts-expect-error Browser globals from the app.
+      bm25Params.arch = -1;
+      // @ts-expect-error Browser globals from the app.
+      bm25Params.limit = 10;
+      // @ts-expect-error Browser globals from the app.
+      renderKeywords();
+    });
+
+    const japaneseSearch = page.waitForResponse(response =>
+      response.url().includes("/api/cards/search") && response.request().method() === "POST",
+    );
+    await page.locator('#bm25-run-btn').click();
+    const japaneseSearchBody = await (await japaneseSearch).json();
+    if (process.env.E2E_CARD_SEARCH_ENGINE === "fts5-raw") {
+      expect(japaneseSearchBody.scope.searchMethod).toBe("fts5-raw-fallback-rrf-saved-cards");
+      expect(japaneseSearchBody.scope.fallbackUsed).toBe(true);
+    } else if (process.env.E2E_CARD_SEARCH_ENGINE === "fts5-morph") {
+      expect(japaneseSearchBody.scope.searchMethod).toBe("fts5-morph-saved-cards");
+      expect(japaneseSearchBody.scope.fallbackUsed).toBe(false);
+    }
+    const results = page.locator('#bm25-result-body .score-card');
+    await expect(results).toHaveCount(2);
+
+    await page.evaluate(() => {
+      // @ts-expect-error Browser globals from the app.
+      bm25Params.dedup = 0.8;
+    });
+    await page.locator('#bm25-run-btn').click();
+    await expect(results).toHaveCount(1);
   });
 
   test("archives and restores a card through the list UI", async ({ page, request }) => {
@@ -109,6 +170,7 @@ test.describe("core user flows", () => {
     const updatedName = `E2E Group Updated ${id}`;
 
     await openApp(page);
+    await page.locator("#topbar .tab-group .topbar-more summary").click();
     await page.getByRole("button", { name: "グルーピングボード" }).click();
     await page.getByRole("button", { name: "グループ追加" }).click();
     await page.locator("#group-name").fill(groupName);
@@ -121,6 +183,7 @@ test.describe("core user flows", () => {
     expect(group?.id).toBeTruthy();
     await request.post(`/api/kj/groups/${group.id}/cards`, { data: { cardId: card.id } });
     await page.reload();
+    await page.locator("#topbar .tab-group .topbar-more summary").click();
     await page.getByRole("button", { name: "グルーピングボード" }).click();
     await expect(page.locator("#kj-canvas")).toContainText(card.title);
 

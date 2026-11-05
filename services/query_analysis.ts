@@ -38,8 +38,8 @@ export const GENERIC_TERMS = new Set([
   '方法', '手順', '事例', '比較', '違い', '原因', '理由', '背景', '情報', '内容', '記事', '仕事', '人', '今', '話',
 ]);
 
-/** Short English words that match ordinary English text ("IT" vs "it"). */
-const ENGLISH_STOP = new Set(['a', 'an', 'the', 'it', 'is', 'as', 'at', 'be', 'by', 'do', 'go', 'if', 'in', 'me', 'my', 'no', 'of', 'on', 'or', 'so', 'to', 'up', 'us', 'we', 'and', 'for', 'how', 'what', 'why', 'with']);
+/** Common English function words add matches but little topic evidence in saved-article search. */
+const ENGLISH_STOP = new Set(`a about above after again against all am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just me more most my myself nor of off on once only or other our ours ourselves out over own same she should so some such than that the their theirs them themselves then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your yours`.split(' '));
 
 export type QueryAnalysis = {
   keywords: Array<{ term: string; weight: number }>;
@@ -79,9 +79,10 @@ export function analyzeQuery(text: string, words: string[], baseWeight: (term: s
   for (const term of mergeKatakana(text, words)) {
     const lower = term.toLowerCase();
     if (ENGLISH_STOP.has(lower)) {
-      // "IT" / "Go" written with capitals are meant; they still match every English "it" / "go", so they count less
+      // Keep explicit acronyms and the Go language, but not sentence-initial "What" or "The".
       const written = text.match(new RegExp(`(?<![A-Za-z])${lower}(?![A-Za-z])`, 'i'))?.[0] ?? '';
-      if (/[A-Z]/.test(written)) { keywords.push({ term, weight: 0.5 }); specificTerms.push(term); }
+      const intentionalName = (written.length <= 3 && written === written.toUpperCase()) || (lower === 'go' && written === 'Go');
+      if (intentionalName) { keywords.push({ term, weight: 0.5 }); specificTerms.push(term); }
       continue;
     }
     if (GENERIC_TERMS.has(term)) { keywords.push({ term, weight: 0.4 }); genericTerms.push(term); continue; }

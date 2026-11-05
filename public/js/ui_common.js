@@ -22,8 +22,9 @@ function updateColorStrip(stripId,selected,onSelect){
 //  モーダル
 // ════════════════════════════════════════
 function openModal(id){document.getElementById(id).classList.add('active')}
-function closeModal(id){document.getElementById(id).classList.remove('active')}
-document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('active')}));
+function dismissModal(modal){modal.classList.remove('active');if(modal.id==='modal-reader'&&typeof clearLastReaderSession==='function')clearLastReaderSession()}
+function closeModal(id){const modal=document.getElementById(id);if(modal)dismissModal(modal)}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)dismissModal(m)}));
 
 // ════════════════════════════════════════
 //  トースト
@@ -36,7 +37,7 @@ function toast(msg,type='ok'){
 
 // キーボード
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.active').forEach(m=>m.classList.remove('active'));closeDetail();}
+  if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.active').forEach(dismissModal);closeDetail();}
   if((e.ctrlKey||e.metaKey)&&e.key==='n'){e.preventDefault();openNewCardModal();}
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&currentView==='bm25'){e.preventDefault();runBM25();}
 });

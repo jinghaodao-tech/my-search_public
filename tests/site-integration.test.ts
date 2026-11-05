@@ -33,12 +33,19 @@ function feedFetch(host: string, page?: (url: string) => ReturnType<typeof respo
 describe('site integration regressions', () => {
   // The diagnostics live in notes/ (kept out of commits). Skip, saying so, when that folder is not there.
   it.skipIf(!fs.existsSync('notes/site-integration-probes.ts'))('passes all eleven unchanged integration diagnostics in a separate process (needs notes/site-integration-probes.ts)', () => {
-    const run = spawnSync(process.execPath, [path.join(process.cwd(), 'node_modules/tsx/dist/cli.mjs'), 'notes/site-integration-probes.ts'], { encoding: 'utf8', timeout: 60_000, env: { ...process.env } });
-    expect(run.status, run.error?.message ?? run.stderr ?? run.stdout).toBe(0);
-    const report = JSON.parse(fs.readFileSync('artifacts/site-integration-probes.json', 'utf8'));
-    expect(report.results).toHaveLength(11);
-    expect(report.passed).toBe(11);
-    expect(report.failed).toBe(0);
+    const reportPath = path.join(process.cwd(), 'artifacts/site-integration-probes.json');
+    const previousReport = fs.existsSync(reportPath) ? fs.readFileSync(reportPath) : null;
+    try {
+      const run = spawnSync(process.execPath, [path.join(process.cwd(), 'node_modules/tsx/dist/cli.mjs'), 'notes/site-integration-probes.ts'], { encoding: 'utf8', timeout: 60_000, env: { ...process.env } });
+      expect(run.status, run.error?.message ?? run.stderr ?? run.stdout).toBe(0);
+      const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+      expect(report.results).toHaveLength(11);
+      expect(report.passed).toBe(11);
+      expect(report.failed).toBe(0);
+    } finally {
+      if (previousReport) fs.writeFileSync(reportPath, previousReport);
+      else fs.rmSync(reportPath, { force: true });
+    }
   }, 65_000);
 
   it('shares URL identity without discarding semantic queries', () => {

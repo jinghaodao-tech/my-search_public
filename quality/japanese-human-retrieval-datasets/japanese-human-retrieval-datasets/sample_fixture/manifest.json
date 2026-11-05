@@ -1,0 +1,25 @@
+{
+  "dataset": "fixture",
+  "source_revision": "SYNTHETIC_TEST_ONLY",
+  "created_utc": "2026-10-21T04:57:53.914905+00:00",
+  "document_count": 2,
+  "query_count": 2,
+  "qrel_count": 2,
+  "split_counts": {
+    "validation": 1,
+    "holdout": 1
+  },
+  "split_group_counts": {
+    "validation": 1,
+    "holdout": 1
+  },
+  "split_method": "SHA256(my-search-ja-retrieval-split-v1|<positive doc id>), group-wise 30/20/50",
+  "full_corpus_available": true,
+  "caution": "Public benchmarks are not samples of actual my-search saved-article search sessions; do not claim product-wide 95% success.",
+  "sha256": {
+    "corpus.jsonl": "adcf72e42650d5b47b23eecf4cc98f86cfc85f5f3078918a2e54d57208f54b46",
+    "queries.jsonl": "1098e01f5e4469998d31369511775095cf423b72acffe253a3e54b6196a41e93",
+    "qrels.tsv": "a89e02ba848a22babe7fd0cf5675a37dc8ba57c9f93e0f65886ce50b0938dae8",
+    "splits.jsonl": "9884f64966a86e6bf063ff39efc872f0f6bd44ec3798d8f56a2acb5cc9e53213"
+  }
+}

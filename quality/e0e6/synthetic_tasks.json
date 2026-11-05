@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "purpose": "synthetic wiring and analysis checks only; not user-study evidence",
+  "tasks": [
+    { "task_id": "synthetic-refind-01", "experiment": "E0", "variant": "find_preexisting_saved_memo", "expected_outcome": "success", "phases": ["search", "refind"] },
+    { "task_id": "synthetic-resume-01", "experiment": "E0", "variant": "read_save_refind_resume", "expected_outcome": "success", "phases": ["read", "note", "save", "refind", "resume"] },
+    { "task_id": "synthetic-integrate-01", "experiment": "E6", "expected_outcome": "success", "phases": ["search", "read", "note", "compare", "save", "refind", "resume"] }
+  ],
+  "shared_e6_task": { "task_id": "synthetic-integrate-01", "conditions": ["separated", "integrated"], "common_controls": { "automation": "manual", "visibility": "current", "timing": "on_request", "authority": "read_and_save_synthetic_items_only" } },
+  "e6_parallel_forms": [
+    { "form_id": "synthetic-form-a", "source": { "id": "SYS-17", "title": "Synthetic source 17", "text": "For the blue unit, the sample count is 3. For the red unit, the sample count is 9." }, "decoy_source_id": "SYS-09", "fact_choices": ["red unit = 9", "blue unit = 3"], "expected_fact": "blue unit = 3", "tool": { "kind": "fixed_addition", "left": 3, "right": 4, "expected_result": 7 }, "expected_saved_source_id": "SYS-17" },
+    { "form_id": "synthetic-form-b", "source": { "id": "SYS-23", "title": "Synthetic source 23", "text": "For the green unit, the sample count is 5. For the amber unit, the sample count is 2." }, "decoy_source_id": "SYS-20", "fact_choices": ["amber unit = 2", "green unit = 5"], "expected_fact": "green unit = 5", "tool": { "kind": "fixed_addition", "left": 5, "right": 2, "expected_result": 7 }, "expected_saved_source_id": "SYS-23" },
+    { "form_id": "synthetic-form-c", "source": { "id": "SYS-31", "title": "Synthetic source 31", "text": "For the violet unit, the sample count is 4. For the orange unit, the sample count is 8." }, "decoy_source_id": "SYS-30", "fact_choices": ["orange unit = 8", "violet unit = 4"], "expected_fact": "violet unit = 4", "tool": { "kind": "fixed_addition", "left": 4, "right": 2, "expected_result": 6 }, "expected_saved_source_id": "SYS-31" }
+  ],
+  "e6_workflow_conditions": ["mvp", "separated", "integrated"],
+  "e6_controlled_axes": { "automation": "manual", "visibility": "current", "timing": "on_request" }
+}

@@ -150,6 +150,80 @@ const migrations: Migration[] = [
   { id: '022_site_article_integration', sql: '' },
   // 015 accepted numbers such as '60' as dates (Date.parse('60') is a valid year); repair those too.
   { id: '023_repair_numeric_card_timestamps', sql: '' },
+  { id: '024_create_article_search_fts', sql: `
+    CREATE VIRTUAL TABLE IF NOT EXISTS articles_morph_fts USING fts5(id UNINDEXED, tokens);
+    CREATE VIRTUAL TABLE IF NOT EXISTS articles_ngram_fts USING fts5(id UNINDEXED, tokens);
+    INSERT INTO articles_morph_fts(id, tokens)
+      SELECT a.id, COALESCE((SELECT group_concat(value, ' ') FROM json_each(CASE WHEN json_valid(COALESCE(r.tokens_json, a.morphological_tokens_json, a.tokens_json, '[]')) THEN COALESCE(r.tokens_json, a.morphological_tokens_json, a.tokens_json, '[]') ELSE '[]' END)), '')
+      FROM articles a LEFT JOIN article_reader_content r ON r.article_id = a.id;
+    INSERT INTO articles_ngram_fts(id, tokens)
+      SELECT a.id, COALESCE((SELECT group_concat(value, ' ') FROM json_each(CASE WHEN json_valid(COALESCE(r.tokens_json, a.ngram_tokens_json, a.tokens_json, '[]')) THEN COALESCE(r.tokens_json, a.ngram_tokens_json, a.tokens_json, '[]') ELSE '[]' END)), '')
+      FROM articles a LEFT JOIN article_reader_content r ON r.article_id = a.id;
+    CREATE TRIGGER articles_search_fts_after_insert AFTER INSERT ON articles BEGIN
+      INSERT INTO articles_morph_fts(id,tokens) VALUES (NEW.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(NEW.morphological_tokens_json,NEW.tokens_json,'[]')) THEN COALESCE(NEW.morphological_tokens_json,NEW.tokens_json,'[]') ELSE '[]' END)),''));
+      INSERT INTO articles_ngram_fts(id,tokens) VALUES (NEW.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(NEW.ngram_tokens_json,NEW.tokens_json,'[]')) THEN COALESCE(NEW.ngram_tokens_json,NEW.tokens_json,'[]') ELSE '[]' END)),''));
+    END;
+    CREATE TRIGGER articles_search_fts_after_update AFTER UPDATE OF title,body,summary,tokens_json,ngram_tokens_json,morphological_tokens_json ON articles BEGIN
+      DELETE FROM articles_morph_fts WHERE id=OLD.id;
+      DELETE FROM articles_ngram_fts WHERE id=OLD.id;
+      INSERT INTO articles_morph_fts(id,tokens) SELECT NEW.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(r.tokens_json,NEW.morphological_tokens_json,NEW.tokens_json,'[]')) THEN COALESCE(r.tokens_json,NEW.morphological_tokens_json,NEW.tokens_json,'[]') ELSE '[]' END)), '') FROM (SELECT 1) LEFT JOIN article_reader_content r ON r.article_id=NEW.id;
+      INSERT INTO articles_ngram_fts(id,tokens) SELECT NEW.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(r.tokens_json,NEW.ngram_tokens_json,NEW.tokens_json,'[]')) THEN COALESCE(r.tokens_json,NEW.ngram_tokens_json,NEW.tokens_json,'[]') ELSE '[]' END)), '') FROM (SELECT 1) LEFT JOIN article_reader_content r ON r.article_id=NEW.id;
+    END;
+    CREATE TRIGGER articles_search_fts_after_delete AFTER DELETE ON articles BEGIN
+      DELETE FROM articles_morph_fts WHERE id=OLD.id;
+      DELETE FROM articles_ngram_fts WHERE id=OLD.id;
+    END;
+    CREATE TRIGGER reader_search_fts_after_insert AFTER INSERT ON article_reader_content BEGIN
+      DELETE FROM articles_morph_fts WHERE id=NEW.article_id;
+      DELETE FROM articles_ngram_fts WHERE id=NEW.article_id;
+      INSERT INTO articles_morph_fts(id,tokens) SELECT a.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(NEW.tokens_json,a.morphological_tokens_json,a.tokens_json,'[]')) THEN COALESCE(NEW.tokens_json,a.morphological_tokens_json,a.tokens_json,'[]') ELSE '[]' END)), '') FROM articles a WHERE a.id=NEW.article_id;
+      INSERT INTO articles_ngram_fts(id,tokens) SELECT a.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(NEW.tokens_json,a.ngram_tokens_json,a.tokens_json,'[]')) THEN COALESCE(NEW.tokens_json,a.ngram_tokens_json,a.tokens_json,'[]') ELSE '[]' END)), '') FROM articles a WHERE a.id=NEW.article_id;
+    END;
+    CREATE TRIGGER reader_search_fts_after_update AFTER UPDATE OF body,tokens_json,morphological_tokens_json,content_hash ON article_reader_content BEGIN
+      DELETE FROM articles_morph_fts WHERE id=NEW.article_id;
+      DELETE FROM articles_ngram_fts WHERE id=NEW.article_id;
+      INSERT INTO articles_morph_fts(id,tokens) SELECT a.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(NEW.tokens_json,a.morphological_tokens_json,a.tokens_json,'[]')) THEN COALESCE(NEW.tokens_json,a.morphological_tokens_json,a.tokens_json,'[]') ELSE '[]' END)), '') FROM articles a WHERE a.id=NEW.article_id;
+      INSERT INTO articles_ngram_fts(id,tokens) SELECT a.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(NEW.tokens_json,a.ngram_tokens_json,a.tokens_json,'[]')) THEN COALESCE(NEW.tokens_json,a.ngram_tokens_json,a.tokens_json,'[]') ELSE '[]' END)), '') FROM articles a WHERE a.id=NEW.article_id;
+    END;
+    CREATE TRIGGER reader_search_fts_after_delete AFTER DELETE ON article_reader_content BEGIN
+      DELETE FROM articles_morph_fts WHERE id=OLD.article_id;
+      DELETE FROM articles_ngram_fts WHERE id=OLD.article_id;
+      INSERT INTO articles_morph_fts(id,tokens) SELECT a.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(a.morphological_tokens_json,a.tokens_json,'[]')) THEN COALESCE(a.morphological_tokens_json,a.tokens_json,'[]') ELSE '[]' END)), '') FROM articles a WHERE a.id=OLD.article_id;
+      INSERT INTO articles_ngram_fts(id,tokens) SELECT a.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(a.ngram_tokens_json,a.tokens_json,'[]')) THEN COALESCE(a.ngram_tokens_json,a.tokens_json,'[]') ELSE '[]' END)), '') FROM articles a WHERE a.id=OLD.article_id;
+    END;
+  ` },
+  { id: '025_create_saved_card_token_fts', sql: `
+    CREATE VIRTUAL TABLE IF NOT EXISTS cards_morph_fts USING fts5(id UNINDEXED, tokens);
+    CREATE VIRTUAL TABLE IF NOT EXISTS cards_ngram_fts USING fts5(id UNINDEXED, tokens);
+    INSERT INTO cards_morph_fts(id,tokens)
+      SELECT id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(morphological_tokens_json,'[]')) THEN COALESCE(morphological_tokens_json,'[]') ELSE '[]' END)),'') FROM cards;
+    INSERT INTO cards_ngram_fts(id,tokens)
+      SELECT id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(ngram_tokens_json,tokens_json,'[]')) THEN COALESCE(ngram_tokens_json,tokens_json,'[]') ELSE '[]' END)),'') FROM cards;
+    CREATE TRIGGER IF NOT EXISTS cards_token_fts_after_insert AFTER INSERT ON cards BEGIN
+      INSERT INTO cards_morph_fts(id,tokens) VALUES (NEW.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(NEW.morphological_tokens_json,'[]')) THEN COALESCE(NEW.morphological_tokens_json,'[]') ELSE '[]' END)),''));
+      INSERT INTO cards_ngram_fts(id,tokens) VALUES (NEW.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(NEW.ngram_tokens_json,NEW.tokens_json,'[]')) THEN COALESCE(NEW.ngram_tokens_json,NEW.tokens_json,'[]') ELSE '[]' END)),''));
+    END;
+    CREATE TRIGGER IF NOT EXISTS cards_token_fts_after_update AFTER UPDATE OF tokens_json,ngram_tokens_json,morphological_tokens_json ON cards BEGIN
+      DELETE FROM cards_morph_fts WHERE id=OLD.id;
+      DELETE FROM cards_ngram_fts WHERE id=OLD.id;
+      INSERT INTO cards_morph_fts(id,tokens) VALUES (NEW.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(NEW.morphological_tokens_json,'[]')) THEN COALESCE(NEW.morphological_tokens_json,'[]') ELSE '[]' END)),''));
+      INSERT INTO cards_ngram_fts(id,tokens) VALUES (NEW.id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(NEW.ngram_tokens_json,NEW.tokens_json,'[]')) THEN COALESCE(NEW.ngram_tokens_json,NEW.tokens_json,'[]') ELSE '[]' END)),''));
+    END;
+    CREATE TRIGGER IF NOT EXISTS cards_token_fts_after_delete AFTER DELETE ON cards BEGIN
+      DELETE FROM cards_morph_fts WHERE id=OLD.id;
+      DELETE FROM cards_ngram_fts WHERE id=OLD.id;
+    END;
+  ` },
+  { id: '026_create_reader_tool_state', sql: `
+    CREATE TABLE IF NOT EXISTS reader_tool_state (
+      card_id TEXT PRIMARY KEY REFERENCES cards(id) ON DELETE CASCADE,
+      payload_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TRIGGER IF NOT EXISTS reader_tool_state_after_card_delete AFTER DELETE ON cards BEGIN
+      DELETE FROM reader_tool_state WHERE card_id = OLD.id;
+    END;
+  ` },
 ];
 
 function columns(db: Database.Database, table: string): Set<string> {

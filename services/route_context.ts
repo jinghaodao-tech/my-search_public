@@ -4,7 +4,7 @@ import { tokenizerName } from '../bm25_engine.js';
 import { resetInterruptedSiteChecks } from '../repositories/site_sources_repository.js';
 import { logger } from '../utils/logger.js';
 import { getArticleById } from '../repositories/articles_repository.js';
-import { expireCandidate, expireReviewedCandidates, getCandidate, getCandidates, reviewCandidate, saveCandidate } from './candidate_service.js';
+import { expireCandidate, expireReviewedCandidates, getCandidate, getCandidates, getCandidatesByIds, reviewCandidate, saveCandidate } from './candidate_service.js';
 import { MODES, createSearchEngine } from './search_service.js';
 import { createCollectorService } from './collector_service.js';
 import { createSchedulerService } from './scheduler_service.js';
@@ -156,6 +156,7 @@ export function createRouteContext(limiters: {
     importArticlesSchema,
     getArticleById,
     getCandidates,
+    getCandidatesByIds,
     getCandidate,
     reviewCandidate,
     saveCandidate,
@@ -175,7 +176,7 @@ export function createRouteContext(limiters: {
       await backfillCardTokens(tokenizerChanged);
       const retentionDays = Number(process.env.CANDIDATE_RETENTION_DAYS ?? 14);
       if (Number.isInteger(retentionDays) && retentionDays >= 0) expireReviewedCandidates(retentionDays);
-      const cachedArticles = collector.getCachedArticles();
+      const cachedArticles = tokenizerChanged ? collector.loadArticles() : collector.getCachedArticles();
       if (cachedArticles) {
         const indexed = await collector.ensureArticleTokens(cachedArticles, tokenizerChanged);
         collector.setCachedArticles(indexed);

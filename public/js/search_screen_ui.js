@@ -9,6 +9,12 @@ let searchKeywordsText = '';
 // what /api/search/terms said about the text (generic words, kind of question, too broad?)
 let searchAnalysis = null;
 let cardSearchResult = null;
+const REFIND_CONSENT_KEY = 'mySearch.personalRefindCaptureConsent20261025';
+const REFIND_PARTICIPANT_KEY = 'mySearch.personalRefindCaptureParticipant20261025';
+const REFIND_SESSION_KEY = 'mySearch.personalRefindCaptureSession20261025';
+let refindStudyAvailable = false;
+let refindStudyPlan = null;
+let activeRefindStudy = null;
 
 const DEFAULT_WEB_TARGETS = ['web:qiita', 'web:hatena'];
 
@@ -103,10 +109,15 @@ async function loadSearchTargets() {
   const stored = searchTargetChoice || loadTargetChoice();
   const known = new Set(stored?.known || []);
   const selected = new Set(stored?.selected || []);
+  const hasCollectedArticles = searchTargets.collected.some(target => target.count > 0);
   const isChosen = value => {
-    // First visit: everything collected; the web too only while nothing has been collected yet.
-    if (!stored) return value === 'cards' ? false : value.startsWith('web:') ? (!searchTargets.collected.length && DEFAULT_WEB_TARGETS.includes(value)) : true;
-    if (!known.has(value)) return value !== 'cards' && !value.startsWith('web:'); // a newly added site or feed: on
+    // Configured feeds with zero articles are not a searchable corpus.
+    if (!stored) {
+      if (value === 'cards') return !hasCollectedArticles && searchTargets.cards?.count > 0;
+      if (value.startsWith('web:')) return !hasCollectedArticles && DEFAULT_WEB_TARGETS.includes(value);
+      return searchTargets.collected.some(target => target.value === value && target.count > 0);
+    }
+    if (!known.has(value)) return searchTargets.collected.some(target => target.value === value && target.count > 0);
     return selected.has(value);
   };
   const host = document.getElementById('search-targets');
@@ -178,7 +189,7 @@ async function loadSearchTargets() {
     };
     host.prepend(filter);
   }
-  if (!searchTargets.collected.length) {
+  if (!hasCollectedArticles) {
     const hint = document.createElement('p');
     hint.className = 'reader-note';
     hint.textContent = 'まだ記事が集まっていません。「＋ サイトを追加」でよく読むブログを登録するか、Webを選んで検索してください。';
@@ -202,7 +213,7 @@ function renderTargetStatus() {
       target.label,
       `${target.count}件`,
       target.lastCheckedAt ? new Date(target.lastCheckedAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
-      target.kind === 'site' ? (target.bodyCount ? `本文あり ${target.bodyCount}件` : 'タイトル・概要のみ') : '概要のみ',
+      target.searchable === 'fulltext' ? '本文も検索' : target.searchable === 'mixed' ? '一部の本文も検索' : 'タイトル・概要のみ',
       target.kind === 'site' ? `${target.statusLabel}${target.pastArticles ? '' : '（最新のみ）'}${target.lastError ? `：${target.lastError}` : ''}` : '—',
     ];
     for (const text of cells) { const cell = document.createElement('td'); cell.textContent = text; row.append(cell); }
@@ -238,7 +249,7 @@ function renderNoResultStatus(host, scope) {
   box.className = 'no-result-box';
   const title = document.createElement('p');
   title.className = 'no-result-title';
-  title.textContent = '検索対象内では見つかりませんでした';
+  title.textContent = scope.totalCount === 0 ? '収集済みの記事がまだありません' : scope.searchedCount === 0 ? '指定した検索先・条件に合う記事がありません' : '収集済みの記事からは見つかりませんでした';
   box.append(title);
   const heading = document.createElement('p');
   heading.className = 'reader-note';
@@ -247,7 +258,7 @@ function renderNoResultStatus(host, scope) {
   const list = document.createElement('ul');
   list.className = 'no-result-list';
   const selected = selectedCollectedTargets();
-  const targets = selected.length ? searchTargets.collected.filter(target => selected.includes(target.value)) : searchTargets.collected;
+  const targets = searchTargets.collected.filter(target => selected.includes(target.value));
   const retryable = [];
   for (const target of targets) {
     const counts = scope.bySource?.[target.value] || { total: target.count, searched: 0 };
@@ -284,6 +295,13 @@ function renderNoResultStatus(host, scope) {
   actions.className = 'evidence-actions';
   actions.append(resultButton('検索条件を変更', () => { const details = document.getElementById('search-details'); details.open = true; details.scrollIntoView({ block: 'nearest' }); }));
   actions.append(resultButton('収集状況を確認', () => openSourceModal()));
+  if (!selectedSearchTargets().some(value => value.startsWith('web:'))) {
+    actions.append(resultButton('Webで探す', () => {
+      const web = searchTargets.web.filter(target => DEFAULT_WEB_TARGETS.includes(target.value)).map(target => target.value);
+      applySearchTargets([...selectedSearchTargets(), ...web]);
+      runSearchScreen({ webOnly: true });
+    }));
+  }
   for (const target of retryable) {
     actions.append(resultButton(`「${target.label}」を今すぐ更新`, async () => {
       try { const { jobId } = await api.post(`/api/sites/${encodeURIComponent(target.value.slice(5))}/sync`, {}); toast('更新を始めました'); if (typeof watchSiteJob === 'function') watchSiteJob(jobId); }
@@ -317,13 +335,25 @@ async function runCardSearch() {
   heading.textContent = '自分のカードから';
   host.append(heading);
   const settings = searchSettings();
-  const cards = await api.get('/api/cards');
-  const result = await api.post('/api/run', {
-    config: settings.config,
-    options: settings.options,
-    filters: { excludedTerms: settings.filters.excludedTerms, sources: [], status: 'all' },
-    articles: cards.map(card => ({ id: card.id, title: card.title, body: card.body, summary: card.summary, publishedAt: card.createdAt, url: card.url || '', tags: card.tags, sourceAuthority: 0.8 })),
-  });
+  const started = performance.now();
+  let result;
+  try {
+    result = await api.post('/api/cards/search', {
+      config: settings.config,
+      options: settings.options,
+      filters: { excludedTerms: [], sources: [], status: 'all' },
+    });
+    if (activeRefindStudy) await recordRefindInteraction({ action: 'search_response',
+      top10: result.active.slice(0, 10).map(item => item.article.id),
+      candidateIdsBeforeRerank: Array.isArray(result.scope?.candidateIdsBeforeRerank) ? result.scope.candidateIdsBeforeRerank : null,
+      actualEngine: result.scope?.searchMethod ?? null, fallbackUsed: result.scope?.fallbackUsed ?? null,
+      httpStatus: 200, latencyMs: performance.now() - started });
+  } catch (error) {
+    if (activeRefindStudy) await recordRefindInteraction({ action: 'search_response', top10: [],
+      httpStatus: Number.isInteger(error?.status) ? error.status : null,
+      error: formatApiError(error), latencyMs: performance.now() - started }).catch(() => {});
+    throw error;
+  }
   cardSearchResult = result;
   heading.textContent = `自分のカードから（${result.scope.totalCount}枚を検索）`;
   if (!result.active.length) {
@@ -331,6 +361,7 @@ async function runCardSearch() {
     none.className = 'reader-note';
     none.textContent = '合うカードはありませんでした。';
     host.append(none);
+    await renderRefindStudyReview();
     return;
   }
   for (const [index, item] of result.active.entries()) {
@@ -340,10 +371,14 @@ async function runCardSearch() {
     card.innerHTML = `<div class="score-card-header"><span class="score-badge">#${index + 1} ${Number(item.score).toFixed(2)} · 保存済み</span><div class="score-title">${highlightSearchText(article.title, lastSearchTerms)}</div></div><p>${highlightSearchText(item.snippet || article.summary || '', [...lastSearchTerms, ...(item.matchedKeywords || [])])}</p>`;
     const actions = document.createElement('div');
     actions.className = 'score-actions';
-    actions.append(resultButton('メモを読む', () => { searchReaderIndex = -1; openReaderForCard(article.id); }));
+    actions.append(resultButton('メモを読む', () => {
+      if (activeRefindStudy) recordRefindInteraction({ action: 'opened', cardId: article.id }).catch(() => {});
+      searchReaderIndex = -1; openReaderForCard(article.id);
+    }));
     card.append(actions);
     host.append(card);
   }
+  await renderRefindStudyReview();
 }
 
 /** The 検索 button / Enter. webOnly: re-run just the web part (after editing the web queries). */
@@ -358,6 +393,12 @@ async function runSearchScreen(options = {}) {
   try {
     await ensureKeywordsFor(text);
     lastSearchTerms = bm25Keywords.map(keyword => keyword.term);
+    const cardsSelected = selectedSearchTargets().includes('cards');
+    if (!options.webOnly && cardsSelected && hasRefindStudyConsent()) {
+      activeRefindStudy = await beginRefindStudy(text);
+    } else if (!cardsSelected && activeRefindStudy) {
+      await expireRefindStudy();
+    }
     const collected = selectedCollectedTargets();
     const web = targets.filter(value => value.startsWith('web:')).map(value => value.slice(4));
     const tasks = [];
@@ -369,11 +410,14 @@ async function runSearchScreen(options = {}) {
         bm25Result = null;
         document.getElementById('search-collected').textContent = '';
       }
-      if (targets.includes('cards')) tasks.push(runCardSearch().catch(error => { document.getElementById('search-cards').textContent = `カードを検索できませんでした: ${formatApiError(error)}`; }));
-      else document.getElementById('search-cards').textContent = '';
+      if (targets.includes('cards')) tasks.push(runCardSearch().catch(async error => {
+        document.getElementById('search-cards').textContent = `カードを検索できませんでした: ${formatApiError(error)}`;
+        await renderRefindStudyReview();
+      }));
+      else { cardSearchResult = null; document.getElementById('search-cards').textContent = ''; }
     }
     if (web.length) tasks.push(runWebSearch(text, web));
-    else if (!options.webOnly) document.getElementById('search-web').textContent = '';
+    else if (!options.webOnly) { discoverLastResult = null; document.getElementById('search-web').textContent = ''; }
     await Promise.allSettled(tasks);
     renderScopeLine();
     renderBroadQuestion(text);
@@ -607,6 +651,190 @@ function initSearchScreen() {
     document.querySelector('input[name="bm25src"][value="articles"]').checked = true;
   }
   loadSearchTargets();
+  loadRefindStudyControl();
+}
+
+async function loadRefindStudyControl() {
+  const checkboxes = [...document.querySelectorAll('.refind-study-consent')];
+  const statuses = [...document.querySelectorAll('.refind-study-status')];
+  if (!checkboxes.length || !statuses.length) return;
+  const setConsentCheckboxes = value => { for (const checkbox of checkboxes) checkbox.checked = value; };
+  const setStatuses = value => { for (const status of statuses) status.textContent = value; };
+  refindStudyAvailable = false;
+  refindStudyPlan = null;
+  try {
+    const data = await api.get('/api/refind-study/status');
+    refindStudyPlan = data;
+    refindStudyAvailable = Boolean(data.available);
+    setConsentCheckboxes(refindStudyAvailable && localStorage.getItem(REFIND_CONSENT_KEY) === 'yes');
+    if (data.expiredByRetention) setStatuses('保持期限を過ぎた記録は自動削除されました。');
+    else if (!data.preregistered) setStatuses('検索語と結果を評価用に記録するには、このコードに対応する個人向けコホートの初期化が必要です。');
+    else if (!data.buildMatches) setStatuses('この記録コホートと現在の検索コードが一致しないため、このビルドでは記録を停止しています。');
+    else if (data.sealed) setStatuses('この記録コホートは封印済みです。');
+    else setStatuses(`個人の自然な再発見検索を記録します。計画n=${data.plannedN}。現在${data.collected}件をこのPCに保存しています。結果集計は評価用に固定するまで表示しません。`);
+  } catch {
+    setConsentCheckboxes(false);
+    setStatuses('計測状態を確認できません。検索は通常どおり利用でき、記録は行いません。');
+  }
+  for (const checkbox of checkboxes) checkbox.onchange = async () => {
+    if (checkbox.checked) {
+      if (!refindStudyAvailable) {
+        setConsentCheckboxes(false);
+        toast('このコードに一致する事前登録がないため参加できません', 'warn');
+        return;
+      }
+      const plan = refindStudyPlan;
+      const accepted = confirm(`個人向け検索評価への任意参加\n\n保存した記事を自然に探す検索だけを記録してください。検索文は検索開始時に固定し、初回Top10・APIエラー・応答時間・検索後に本人が確認した検索目的と正解記事をこのPCの quality/e2e/local/personal-refind/study に保存します。外部送信はありません。\n\n対象: ${plan?.targetPopulation || '本人の自然な保存記事再発見'}\n計画件数: ${plan?.plannedN}。記録は初期OFFで、検索結果の良し悪しは収集終了まで表示しません。チェックを外すと今後の記録を停止します。削除ボタンでローカル記録をすべて消せます。\n\n参加しますか？`);
+      if (!accepted) { setConsentCheckboxes(false); return; }
+      if (!localStorage.getItem(REFIND_PARTICIPANT_KEY)) localStorage.setItem(REFIND_PARTICIPANT_KEY, crypto.randomUUID().replace(/-/g, ''));
+      localStorage.setItem(REFIND_CONSENT_KEY, 'yes');
+      setConsentCheckboxes(true);
+    } else {
+      if (activeRefindStudy && !confirm('現在の検索セッションを未完了として記録します。既に保存された調査データの削除には「参加を撤回して記録を削除」を選んでください。参加を停止しますか？')) {
+        setConsentCheckboxes(true);
+        return;
+      }
+      localStorage.removeItem(REFIND_CONSENT_KEY);
+      setConsentCheckboxes(false);
+      expireRefindStudy();
+    }
+  };
+  const saved = sessionStorage.getItem(REFIND_SESSION_KEY);
+  if (saved && hasRefindStudyConsent()) {
+    try {
+      activeRefindStudy = JSON.parse(saved);
+      const remaining = 180000 - (Date.now() - activeRefindStudy.startedMs);
+      if (remaining <= 0) expireRefindStudy();
+      else {
+        const sid = activeRefindStudy.sid;
+        window.setTimeout(() => { if (activeRefindStudy?.sid === sid) expireRefindStudy(); }, remaining);
+      }
+    } catch { sessionStorage.removeItem(REFIND_SESSION_KEY); }
+  }
+}
+
+function hasRefindStudyConsent() {
+  return refindStudyAvailable && [...document.querySelectorAll('.refind-study-consent')].some(checkbox => checkbox.checked);
+}
+
+async function beginRefindStudy(query) {
+  if (!hasRefindStudyConsent()) return null;
+  if (activeRefindStudy) {
+    if (Date.now() - activeRefindStudy.startedMs > 180000 || activeRefindStudy.searchCount >= 3) {
+      await expireRefindStudy();
+    } else {
+      activeRefindStudy.searchCount += 1;
+      await recordRefindInteraction({ action: 'query', query });
+      sessionStorage.setItem(REFIND_SESSION_KEY, JSON.stringify(activeRefindStudy));
+      return activeRefindStudy;
+    }
+  }
+  const participant = localStorage.getItem(REFIND_PARTICIPANT_KEY);
+  if (!participant) return null;
+  try {
+    const session = await api.post('/api/refind-study/sessions', { participant, query, consent: true });
+    activeRefindStudy = { sid: session.sid, startedMs: Date.now(), searchCount: 1 };
+    sessionStorage.setItem(REFIND_SESSION_KEY, JSON.stringify(activeRefindStudy));
+    window.setTimeout(() => { if (activeRefindStudy?.sid === session.sid) expireRefindStudy(); }, 180000);
+    return activeRefindStudy;
+  } catch (error) {
+    toast(`調査記録を開始できませんでした。検索は続行します: ${formatApiError(error)}`, 'warn');
+    return null;
+  }
+}
+
+async function recordRefindInteraction(payload) {
+  if (!activeRefindStudy) return;
+  const session = activeRefindStudy;
+  try {
+    await api.post(`/api/refind-study/sessions/${encodeURIComponent(session.sid)}/interactions`, payload);
+  } catch (error) {
+    for (const status of document.querySelectorAll('.refind-study-status')) status.textContent = `調査記録に失敗しました。通常検索は継続します。${formatApiError(error)}`;
+    for (const checkbox of document.querySelectorAll('.refind-study-consent')) checkbox.checked = false;
+    localStorage.removeItem(REFIND_CONSENT_KEY);
+    activeRefindStudy = null;
+    sessionStorage.removeItem(REFIND_SESSION_KEY);
+    await api.post(`/api/refind-study/sessions/${encodeURIComponent(session.sid)}/expire`, {}).catch(() => {});
+  }
+}
+
+async function expireRefindStudy() {
+  if (!activeRefindStudy) return;
+  const session = activeRefindStudy;
+  activeRefindStudy = null;
+  sessionStorage.removeItem(REFIND_SESSION_KEY);
+  await api.post(`/api/refind-study/sessions/${encodeURIComponent(session.sid)}/expire`, {}).catch(() => {});
+}
+
+async function renderRefindStudyReview(mountId = 'refind-study-review') {
+  const mount = document.getElementById(mountId);
+  if (!mount) return;
+  const prefix = mountId === 'refind-study-review' ? 'refind-study' : 'refind-study-list';
+  mount.replaceChildren();
+  if (!activeRefindStudy || !hasRefindStudyConsent()) return;
+  const row = document.createElement('div');
+  row.className = 'refind-study-review';
+  const label = document.createElement('label');
+  label.textContent = '検索後の人手確認';
+  const category = document.createElement('select');
+  category.id = `${prefix}-category`;
+  category.setAttribute('aria-label', '今回の検索目的');
+  category.innerHTML = '<option value="">検索目的を選択…</option><option value="memory">内容の記憶や関連語から保存記事を探した</option><option value="exact-title">正確な記事タイトルで探した</option><option value="no-saved-target">保存記事の再発見ではなかった</option><option value="unresolved">目的や正解を確認できなかった</option>';
+  const select = document.createElement('select');
+  select.id = `${prefix}-gold-cards`;
+  select.multiple = true;
+  select.size = 4;
+  select.setAttribute('aria-label', '探していた保存カード。複数ある場合は複数選択');
+  select.disabled = true;
+  category.addEventListener('change', () => {
+    const needsGold = category.value === 'memory' || category.value === 'exact-title';
+    select.disabled = !needsGold;
+    if (!needsGold) for (const option of select.options) option.selected = false;
+  });
+  const help = document.createElement('span');
+  help.textContent = '正解記事は複数選択できます。';
+  help.className = 'reader-note';
+  const finish = document.createElement('button');
+  finish.type = 'button'; finish.className = 'btn btn-secondary btn-sm'; finish.textContent = '検索を終了して判定を記録';
+  let cards = [];
+  try { cards = await api.get('/api/refind-study/cards'); } catch { /* the measured search remains available */ }
+  for (const card of cards) {
+    const option = document.createElement('option'); option.value = card.id; option.textContent = card.title || card.id; select.append(option);
+  }
+  finish.onclick = async () => {
+    const selectedGoldIds = [...select.selectedOptions].map(option => option.value);
+    const needsGold = category.value === 'memory' || category.value === 'exact-title';
+    if (!category.value || (needsGold && !selectedGoldIds.length) || (!needsGold && selectedGoldIds.length)) {
+      toast('検索目的を選び、記憶検索・正確なタイトル検索では対象カードも選んでください', 'warn'); return;
+    }
+    const categoryLabels = { memory: '内容の記憶や関連語からの再発見', 'exact-title': '正確なタイトル検索', 'no-saved-target': '保存記事の再発見ではない', unresolved: '未確認' };
+    if (!confirm(`検索後の人手確認として「${categoryLabels[category.value]}」で記録します。選んだ記事が本当に探していた対象か確認してください。`)) return;
+    finish.disabled = true;
+    try {
+      const result = await api.post(`/api/refind-study/sessions/${encodeURIComponent(activeRefindStudy.sid)}/adjudication`, {
+        category: category.value, goldIds: selectedGoldIds, unknown: !needsGold, humanChecked: category.value !== 'unresolved',
+      });
+      sessionStorage.removeItem(REFIND_SESSION_KEY); activeRefindStudy = null;
+      mount.textContent = result.category === 'memory' ? '自然な再発見としてローカル記録を保存しました。'
+        : '検索目的をローカル記録に保存しました。正確なタイトル検索や未確認の記録は主評価から除外します。';
+    } catch (error) { finish.disabled = false; toast(`判定を保存できませんでした: ${formatApiError(error)}`, 'warn'); }
+  };
+  label.htmlFor = category.id;
+  row.append(label, category, select, help, finish); mount.append(row);
+}
+
+async function withdrawRefindStudy() {
+  if (!confirm('このPCに保存された調査ログ（検索語を含む）をすべて削除し、現在の調査から撤回します。続けますか？')) return;
+  try {
+    const result = await api.del('/api/refind-study');
+    localStorage.removeItem(REFIND_CONSENT_KEY); localStorage.removeItem(REFIND_PARTICIPANT_KEY);
+    sessionStorage.removeItem(REFIND_SESSION_KEY); activeRefindStudy = null;
+    for (const checkbox of document.querySelectorAll('.refind-study-consent')) checkbox.checked = false;
+    document.getElementById('refind-study-review')?.replaceChildren();
+    document.getElementById('refind-study-review-list')?.replaceChildren();
+    toast(result.deleted ? '調査記録を削除しました' : '記録を削除できませんでした');
+    loadRefindStudyControl();
+  } catch (error) { toast(`撤回できませんでした: ${formatApiError(error)}`, 'warn'); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

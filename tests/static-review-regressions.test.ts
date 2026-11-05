@@ -165,23 +165,28 @@ describe('static review: data and reader integrity', () => {
     expect(hybrid.active[0]).not.toHaveProperty('scoreSources');
   });
 
-  it('upgrades an old DB, repairs dangling saved status, and preserves cards and reader copies', () => {
+  it('upgrades an isolated legacy DB fixture, repairs dangling saved status, and preserves cards, reader copies and tool state', () => {
     const old = new Database(':memory:');
     try {
       old.pragma('foreign_keys = ON');
       old.exec('CREATE TABLE schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)');
       old.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run('021_collection_reader_integrity', 'skip-for-fixture');
       old.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run('022_site_article_integration', 'skip-for-fixture');
+      old.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run('024_create_article_search_fts', 'not-under-test');
+      old.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run('025_create_saved_card_token_fts', 'not-under-test');
       runMigrations(old);
       old.exec(`CREATE TABLE article_reader_content(article_id TEXT PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE, body TEXT NOT NULL, fetched_at TEXT NOT NULL);
         INSERT INTO cards(id,title,body,created_at,updated_at) VALUES ('keep','Keep','memo','now','now');
         INSERT INTO reader_texts(card_id,paragraphs_json,updated_at) VALUES ('keep','["full"]','now');
+        INSERT INTO reader_tool_state(card_id,payload_json,updated_at) VALUES ('keep','{"version":1,"sourceHash":"source-v1","values":{"calculator":{"amount":12}}}','now');
         INSERT INTO articles(id,title,body,url,created_at,updated_at,candidate_status) VALUES ('dangling','T','excerpt','https://example.test/old','now','now','saved_as_card');
         DELETE FROM schema_migrations WHERE id IN ('021_collection_reader_integrity','022_site_article_integration');`);
       expect(runMigrations(old)).toEqual(['021_collection_reader_integrity','022_site_article_integration']);
+      expect(old.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='reader_tool_state'").get()).toEqual({ name: 'reader_tool_state' });
       expect(runMigrations(old)).toEqual([]);
       expect(old.prepare('SELECT body FROM cards WHERE id=?').get('keep')).toEqual({ body: 'memo' });
       expect(old.prepare('SELECT paragraphs_json FROM reader_texts WHERE card_id=?').get('keep')).toEqual({ paragraphs_json: '["full"]' });
+      expect(old.prepare('SELECT payload_json FROM reader_tool_state WHERE card_id=?').get('keep')).toEqual({ payload_json: '{"version":1,"sourceHash":"source-v1","values":{"calculator":{"amount":12}}}' });
       expect(old.prepare('SELECT candidate_status FROM articles WHERE id=?').get('dangling')).toEqual({ candidate_status: 'reviewed_not_saved' });
     } finally { old.close(); }
   });

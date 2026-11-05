@@ -1,0 +1,12 @@
+# Private or downloaded text, logs and prospective human search traces
+data/reddit_tomt/
+study/
+study_archive/
+artifacts/
+local/
+internal_refind/data_targets.json
+internal_refind/cases/
+.runtime-tmp/
+.test-tmp-*/
+**/__pycache__/
+*.pyc

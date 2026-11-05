@@ -231,7 +231,19 @@ describe('discover: purpose coverage', () => {
     expect(out.results[0].title).toBe('BM25 検索の再現性');
     expect(out.results[0].breakdown.purposeCoverage).toBe(1);
     expect(out.results[1].breakdown.purposeCoverage).toBeLessThan(0.5);
-    expect(await fallbackQueries('BM25の検索結果が再現できる理由を知りたい')).toEqual(['bm25 検索 再現', 'bm25 検索']);
+    expect(await fallbackQueries('BM25の検索結果が再現できる理由を知りたい')).toEqual(['bm25 検索 再現']);
+  });
+
+  it('keeps both the beginning and ending topic terms in short fallback queries', async () => {
+    const queries = await fallbackQueries('SQLite concurrent writers cause database is locked after checkpoint');
+    expect(queries.length).toBeGreaterThan(1);
+    expect(queries.some(query => query.includes('checkpoint'))).toBe(true);
+    expect(queries.every(query => query.split(/\s+/u).length <= 3)).toBe(true);
+  });
+
+  it('drops English function words from fallback queries while keeping key terms at the tail', async () => {
+    const queries = await fallbackQueries('5% of perinatal mortality is due to low birth weight.');
+    expect(queries).toEqual(['5% perinatal mortality', 'low birth weight']);
   });
 });
 

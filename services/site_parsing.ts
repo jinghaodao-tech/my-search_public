@@ -147,17 +147,25 @@ export function acceptsUrl(raw: string, scope: SiteScope): boolean {
 
 const NOT_ARTICLE_SEGMENT = /\/(tags?|categor(y|ies)|labels?|authors?|users?|page|pages|feed|rss|search|archives?|wp-content|wp-json|wp-admin|wp-includes|login|signup|about|contact|privacy|terms|policy|cdn-cgi|static|assets|images?|img|css|js|amp)(\/|$)/i;
 const NOT_ARTICLE_FILE = /\.(jpe?g|png|gif|webp|svg|ico|css|js|json|xml|gz|zip|mp[34]|mov|woff2?|ttf|txt)$/i;
+const LISTING_SEGMENT = /\/(?:topics?|collections?|index|lists?)(?:\/|$)/i;
+const TAXONOMY_SEGMENT = /\/(?:tags?|categor(?:y|ies)|labels?|page|feed|rss|search|archives?)(?:\/|$)/i;
 
 /** A URL in the scope that looks like one article (not the top, a list, a tag page or a file). */
 export function looksLikeArticle(raw: string, scope: SiteScope): boolean {
   if (!inScope(raw, scope)) return false;
   const url = new URL(raw);
+  let path: string;
+  try { path = decodeURIComponent(url.pathname).normalize('NFKC'); } catch { return false; }
   const prefix = scopePrefixes(scope).filter(item => url.pathname.startsWith(item)).sort((a, b) => b.length - a.length)[0] ?? '';
-  const rest = prefix ? url.pathname.slice(prefix.length) : '';
-  if (!rest.replace(/\/+$/, '') && !url.searchParams.has('p')) return false;
-  if (NOT_ARTICLE_SEGMENT.test(`/${rest}`) || NOT_ARTICLE_FILE.test(url.pathname)) return false;
+  const rest = decodeURIComponent(prefix ? url.pathname.slice(prefix.length) : '').normalize('NFKC');
+  const postId = /^[1-9]\d*$/.test(url.searchParams.get('p') ?? '');
+  if (!rest.replace(/\/+$/, '') && !postId) return false;
+  if (NOT_ARTICLE_SEGMENT.test(`/${rest}`) || TAXONOMY_SEGMENT.test(path) || LISTING_SEGMENT.test(path) || NOT_ARTICLE_FILE.test(path)) return false;
+  if (/\/(?:index\.(?:html?|php)|default\.aspx?)\/?$/i.test(path) && !postId) return false;
+  if (/^(?:blog|news|posts|articles|entries|stories)\/?$/i.test(rest)) return false;
+  if (/\/(?:19|20)\d{2}(?:\/\d{1,2})?\/?$/.test(path)) return false;
   if (/^(\d+)\/?$/.test(rest) && /page/i.test(url.search)) return false;
-  if ([...url.searchParams.keys()].some(key => /^(page|paged|tag|cat|category|s|q|sort|order)$/i.test(key))) return false;
+  if ([...url.searchParams.keys()].some(key => /^(page|paged|offset|tag|cat|category|search|s|q|sort|order)$/i.test(key))) return false;
   return true;
 }
 
@@ -316,15 +324,20 @@ function jsonLdObjects(html: string): Array<Record<string, unknown>> {
   return out;
 }
 
-export type PageMeta = { title?: string; siteName?: string; description?: string; publishedAt?: string; updatedAt?: string; canonical?: string; lang?: string };
+export type PageMeta = { title?: string; siteName?: string; description?: string; publishedAt?: string; updatedAt?: string; canonical?: string; lang?: string; pageKind?: 'article' | 'listing' | 'unknown' };
 
 /** Title, description, dates and canonical URL of one page, from its HTML text. */
 export function extractPageMeta(html: string, pageUrl: string): PageMeta {
-  const ld = jsonLdObjects(html).find(item => /Article|BlogPosting|NewsArticle|TechArticle|WebPage/i.test(String(item['@type'] ?? '')));
+  const objects = jsonLdObjects(html);
+  const types = (item: Record<string, unknown>) => [item['@type']].flat().filter((value): value is string => typeof value === 'string').map(value => value.split(/[\/#]/).pop());
+  const listing = objects.some(item => types(item).some(type => /^(CollectionPage|SearchResultsPage)$/i.test(type ?? '')));
+  const article = objects.some(item => types(item).some(type => /^(Article|BlogPosting|NewsArticle|TechArticle|ScholarlyArticle)$/i.test(type ?? '')));
+  const ld = objects.find(item => /Article|BlogPosting|NewsArticle|TechArticle|WebPage/i.test(String(item['@type'] ?? '')));
   const titleTag = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
   const timeTag = html.match(/<time[^>]+datetime\s*=\s*["']([^"']+)["']/i)?.[1];
   const canonical = linkHrefs(html, 'canonical', pageUrl)[0];
   return {
+    pageKind: listing ? 'listing' : article || metaContent(html, ['og:type'])?.toLowerCase() === 'article' ? 'article' : 'unknown',
     title: metaContent(html, ['og:title', 'twitter:title']) ?? (typeof ld?.headline === 'string' ? ld.headline : undefined) ?? (titleTag ? stripHtmlText(titleTag) : undefined),
     siteName: metaContent(html, ['og:site_name', 'application-name']),
     description: metaContent(html, ['og:description', 'description', 'twitter:description']) ?? (typeof ld?.description === 'string' ? ld.description : undefined),

@@ -308,6 +308,226 @@ export function loadCards(): Card[] {
   }
 }
 
+export function loadCardsByIds(ids: readonly string[]): Card[] {
+  if (!ids.length) return [];
+  const uniqueIds = [...new Set(ids)];
+  const rows = db.prepare(`SELECT ${CARD_COLUMNS} FROM cards WHERE id IN (${placeholders(uniqueIds)})`).all(...uniqueIds) as CardRow[];
+  const byId = new Map(hydrateRows(rows).map(card => [card.id, card]));
+  return uniqueIds.flatMap(id => {
+    const card = byId.get(id);
+    return card ? [card] : [];
+  });
+}
+
+export type SavedCardFtsRank = {
+  id: string;
+  morphologicalRank: number | null;
+  ngramRank: number | null;
+  rawTextRank: number | null;
+  rrfScore: number;
+  normalizedScore: number;
+  matchedCount: number;
+};
+
+function numericPhraseVariants(term: string): string[] {
+  const normalized = term.normalize('NFKC').toLowerCase();
+  const fullWidth = normalized.replace(/[0-9]/gu, digit => String.fromCharCode(digit.charCodeAt(0) + 0xfee0));
+  return [...new Set([normalized, fullWidth])];
+}
+
+/** Request-time exact text fallback for numeric-unit terms absent from persisted token caches. */
+export function searchSavedCardIdsByNumericPhrase(terms: readonly string[], limit: number, offset = 0): SavedCardFtsRank[] {
+  const uniqueTerms = [...new Set(terms.map(term => term.normalize('NFKC').toLowerCase().trim()).filter(Boolean))].slice(0, 8);
+  if (!uniqueTerms.length) return [];
+  const variants = [...new Set(uniqueTerms.flatMap(numericPhraseVariants))];
+  const predicate = (column: string) => `(${variants.map(() => `instr(lower(COALESCE(${column},'')), ?) > 0`).join(' OR ')})`;
+  const titlePredicate = predicate('title');
+  const bodyPredicate = predicate('body');
+  const summaryPredicate = predicate('summary');
+  const scoreExpression = `(CASE WHEN ${titlePredicate} THEN 3 ELSE 0 END + CASE WHEN ${bodyPredicate} THEN 1 ELSE 0 END + CASE WHEN ${summaryPredicate} THEN 0.5 ELSE 0 END)`;
+  const rows = db.prepare(`
+    WITH matched AS (
+      SELECT id, ${scoreExpression} AS match_score, COUNT(*) OVER() AS matched_count
+      FROM cards
+      WHERE ${titlePredicate} OR ${bodyPredicate} OR ${summaryPredicate}
+    )
+    SELECT id, match_score, matched_count FROM matched
+    ORDER BY match_score DESC, id LIMIT ? OFFSET ?
+  `).all(
+    ...variants, ...variants, ...variants,
+    ...variants, ...variants, ...variants,
+    Math.max(1, Math.min(1000, Math.floor(limit))),
+    Math.max(0, Math.floor(offset)),
+  ) as Array<{ id: string; match_score: number; matched_count: number }>;
+  return rows.map((row, index) => ({
+    id: row.id,
+    morphologicalRank: null,
+    ngramRank: null,
+    rawTextRank: index + 1,
+    rrfScore: 1 / (60 + index + 1),
+    normalizedScore: 61 / (60 + index + 1),
+    matchedCount: row.matched_count,
+  }));
+}
+
+function ftsExpression(tokens: readonly string[]): string | null {
+  const unique = [...new Set(tokens.map(token => token.trim()).filter(Boolean))];
+  return unique.length ? unique.map(token => `"${token.replace(/"/g, '""')}"`).join(' OR ') : null;
+}
+
+export function savedCardTokenFtsAvailable(): boolean {
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('cards_fts','cards_morph_fts','cards_ngram_fts')").all() as Array<{name:string}>;
+  return tables.length === 3;
+}
+
+export function savedCardCount(): number {
+  return (db.prepare('SELECT COUNT(*) AS count FROM cards').get() as {count:number}).count;
+}
+
+export function savedCardTokenFtsStatus(): {ready:boolean;cards:number;morphological:number;ngram:number;raw:number} {
+  const tables = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('cards_fts','cards_morph_fts','cards_ngram_fts')").all() as Array<{name:string}>).map(row=>row.name));
+  const cards=savedCardCount();
+  if(tables.size!==3) return {ready:false,cards,morphological:0,ngram:0,raw:0};
+  const morphological=Number((db.prepare('SELECT COUNT(*) AS count FROM cards_morph_fts').get() as {count:number}).count);
+  const ngram=Number((db.prepare('SELECT COUNT(*) AS count FROM cards_ngram_fts').get() as {count:number}).count);
+  const raw=Number((db.prepare('SELECT COUNT(*) AS count FROM cards_fts').get() as {count:number}).count);
+  return {ready:cards===morphological&&cards===ngram&&cards===raw,cards,morphological,ngram,raw};
+}
+
+export function rebuildSavedCardTokenFts(): number {
+  if (!savedCardTokenFtsAvailable()) throw new Error('Saved-card token FTS5 indexes are not available.');
+  db.transaction(() => {
+    db.exec('DELETE FROM cards_fts; DELETE FROM cards_morph_fts; DELETE FROM cards_ngram_fts;');
+    db.exec(`
+      INSERT INTO cards_fts(id,title,body,summary,tags)
+        SELECT cards.id,cards.title,cards.body,COALESCE(cards.summary,''),COALESCE((SELECT group_concat(tag,' ') FROM card_tags WHERE card_tags.card_id=cards.id),'') FROM cards;
+      INSERT INTO cards_morph_fts(id,tokens)
+        SELECT id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(morphological_tokens_json,'[]')) THEN COALESCE(morphological_tokens_json,'[]') ELSE '[]' END)),'') FROM cards;
+      INSERT INTO cards_ngram_fts(id,tokens)
+        SELECT id, COALESCE((SELECT group_concat(value,' ') FROM json_each(CASE WHEN json_valid(COALESCE(ngram_tokens_json,tokens_json,'[]')) THEN COALESCE(ngram_tokens_json,tokens_json,'[]') ELSE '[]' END)),'') FROM cards;
+    `);
+  })();
+  return (db.prepare('SELECT COUNT(*) AS count FROM cards').get() as {count:number}).count;
+}
+
+export function searchSavedCardIdsFts5Rrf(
+  morphologicalTokens: readonly string[],
+  ngramTokens: readonly string[],
+  rawTerms: readonly string[],
+  limit: number,
+  offset = 0,
+): SavedCardFtsRank[] {
+  const morphExpression = ftsExpression(morphologicalTokens);
+  const ngramExpression = ftsExpression(ngramTokens);
+  const rawExpression = ftsExpression(rawTerms);
+  if (!morphExpression && !ngramExpression && !rawExpression) return [];
+  const morph = morphExpression
+    ? 'SELECT id, ROW_NUMBER() OVER (ORDER BY bm25(cards_morph_fts), id) AS fts_rank FROM cards_morph_fts WHERE cards_morph_fts MATCH ?'
+    : 'SELECT NULL AS id, NULL AS fts_rank WHERE 0';
+  const ngram = ngramExpression
+    ? 'SELECT id, ROW_NUMBER() OVER (ORDER BY bm25(cards_ngram_fts), id) AS fts_rank FROM cards_ngram_fts WHERE cards_ngram_fts MATCH ?'
+    : 'SELECT NULL AS id, NULL AS fts_rank WHERE 0';
+  const raw = rawExpression
+    ? 'SELECT id, ROW_NUMBER() OVER (ORDER BY bm25(cards_fts), id) AS fts_rank FROM cards_fts WHERE cards_fts MATCH ?'
+    : 'SELECT NULL AS id, NULL AS fts_rank WHERE 0';
+  const params: Array<string|number> = [];
+  if (morphExpression) params.push(morphExpression);
+  if (ngramExpression) params.push(ngramExpression);
+  if (rawExpression) params.push(rawExpression);
+  params.push(Math.max(1, Math.min(1000, Math.floor(limit))), Math.max(0, Math.floor(offset)));
+  const rows = db.prepare(`
+    WITH morph AS MATERIALIZED (${morph}),
+    ngram AS MATERIALIZED (${ngram}),
+    raw AS MATERIALIZED (${raw}),
+    ids AS MATERIALIZED (SELECT id FROM morph UNION SELECT id FROM ngram UNION SELECT id FROM raw),
+    fused AS (
+      SELECT ids.id, morph.fts_rank AS morphological_rank, ngram.fts_rank AS ngram_rank, raw.fts_rank AS raw_text_rank,
+        COALESCE(1.0/(60+morph.fts_rank),0)+COALESCE(1.0/(60+ngram.fts_rank),0)+COALESCE(1.0/(60+raw.fts_rank),0) AS rrf_score
+      FROM ids LEFT JOIN morph ON morph.id=ids.id LEFT JOIN ngram ON ngram.id=ids.id LEFT JOIN raw ON raw.id=ids.id
+    ),
+    scored AS (
+      SELECT *, COUNT(*) OVER() AS matched_count, MAX(rrf_score) OVER() AS max_score FROM fused
+    )
+    SELECT id, morphological_rank, ngram_rank, rrf_score, matched_count, max_score
+    FROM scored ORDER BY rrf_score DESC, id LIMIT ? OFFSET ?
+  `).all(...params) as Array<{id:string;morphological_rank:number|null;ngram_rank:number|null;raw_text_rank:number|null;rrf_score:number;matched_count:number;max_score:number}>;
+  return rows.map(row => ({
+    id: row.id,
+    morphologicalRank: row.morphological_rank,
+    ngramRank: row.ngram_rank,
+    rawTextRank: row.raw_text_rank,
+    rrfScore: row.rrf_score,
+    normalizedScore: row.max_score > 0 ? row.rrf_score / row.max_score : 0,
+    matchedCount: row.matched_count,
+  }));
+}
+
+export function searchSavedCardIdsFts5Raw(
+  rawTerms: readonly string[],
+  limit: number,
+  offset = 0,
+): SavedCardFtsRank[] {
+  const expression = ftsExpression(rawTerms);
+  if (!expression) return [];
+  const rows = db.prepare(`
+    WITH ranked AS MATERIALIZED (
+      SELECT id, ROW_NUMBER() OVER (ORDER BY bm25(cards_fts), id) AS fts_rank
+      FROM cards_fts WHERE cards_fts MATCH ?
+    ), scored AS (
+      SELECT id, fts_rank, COUNT(*) OVER() AS matched_count
+      FROM ranked
+    )
+    SELECT id, fts_rank, matched_count FROM scored
+    ORDER BY fts_rank LIMIT ? OFFSET ?
+  `).all(
+    expression,
+    Math.max(1, Math.min(1000, Math.floor(limit))),
+    Math.max(0, Math.floor(offset)),
+  ) as Array<{ id: string; fts_rank: number; matched_count: number }>;
+  return rows.map(row => ({
+    id: row.id,
+    morphologicalRank: null,
+    ngramRank: null,
+    rawTextRank: row.fts_rank,
+    rrfScore: 1 / (60 + row.fts_rank),
+    normalizedScore: 61 / (60 + row.fts_rank),
+    matchedCount: row.matched_count,
+  }));
+}
+
+export function searchSavedCardIdsFts5Morphological(
+  morphologicalTokens: readonly string[],
+  limit: number,
+  offset = 0,
+): SavedCardFtsRank[] {
+  const expression = ftsExpression(morphologicalTokens);
+  if (!expression) return [];
+  const rows = db.prepare(`
+    WITH ranked AS MATERIALIZED (
+      SELECT id, ROW_NUMBER() OVER (ORDER BY bm25(cards_morph_fts), id) AS fts_rank
+      FROM cards_morph_fts WHERE cards_morph_fts MATCH ?
+    ), scored AS MATERIALIZED (
+      SELECT id, fts_rank, COUNT(*) OVER() AS matched_count
+      FROM ranked
+    )
+    SELECT id, fts_rank, matched_count FROM scored
+    ORDER BY fts_rank LIMIT ? OFFSET ?
+  `).all(
+    expression,
+    Math.max(1, Math.min(1000, Math.floor(limit))),
+    Math.max(0, Math.floor(offset)),
+  ) as Array<{ id: string; fts_rank: number; matched_count: number }>;
+  return rows.map(row => ({
+    id: row.id,
+    morphologicalRank: row.fts_rank,
+    ngramRank: null,
+    rawTextRank: null,
+    rrfScore: 1 / (60 + row.fts_rank),
+    normalizedScore: 61 / (60 + row.fts_rank),
+    matchedCount: row.matched_count,
+  }));
+}
+
 export type CardListSort = 'created_at_desc' | 'created_at_asc';
 
 export type CardListFilters = {
@@ -370,7 +590,7 @@ function buildCardListWhere(filters: CardListFilters): { whereSql: string; param
   const keyword = filters.q?.trim();
   if (keyword) {
     const like = `%${escapeLike(keyword.toLowerCase())}%`;
-    if (process.env.CARD_SEARCH_ENGINE === 'fts5') {
+    if (process.env.CARD_SEARCH_ENGINE === 'fts5' || process.env.CARD_SEARCH_ENGINE === 'fts5-raw') {
       const ftsQuery = keyword.split(/\s+/).filter(Boolean).map(term => `"${term.replace(/"/g, '""')}"`).join(' OR ');
       where.push('cards.id IN (SELECT id FROM cards_fts WHERE cards_fts MATCH ?)');
       params.push(ftsQuery);
@@ -384,7 +604,7 @@ function buildCardListWhere(filters: CardListFilters): { whereSql: string; param
           AND LOWER(q_tags.tag) LIKE ? ESCAPE '~'
       )
     )`);
-    if (process.env.CARD_SEARCH_ENGINE !== 'fts5') params.push(like, like, like, like);
+    if (process.env.CARD_SEARCH_ENGINE !== 'fts5' && process.env.CARD_SEARCH_ENGINE !== 'fts5-raw') params.push(like, like, like, like);
   }
 
   return {
@@ -464,6 +684,32 @@ export function saveCards(cards: Card[]): void {
   });
 
   tx();
+}
+
+export function saveCardTokenCaches(cards: Card[]): void {
+  if (!cards.length) return;
+  const update = db.prepare(`
+    UPDATE cards
+    SET tokens_json = ?, doc_length = ?, morphological_tokens_json = ?, ngram_tokens_json = ?,
+        morphological_doc_length = ?, ngram_doc_length = ?
+    WHERE id = ?
+  `);
+  const tx = db.transaction((rows: Card[]) => {
+    for (const card of rows) {
+      const ngramTokens = card.ngramTokens ?? card.tokens ?? [];
+      const morphologicalTokens = card.morphologicalTokens ?? card.tokens ?? [];
+      update.run(
+        JSON.stringify(card.tokens ?? ngramTokens),
+        card.docLength ?? ngramTokens.length,
+        JSON.stringify(morphologicalTokens),
+        JSON.stringify(ngramTokens),
+        card.morphologicalDocLength ?? morphologicalTokens.length,
+        card.ngramDocLength ?? ngramTokens.length,
+        card.id,
+      );
+    }
+  });
+  tx(cards);
 }
 
 function newId(): string {
@@ -684,16 +930,18 @@ export function getAllTags(): { tag: string; count: number }[] {
 
 export async function backfillCardTokens(forceRebuild = false): Promise<number> {
   const cards = loadCards();
+  const updatedCards: Card[] = [];
   let updated = 0;
 
   for (const card of cards) {
     if (!forceRebuild && (card.morphologicalTokens?.length ?? 0) > 0 && (card.ngramTokens?.length ?? 0) > 0) continue;
     const stored = await buildStoredTokenSet(`${card.title} ${card.body} ${(card.tags ?? []).join(" ")}`);
     Object.assign(card, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength, ...stored });
+    updatedCards.push(card);
     updated += 1;
   }
 
-  if (updated > 0) saveCards(cards);
+  if (updatedCards.length > 0) saveCardTokenCaches(updatedCards);
   return updated;
 }
 

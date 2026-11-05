@@ -98,6 +98,7 @@ export type SiteRunResult = {
   unchanged: number;
   failed: number;
   skippedByRobots: number;
+  skippedNonArticles: number;
   /** articles not in the site's list any more / confirmed 404 twice / 401-403 / temporary failures (kept, not deleted) */
   missing: number;
   gone: number;
@@ -112,7 +113,7 @@ export function assessSiteRun(result: SiteRunResult): {status: 'succeeded' | 'fa
   return result.status === 'error' ? {status: 'failed', error: result.error ?? 'Site collection failed'} : {status: 'succeeded'};
 }
 
-async function toArticle(site: SiteSource, id: string, url: string, found: FoundArticle, meta: PageMeta | null, body: string | null): Promise<Article> {
+async function toArticle(site: SiteSource, id: string, url: string, found: FoundArticle, meta: PageMeta | null, body: string | null, bodyKind: 'fulltext' | 'excerpt'): Promise<Article> {
   const title = stripSiteSuffix(meta?.title || found.title || url, meta?.siteName ?? site.name).slice(0, 300);
   const summary = (found.summary || meta?.description || '').slice(0, 1000) || undefined;
   const text = body || summary || '';
@@ -127,7 +128,7 @@ async function toArticle(site: SiteSource, id: string, url: string, found: Found
     source: siteSourceTag(site.id),
     sourceAuthority: 0.7,
     publishedAt: published ? new Date(published) : new Date(NaN),
-    bodyKind: body ? 'fulltext' : 'excerpt',
+    bodyKind: body ? bodyKind : 'excerpt',
     sourceUpdatedAt: found.updatedAt ?? meta?.updatedAt,
     tags: [site.name],
     ...tokens,
@@ -190,7 +191,7 @@ export function syncSite(site: SiteSource, fetch: SafeFetcher, mode?: 'initial' 
 async function syncSiteUnlocked(site: SiteSource, fetch: SafeFetcher, mode?: 'initial' | 'update'): Promise<SiteRunResult> {
   const known = knownSiteArticles(site.id);
   const runMode = mode ?? (known.size === 0 ? 'initial' : 'update');
-  const result: SiteRunResult = { siteId: site.id, mode: runMode, listed: 0, added: 0, updated: 0, moved: 0, unchanged: 0, failed: 0, skippedByRobots: 0, missing: 0, gone: 0, restricted: 0, temporaryErrors: 0, status: 'ok', error: null, warnings: [] };
+  const result: SiteRunResult = { siteId: site.id, mode: runMode, listed: 0, added: 0, updated: 0, moved: 0, unchanged: 0, failed: 0, skippedByRobots: 0, skippedNonArticles: 0, missing: 0, gone: 0, restricted: 0, temporaryErrors: 0, status: 'ok', error: null, warnings: [] };
   const wantBody = site.bodyPolicy === 'body';
   markSiteChecking(site.id);
   const validatePageUrl = (url: URL) => {
@@ -267,18 +268,19 @@ async function syncSiteUnlocked(site: SiteSource, fetch: SafeFetcher, mode?: 'in
       let url = found.url;
       let meta: PageMeta | null = null;
       let body: string | null = wantBody ? found.body ?? null : null;
+      let bodyKind: 'fulltext' | 'excerpt' = body ? found.bodyKind ?? 'fulltext' : 'excerpt';
       let etag: string | null = null;
       let lastModified: string | null = null;
-      // The page is read when the listing has no title or date (sitemaps, list pages), or for full text.
+      // Sitemap URLs also need a page-kind check; listing metadata alone does not establish an article.
       // Updates found by a listing that carries titles (WordPress, feeds) need no page download.
-      const needsPage = !found.title || (!found.publishedAt && site.adapter.type !== 'feed') || (wantBody && !body);
+      const needsPage = site.adapter.type === 'sitemap' || !found.title || (!found.publishedAt && site.adapter.type !== 'feed') || (wantBody && (!body || bodyKind === 'excerpt'));
       if (needsPage) {
         if (!robots.allows(pathOf(url))) {
           result.skippedByRobots += 1;
           if (!found.title) continue; // nothing to show without the page (no guessed titles)
         } else {
           try {
-            const page = await fetchPageMeta(fetch, url, wantBody && !body, existing && !movedFrom ? { etag: existing.etag, lastModified: existing.lastModified } : {}, validatePageUrl);
+            const page = await fetchPageMeta(fetch, url, wantBody && (!body || bodyKind === 'excerpt'), existing && !movedFrom ? { etag: existing.etag, lastModified: existing.lastModified } : {}, validatePageUrl);
             etag = page.etag;
             lastModified = page.lastModified;
             if (page.notModified && existing) {
@@ -287,8 +289,9 @@ async function syncSiteUnlocked(site: SiteSource, fetch: SafeFetcher, mode?: 'in
               continue;
             }
             meta = page.meta;
+            if (site.adapter.type === 'sitemap' && meta.pageKind === 'listing') { result.skippedNonArticles += 1; continue; }
             url = normalizeArticleUrl(page.finalUrl) ?? url;
-            if (wantBody && !body) body = page.body;
+            if (wantBody && page.body) { body = page.body; bodyKind = 'fulltext'; }
             const canonical = page.meta.canonical;
             if (canonical && acceptsUrl(canonical, site.scope) && articleKey(canonical) !== articleKey(url)) {
               if (known.has(articleKey(canonical)) && !existing) continue; // same article under another URL
@@ -313,12 +316,12 @@ async function syncSiteUnlocked(site: SiteSource, fetch: SafeFetcher, mode?: 'in
       const otherSource = getArticleByUrl(url);
       validatePageUrl(new URL(url));
       const id = existing?.articleId ?? (otherSource ? otherSource.id : articleIdFor(site.id, url));
-      const article = await toArticle(site, id, url, found, meta, body);
+      const article = await toArticle(site, id, url, found, meta, body, bodyKind);
       articles.push(article);
       const key = articleKey(url);
       if (movedFrom && movedFrom !== key) moves.push(() => moveSiteArticle(site.id, movedFrom, key, url));
-      records.push({ key, articleId: id, url, lastmod: found.updatedAt ?? meta?.updatedAt ?? found.publishedAt ?? null, hasBody: !!body || !!existing?.hasBody, externalId: found.externalId ?? null, etag, lastModified, contentHash: hashText(`${article.title}\n${article.body}`) });
-      if (articleKey(found.url) !== key) records.push({ key: articleKey(found.url), articleId: id, url, lastmod: found.updatedAt ?? null, hasBody: !!body, externalId: null });
+      records.push({ key, articleId: id, url, lastmod: found.updatedAt ?? meta?.updatedAt ?? found.publishedAt ?? null, hasBody: (!!body && bodyKind === 'fulltext') || !!existing?.hasBody, externalId: found.externalId ?? null, etag, lastModified, contentHash: hashText(`${article.title}\n${article.body}`) });
+      if (articleKey(found.url) !== key) records.push({ key: articleKey(found.url), articleId: id, url, lastmod: found.updatedAt ?? null, hasBody: !!body && bodyKind === 'fulltext', externalId: null });
       if (movedFrom) result.moved += 1;
       else if (existing) result.updated += 1;
       else result.added += 1;
@@ -349,6 +352,10 @@ async function syncSiteUnlocked(site: SiteSource, fetch: SafeFetcher, mode?: 'in
     if (result.listed === 0 && known.size === 0) {
       result.status = 'error';
       result.error = '記事が見つかりませんでした';
+    }
+    if (records.length === 0 && result.skippedNonArticles > 0 && known.size === 0) {
+      result.status = 'error';
+      result.error = '確認した記事候補は一覧ページでした。対象の範囲や取得方法を見直してください';
     }
     db.transaction(() => {
       const current = getSite(site.id);
@@ -383,7 +390,7 @@ async function syncSiteUnlocked(site: SiteSource, fetch: SafeFetcher, mode?: 'in
     success: result.status === 'ok',
     summary: {
       mode: result.mode, listed: result.listed, added: result.added, updated: result.updated, moved: result.moved, unchanged: result.unchanged,
-      failed: result.failed, skippedByRobots: result.skippedByRobots, missing: result.missing, gone: result.gone, restricted: result.restricted,
+      failed: result.failed, skippedByRobots: result.skippedByRobots, skippedNonArticles: result.skippedNonArticles, missing: result.missing, gone: result.gone, restricted: result.restricted,
       temporaryErrors: result.temporaryErrors, warnings: result.warnings.slice(0, 5),
     },
   }); }

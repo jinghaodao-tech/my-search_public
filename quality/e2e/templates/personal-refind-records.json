@@ -1,0 +1,73 @@
+{
+  "protocolVersion": "personal-refind-v1-2026-10-25",
+  "status": "NOT_EVALUABLE",
+  "reason": "Empty template; no human questions or verified labels collected here.",
+  "collection": {
+    "developmentTarget": 20,
+    "finalTarget": 100,
+    "targetCountLockedAt": null,
+    "population": "The owner's natural saved-article and memo refinding tasks",
+    "startedAt": null,
+    "endedAt": null
+  },
+  "freeze": {
+    "frozenAt": null,
+    "corpusSha256": null,
+    "queriesAndLabelsSha256": null,
+    "sourceFingerprint": null,
+    "dependencyLockSha256": null,
+    "engine": null,
+    "modelIdentity": null,
+    "configuration": null,
+    "configurationSha256": null,
+    "evaluationMode": null,
+    "crossSplitTargetOverlap": null
+  },
+  "caseTemplate": {
+    "id": null,
+    "query": null,
+    "queryLockedAt": null,
+    "origin": null,
+    "collectionChannel": null,
+    "category": null,
+    "split": null,
+    "targetGroupId": null,
+    "goldIds": [],
+    "humanVerified": false,
+    "savedBeforeQuery": null,
+    "verifiedAt": null,
+    "eligibility": "pending",
+    "eligibilityReason": null,
+    "observedSession": null,
+    "evaluationRun": null
+  },
+  "runRecordTemplate": {
+    "runId": null,
+    "caseId": null,
+    "startedAt": null,
+    "top10Ids": null,
+    "candidateIdsBeforeRerank": null,
+    "httpStatus": null,
+    "error": null,
+    "timedOut": null,
+    "totalLatencyMs": null,
+    "actualEngine": null,
+    "fallbackUsed": null,
+    "failureClass": null
+  },
+  "cases": [],
+  "runs": [],
+  "exclusionsAndReclassifications": [],
+  "result": {
+    "qualityStatus": "NOT_EVALUABLE",
+    "performanceStatus": "NOT_EVALUABLE",
+    "overallStatus": "NOT_EVALUABLE",
+    "eligibleQuestions": 0,
+    "targetGroups": 0,
+    "successes": null,
+    "hit10": null,
+    "clusterBootstrap95CI": null,
+    "candidateCoverage": null,
+    "pendingQuestions": 0
+  }
+}

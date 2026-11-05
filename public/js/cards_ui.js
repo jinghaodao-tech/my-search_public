@@ -16,6 +16,7 @@ function renderCardGrid() {
     const typeCls = `card-type-${card.type}`;
     const tagHtml = card.tags.slice(0,4).map(t=>`<span class="card-tag">${esc(t)}</span>`).join('');
     const moreTags = card.tags.length>4 ? `<span class="card-tag">+${card.tags.length-4}</span>` : '';
+    const links = Array.isArray(card.links) ? card.links : [];
     const sourceText = showCardSummaries && card.summary ? card.summary : ((typeof memoPreviewText === 'function' && memoPreviewText(card.body)) || card.body);
     const disp = esc(sourceText||'').slice(0,120)+((sourceText||'').length>120?'...':'');
     const date = new Date(card.createdAt).toLocaleDateString('ja-JP',{month:'short',day:'numeric'});
@@ -36,7 +37,7 @@ function renderCardGrid() {
       ${disp?`<div class="card-summary">${disp}</div>`:''}
       ${card.tags.length?`<div class="card-tags">${tagHtml}${moreTags}</div>`:''}
       <div class="card-footer">
-        ${card.links.length?`<span style="font-size:11px;color:var(--text-dim)">🔗 ${card.links.length}</span>`:''}
+        ${links.length?`<span style="font-size:11px;color:var(--text-dim)">🔗 ${links.length}</span>`:''}
         <span class="card-date">${date}</span>
       </div>
     </div>`;
@@ -215,7 +216,13 @@ function toggleTagSort() {
 function toggleAllTags() { showAllTags = !showAllTags; renderTagCloud(); }
 function filterTag(tag) { currentFilter.tag = currentFilter.tag===tag?null:tag; renderTagCloud(); loadCards(); }
 function filterType(type,el) { currentFilter.type=type; document.querySelectorAll('#card-type-filter .type-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); loadCards(); }
-function onSearch(q) { currentFilter.q=q; loadCards(); }
+let cardSearchDebounce = null;
+function onSearch(q) {
+  currentFilter.q=q;
+  cardListSearchCaptureRequested = true;
+  clearTimeout(cardSearchDebounce);
+  cardSearchDebounce = setTimeout(() => loadCards(), 180);
+}
 function filterArchived(archived) {
   currentFilter.archived = archived;
   selectedCards.clear();

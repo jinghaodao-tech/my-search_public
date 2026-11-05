@@ -3,6 +3,7 @@ import {
   expireReviewedCandidates as expireReviewedCandidateRecords,
   getCandidate as getCandidateRecord,
   getCandidates as getCandidateRecords,
+  getCandidatesByIds as getCandidatesByIdRecords,
   reviewCandidate as reviewCandidateRecord,
   saveCandidate as saveCandidateRecord,
   type CandidateStatus,
@@ -15,6 +16,7 @@ export class CandidateSaveConflict extends Error {
 
 export type { CandidateLifecycle, CandidateStatus } from '../repositories/candidates_repository.js';
 export const getCandidates = (status?: CandidateStatus) => getCandidateRecords(status);
+export const getCandidatesByIds = (ids: string[]) => getCandidatesByIdRecords(ids);
 export const getCandidate = (id: string) => getCandidateRecord(id);
 export const reviewCandidate = (id: string) => reviewCandidateRecord(id);
 export const saveCandidate = (id: string, savedCardId: string) => saveCandidateRecord(id, savedCardId);

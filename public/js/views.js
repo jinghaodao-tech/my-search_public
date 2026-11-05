@@ -16,6 +16,8 @@ function switchView(view) {
   const titles = {candidates:'候補レビュー',cards:currentFilter.archived?'アーカイブ一覧':'カード一覧',kj:'KJ法ボード',zettel:'Zettelkasten ネットワーク',bm25:'探す'};
   document.getElementById('view-title').textContent = titles[view];
   document.getElementById('header-actions').style.display = view==='cards' ? 'flex' : 'none';
+  document.getElementById('refind-study-list-control').style.display = view==='cards' ? 'flex' : 'none';
+  document.getElementById('refind-study-review-list').style.display = view==='cards' ? 'flex' : 'none';
   if (view==='candidates') loadCandidates();
   if (view==='kj') loadKJBoard();
   if (view==='zettel') loadZettelkasten();

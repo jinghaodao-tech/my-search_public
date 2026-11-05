@@ -10,6 +10,10 @@ const formatTextQuote = sandbox.formatTextQuote as (text: string, index?: number
 const formatCellQuote = sandbox.formatCellQuote as (text: string, index?: number, location?: string) => string;
 const findQuoteMarkerAt = sandbox.findQuoteMarkerAt as (text: string, caret: number) => number | null;
 const findMarkerIn = sandbox.findMarkerIn as (text: string) => number | null;
+const memoQuoteAnchorMatches = sandbox.memoQuoteAnchorMatches as (memo: string, index: number, paragraphs: string[]) => boolean;
+const findStaleMemoQuoteAnchors = sandbox.findStaleMemoQuoteAnchors as (memo: string, paragraphs: string[]) => number[];
+const findAmbiguousMemoQuoteAnchors = sandbox.findAmbiguousMemoQuoteAnchors as (memo: string, paragraphs: string[]) => number[];
+const memoQuoteAnchorStatus = sandbox.memoQuoteAnchorStatus as (memo: string, index: number, paragraphs: string[]) => string;
 const renderMemoHtml = sandbox.renderMemoHtml as (memo: string) => string;
 const memoPreviewText = sandbox.memoPreviewText as (body: string) => string | null;
 const splitReaderBody = sandbox.splitReaderBody as (body: string) => { memo: string; sourceLines: string[] } | null;
@@ -32,6 +36,29 @@ describe('quote markers', () => {
   it('reads a marker from a table cell', () => {
     expect(findMarkerIn('メモ 「引用」[¶12]')).toBe(11);
     expect(findMarkerIn('ただの文')).toBeNull();
+  });
+
+  it('validates quoted paragraph anchors and reports changed sources without rewriting the memo', () => {
+    const memo = '> 引用した本文です。 [¶1]\nメモはそのまま';
+    expect(memoQuoteAnchorMatches(memo, 0, ['引用した本文です。'])).toBe(true);
+    expect(findStaleMemoQuoteAnchors(memo, ['前に挿入された段落', '引用した本文です。'])).toEqual([0]);
+    expect(memo).toContain('引用した本文です。 [¶1]');
+  });
+
+  it('does not silently reattach changed or duplicate quote text to another position', () => {
+    const memo = '> same quoted phrase [¶1]';
+    expect(memoQuoteAnchorStatus(memo, 0, ['before same quoted phrase after'])).toBe('matched');
+    expect(memoQuoteAnchorStatus(memo, 0, ['changed source', 'same quoted phrase'])).toBe('stale');
+    expect(memoQuoteAnchorStatus(memo, 0, ['same quoted phrase and same quoted phrase'])).toBe('ambiguous');
+    expect(memoQuoteAnchorStatus(memo, 0, ['same quoted phrase', 'same quoted phrase'])).toBe('ambiguous');
+    expect(findStaleMemoQuoteAnchors(memo, ['changed source', 'same quoted phrase'])).toEqual([0]);
+    expect(findAmbiguousMemoQuoteAnchors(memo, ['same quoted phrase', 'same quoted phrase'])).toEqual([0]);
+    expect(memoQuoteAnchorMatches(memo, 0, ['same quoted phrase', 'same quoted phrase'])).toBe(false);
+  });
+
+  it('validates table-cell quotes while keeping plain page markers compatible', () => {
+    expect(findStaleMemoQuoteAnchors('| メモ | 「比較の値」[¶2] |', ['比較の値', '新しい値'])).toEqual([1]);
+    expect(findStaleMemoQuoteAnchors('本文を参照 [¶2|p. 57]', ['段落1', '段落2'])).toEqual([]);
   });
 });
 

@@ -1,8 +1,8 @@
 /**
  * Demo mode (DEMO_MODE=true): a public instance for trying the app (e.g. hackathon judges).
  *
- * - On a fresh database it puts in sample data: three short articles written for the demo,
- *   a sample PDF with printed page numbers, and two cards with memos and quotes.
+ * - On a fresh database it puts in sample data: four short articles written for the demo,
+ *   a sample PDF with printed page numbers, and three cards with memos and quotes.
  *   (Free hosting has no persistent disk, so every restart starts again from this sample.)
  * - The sample documents live under the reserved host "demo.my-search.invalid" and are
  *   served from files in demo/, so the demo works without fetching anything from outside.
@@ -29,6 +29,7 @@ export function isDemoMode(env: NodeJS.ProcessEnv = process.env): boolean {
 type DemoDocument = { file: string; kind: 'html' | 'pdf'; title: string; summary: string; daysAgo: number };
 
 export const DEMO_DOCUMENTS: Record<string, DemoDocument> = {
+  '/reader-tools': { file: 'articles/reader-tools.html', kind: 'html', title: '記事内の計算と比較を操作する見本', summary: '記事中の数式と比較データを直接操作し、入力値とメモを保存・再開する。', daysAgo: 0 },
   '/reading-notes': { file: 'articles/reading-notes.html', kind: 'html', title: '読みながらメモを取るための三つの習慣', summary: '引用と自分の考えを分ける、出典はその場で記録する、表にして比べる。', daysAgo: 1 },
   '/search-reproducibility': { file: 'articles/search-reproducibility.html', kind: 'html', title: '検索結果が毎回変わることの問題', summary: '同じ条件なら同じ順位が返る検索は、確かめられる調べ物の土台になる。', daysAgo: 2 },
   '/citation-pages': { file: 'articles/citation-pages.html', kind: 'html', title: '引用にページ番号を付ける理由', summary: 'ページ番号、一字一句、孫引きの回避。引用の三つの作法。', daysAgo: 3 },
@@ -149,6 +150,18 @@ export async function seedDemoData(ctx: SeedContext): Promise<boolean> {
   });
   saveReaderText(card2.id, paper.paragraphs);
 
-  logger.info({ event: 'demo_seeded', articles: articles.length, cards: 2 }, 'demo data seeded');
+  // Card 3: a saved article with explicit local tool declarations for the full Reader flow.
+  const toolArticle = (await readDemoDocument(demoUrl('/reader-tools'), { ...process.env, DEMO_MODE: 'true' }))!;
+  const toolMemo = '数式と比較表を記事内から操作し、入力値とメモを保存して再開できます。数値は説明用の見本です。';
+  const card3 = await ctx.createCard({
+    title: toolArticle.title,
+    body: composeReaderCardBody({ memo: toolMemo, source: { title: toolArticle.title, url: toolArticle.url, byline: toolArticle.byline, siteName: toolArticle.siteName, fetchedAt: toolArticle.fetchedAt }, paragraphs: toolArticle.paragraphs }),
+    url: toolArticle.url ?? undefined,
+    tags: ['デモ', 'Reader', '計算', '比較'],
+    type: 'article',
+  });
+  saveReaderText(card3.id, toolArticle.paragraphs);
+
+  logger.info({ event: 'demo_seeded', articles: articles.length, cards: 3 }, 'demo data seeded');
   return true;
 }

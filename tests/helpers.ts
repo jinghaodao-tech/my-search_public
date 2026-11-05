@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 process.env.NODE_ENV = "test";
@@ -6,10 +7,8 @@ process.env.MOCK_AI_SUMMARY = "true";
 process.env.CORS_ORIGIN = "http://localhost:3000";
 process.env.IMPORT_RATE_LIMIT = "1000";
 
-export const testDir = path.join(process.cwd(), "data", `acceptance-vitest-${process.pid}`);
-
-fs.rmSync(testDir, { recursive: true, force: true });
-fs.mkdirSync(testDir, { recursive: true });
+const testDirPrefix = `my-search-acceptance-vitest-${process.pid}-`;
+export const testDir = fs.mkdtempSync(path.join(os.tmpdir(), testDirPrefix));
 
 process.env.DB_PATH = path.join(testDir, "cards.db");
 process.env.KJ_FILE = path.join(testDir, "kj_groups.json");
@@ -18,6 +17,17 @@ export const cardsEngine = await import("../cards_engine.js");
 export const bm25Engine = await import("../bm25_engine.js");
 export const database = await import("../db/database.js");
 export const { app } = await import("../server.js");
+
+process.once("exit", () => {
+  const tempRoot = path.resolve(os.tmpdir()) + path.sep;
+  const resolvedTestDir = path.resolve(testDir);
+  if (!resolvedTestDir.startsWith(tempRoot) || !path.basename(resolvedTestDir).startsWith(testDirPrefix)) {
+    console.error("Refusing to remove a path outside this run's isolated test directory");
+    return;
+  }
+  if (database.db.open) database.db.close();
+  fs.rmSync(resolvedTestDir, { recursive: true, force: true });
+});
 
 export function resetCards() {
   cardsEngine.saveCards([]);

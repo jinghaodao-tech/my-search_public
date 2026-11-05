@@ -107,11 +107,11 @@ function renderSiteCandidate(candidate, index, total) {
   const fact = (term, value) => { const dd = siteEl('dd'); if (value instanceof Node) dd.append(value); else dd.textContent = value; facts.append(siteEl('dt', '', term), dd); };
   fact('登録URL', siteLink(candidate.siteUrl));
   fact('取得方法', `${candidate.adapterLabel}${candidate.availableLabels.length > 1 ? `（ほかに使える方法: ${candidate.availableLabels.filter(label => label !== candidate.adapterLabel).join('・')}）` : ''}`);
-  const inScope = candidate.pathGroups.filter(group => group.inScope);
+  const sitemap = candidate.adapter.type === 'sitemap';
   const outside = candidate.pathGroups.filter(group => !group.inScope);
-  fact('対象の範囲', `${candidate.scope.hosts[0]} の ${candidate.prefixes.join('、')} 以下${candidate.scope.linked ? '（このページとそのRSSに載っている記事）' : ''}${inScope.length ? `　見つかった記事 ${inScope.reduce((sum, group) => sum + group.count, 0)}件` : ''}`);
+  fact('対象の範囲', `${candidate.scope.hosts[0]} の ${candidate.prefixes.join('、')} 以下${candidate.scope.linked ? '（このページとそのRSSに載っている記事）' : ''}`);
   fact('対象外', outside.length ? outside.map(group => `${group.prefix}（${group.count}件）`).join('、') : (candidate.scope.linked ? '同じサイトのほかのページ' : '同じホストのこれ以外のパス・ほかのサイト'));
-  fact('記事の数', candidate.estimatedCount != null ? `約${candidate.estimatedCount}件（見つかった範囲）` : '不明');
+  fact(sitemap ? '記事候補の数' : '記事の数', candidate.estimatedCount != null ? `${candidate.estimatedCount}件（${sitemap ? 'URLで絞った候補。記事かどうかは取得時に確認' : '見つかった範囲'}）` : '不明');
   fact('自動収集', `${candidate.plan.pastArticles ? '過去の記事も取得できます' : '最新の記事だけ（この方法では過去の記事は取れません）'}・以後1日1回、新しい記事を確認${candidate.plan.pagesAllowed ? '' : '・robots.txt により記事ページは読みません（一覧の情報だけ）'}`);
   box.append(nameRow, facts);
 
@@ -133,7 +133,7 @@ function renderSiteCandidate(candidate, index, total) {
   box.append(scopeEdit);
 
   if (candidate.samples.length) {
-    box.append(siteEl('h5', '', '取得できた記事の例'));
+    box.append(siteEl('h5', '', sitemap ? '記事候補の例' : '取得できた記事の例'));
     const list = siteEl('ul', 'site-samples');
     for (const sample of candidate.samples) {
       const item = siteEl('li');
@@ -183,7 +183,7 @@ function renderSiteCandidate(candidate, index, total) {
   const planned = siteEl('span', 'reader-note');
   const updatePlanned = () => {
     const wanted = Math.min(500, Math.max(1, Number(limit.value) || 50));
-    planned.textContent = candidate.estimatedCount != null ? ` → 最初に ${Math.min(wanted, candidate.estimatedCount)}件（新しい順）` : '';
+    planned.textContent = candidate.estimatedCount != null ? ` → 最初に最大 ${Math.min(wanted, candidate.estimatedCount)}件${sitemap ? 'の候補を確認' : ''}（新しい順）` : '';
   };
   limit.oninput = updatePlanned;
   updatePlanned();
@@ -255,7 +255,7 @@ async function watchSiteJob(jobId) {
       const result = job.result || {};
       if (job.status === 'failed' || result.status === 'error') toast(`取り込みに失敗しました: ${result.error || job.error || ''}`, 'warn');
       else if (result.status === 'partial') toast(`一部の記事を取り込みました（新規 ${result.added ?? 0}件・失敗 ${result.failed ?? 0}件）。失敗した記事は次回再試行します`, 'warn');
-      else toast(`取り込みました（新しい記事 ${result.added ?? 0}件${result.updated ? `・更新 ${result.updated}件` : ''}）`, 'success');
+      else toast(`取り込みました（新しい記事 ${result.added ?? 0}件${result.updated ? `・更新 ${result.updated}件` : ''}${result.skippedNonArticles ? `・一覧ページ ${result.skippedNonArticles}件を除外` : ''}）`, 'success');
       return;
     }
     if (i % 3 === 0) loadSiteList();

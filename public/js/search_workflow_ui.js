@@ -106,7 +106,7 @@ function restoreSavedSearch(id) {
   if (!saved) return;
   document.getElementById('saved-search-name').value = saved.name;
   bm25Modes.saved = saved.config; selectBM25Mode('saved');
-  for (const [key, value] of Object.entries({ dedup: saved.options.dedupThreshold ?? 0.8, arch: saved.options.archiveScoreThreshold ?? 0.5, limit: saved.options.resultLimit ?? 50 })) {
+  for (const [key, value] of Object.entries({ dedup: saved.options.dedupThreshold ?? 1, arch: saved.options.archiveScoreThreshold ?? 0.5, limit: saved.options.resultLimit ?? 50 })) {
     syncParam(key, value); document.getElementById(`p-${key}`).value = value;
   }
   document.querySelector('input[name="bm25src"][value="articles"]').checked = true;

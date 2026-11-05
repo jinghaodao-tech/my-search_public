@@ -26,14 +26,17 @@ export default defineConfig({
   webServer: {
     command: "npx tsx scripts/start_e2e_server.ts",
     url: baseURL,
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.E2E_REUSE_SERVER === "true",
     timeout: 120_000,
     env: {
       PORT: String(port),
-      DB_PATH: "data/e2e-test.db",
+      DB_PATH: process.env.E2E_DB_PATH ?? "data/e2e-test.db",
       MOCK_AI_SUMMARY: "true",
       IMPORT_RATE_LIMIT: "1000",
       E2E_RESET_DB: "true",
+      RESEARCH_EXPERIMENTS_ENABLED: process.env.E2E_RESEARCH_EXPERIMENTS_ENABLED ?? "false",
+      RESEARCH_EXPERIMENTS_STORAGE: "test",
+      CARD_SEARCH_ENGINE: process.env.E2E_CARD_SEARCH_ENGINE ?? "fts5",
     },
   },
 });

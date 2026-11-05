@@ -16,10 +16,10 @@ import {
   parseSitemap,
   scopeFromUrl,
 } from '../services/site_parsing.js';
-import { detectSite } from '../services/site_adapters.js';
+import { detectSite, listArticles } from '../services/site_adapters.js';
 import { syncDueSites, syncSite } from '../services/site_collector.js';
 import { createSite, getSite, knownSiteArticles, updateSite } from '../repositories/site_sources_repository.js';
-import { getArticleById } from '../repositories/articles_repository.js';
+import { getArticleById, getArticleByUrl } from '../repositories/articles_repository.js';
 
 // ─── a fake web for the tests (no network) ───────────────────
 
@@ -208,6 +208,27 @@ const sitemapPages = (extra: Record<string, Page> = {}) => ({
 });
 
 describe('detecting how a site can be read', () => {
+  it('counts deduplicated sitemap candidates and skips explicit collection pages during collection', async () => {
+    const host = 'https://sitemap-p0.example.test';
+    const xml = `<urlset>${['category/db', 'topics/sqlite', 'index.html', '2026/10/', 'landing', 'sqlite-wal', 'sqlite-wal'].map(path => `<url><loc>${host}/blog/${path}</loc></url>`).join('')}</urlset>`;
+    const web = fakeWeb({
+      [`${host}/robots.txt`]: { body: '', type: 'text/plain' },
+      [`${host}/sitemap.xml`]: { body: xml, type: 'application/xml' },
+      [`${host}/blog/landing`]: { body: '<title>Database index</title><script type="application/ld+json">{"@type":"CollectionPage"}</script>' },
+      [`${host}/blog/sqlite-wal`]: articlePage('SQLite WAL', '2026-10-01T00:00:00Z'),
+    });
+    const scope = { hosts: ['sitemap-p0.example.test'], pathPrefix: '/blog/' };
+    const adapter = { type: 'sitemap' as const, sitemaps: [`${host}/sitemap.xml`] };
+    const listed = await listArticles({ fetch: web.fetch, scope, robots: parseRobots('') }, adapter, { includeBody: false });
+    expect(listed.total).toBe(2);
+    expect(listed.pathGroups?.get('/blog/')).toBe(2);
+    const site = createSite({ siteUrl: `${host}/blog/`, name: 'Sitemap P0', scope, adapter, bodyPolicy: 'pending', maxInitial: 10 });
+    const result = await syncSite(site, web.fetch);
+    expect(result).toMatchObject({ listed: 2, added: 1, skippedNonArticles: 1, failed: 0 });
+    expect(getArticleByUrl(`${host}/blog/landing`)).toBeNull();
+    expect(getArticleByUrl(`${host}/blog/sqlite-wal`)?.title).toBe('SQLite WAL');
+    expect(web.requests).not.toContain(`${host}/blog/category/db`);
+  });
   it('WordPress: public API first, only posts inside the registered path', async () => {
     const result = await detectSite(`${WP}/blog/`, wpWeb().fetch);
     expect(result).toMatchObject({ ok: true, adapter: { type: 'wordpress', apiBase: `${WP}/wp-json/` }, estimatedCount: 2, scope: { hosts: ['wp.example.com'], pathPrefix: '/blog/' } });

@@ -6,8 +6,12 @@ import { markdownContentDisposition } from '../utils/markdown_export.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { buildBulkMarkdownZip, buildCardMarkdown } from '../services/export_service.js';
 import { getRequestId, invalidRequest, parseBody, sendError } from '../services/http_service.js';
-import { cardListQuerySchema } from '../schemas/api_schemas.js';
+import { cardListQuerySchema, cardSearchBodySchema } from '../schemas/api_schemas.js';
 import type { Card } from '../domain/card.js';
+import { buildStoredTokenSet, numericUnitSearchTerms, type Article } from '../bm25_engine.js';
+import { buildSearchSnippet } from '../services/search_match_service.js';
+import { rerankWithE5Rrf } from '../services/e5_rrf_ranker.js';
+import { loadCardsByIds, savedCardCount, savedCardTokenFtsAvailable, searchSavedCardIdsByNumericPhrase, searchSavedCardIdsFts5Morphological, searchSavedCardIdsFts5Raw, searchSavedCardIdsFts5Rrf } from '../repositories/cards_repository.js';
 
 function parseCardSort(value: unknown): 'created_at_asc' | 'created_at_desc' | undefined {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -50,6 +54,304 @@ export function createCardsRouter(ctx: RouteContext) {
     }
 
     res.json(ctx.getCards(filters));
+  });
+
+  router.post('/cards/search', async (req, res) => {
+    const body = parseBody(cardSearchBodySchema, req, res);
+    if (!body) return;
+    try {
+      const cardSearchEngine = process.env.CARD_SEARCH_ENGINE ?? 'fts5-morph';
+      const useE5Rrf = cardSearchEngine === 'e5-rrf';
+      const useRawOnlyFts = cardSearchEngine === 'fts5-raw';
+      const useMorphologyOnlyFts = cardSearchEngine === 'fts5-morph';
+      const queryTerms = body.config.keywords.flatMap(keyword => [keyword.term, ...(keyword.synonyms ?? [])]);
+      const cardFilters = body.cardFilters;
+      const matchesCardFilters = (card: Card) => (!cardFilters?.tag || card.tags.includes(cardFilters.tag))
+        && (!cardFilters?.kjGroupId || card.kjGroupId === cardFilters.kjGroupId)
+        && (!cardFilters?.type || card.type === cardFilters.type)
+        && (cardFilters?.archived === undefined || card.archived === cardFilters.archived);
+      const numericPhraseTerms = numericUnitSearchTerms(queryTerms);
+      const useFts = (cardSearchEngine === 'fts5' || useRawOnlyFts || useMorphologyOnlyFts) && savedCardTokenFtsAvailable()
+        && (body.options?.dedupThreshold ?? 1) >= 1;
+      if (useFts) {
+        const startedAt = performance.now();
+        const tokenSet = await buildStoredTokenSet(queryTerms.join(' '));
+        const tokenPreparationMs = performance.now() - startedAt;
+        const limit = Math.max(1, Math.min(500, body.options?.resultLimit ?? 50));
+        const excluded = (body.filters?.excludedTerms ?? []).map(term => term.normalize('NFKC').toLowerCase());
+        const selected: Array<{ card: Card; rank: ReturnType<typeof searchSavedCardIdsFts5Rrf>[number] }> = [];
+        const pageSize = excluded.length ? 500 : limit;
+        let offset = 0;
+        let candidateCount = 0;
+        let rawOnlyFallbackUsed = false;
+        let numericPhraseFallbackUsed = false;
+        const rankingStartedAt = performance.now();
+        while (selected.length < limit) {
+          let ranks = numericPhraseFallbackUsed
+            ? searchSavedCardIdsByNumericPhrase(numericPhraseTerms, pageSize, offset)
+            : useRawOnlyFts && !rawOnlyFallbackUsed
+            ? searchSavedCardIdsFts5Raw(queryTerms, pageSize, offset)
+            : useMorphologyOnlyFts && !rawOnlyFallbackUsed
+              ? searchSavedCardIdsFts5Morphological(tokenSet.morphologicalTokens, pageSize, offset)
+              : searchSavedCardIdsFts5Rrf(tokenSet.morphologicalTokens, tokenSet.ngramTokens, queryTerms, pageSize, offset);
+          if ((useRawOnlyFts || useMorphologyOnlyFts) && !rawOnlyFallbackUsed && offset === 0 && ranks.length === 0) {
+            rawOnlyFallbackUsed = true;
+            ranks = searchSavedCardIdsFts5Rrf(tokenSet.morphologicalTokens, tokenSet.ngramTokens, queryTerms, pageSize, offset);
+          }
+          if (ranks.length === 0 && offset === 0 && numericPhraseTerms.length > 0) {
+            numericPhraseFallbackUsed = true;
+            ranks = searchSavedCardIdsByNumericPhrase(numericPhraseTerms, pageSize, offset);
+          }
+          if (!ranks.length) break;
+          candidateCount = ranks[0]!.matchedCount;
+          const cardsById = new Map(loadCardsByIds(ranks.map(rank => rank.id)).map(card => [card.id, card]));
+          for (const rank of ranks) {
+            const card = cardsById.get(rank.id);
+            if (!card || !matchesCardFilters(card)) continue;
+            const content = `${card.title} ${card.body} ${card.summary ?? ''}`.normalize('NFKC').toLowerCase();
+            if (excluded.some(term => content.includes(term))) continue;
+            selected.push({ card, rank });
+            if (selected.length >= limit) break;
+          }
+          offset += ranks.length;
+          if (ranks.length < pageSize) break;
+        }
+        const scoringMs = performance.now() - rankingStartedAt;
+        const keywords = ctx.buildSearchKeywordCandidates(body.config);
+        const archiveThreshold = body.options?.archiveScoreThreshold ?? 0.5;
+        const active: Array<Record<string, unknown>> = [];
+        const archived: Array<Record<string, unknown>> = [];
+        for (const { card, rank } of selected) {
+          const article: Article = {
+            id: card.id,
+            title: card.title,
+            body: card.body,
+            summary: card.summary,
+            publishedAt: new Date(card.createdAt),
+            createdAt: card.createdAt,
+            updatedAt: card.updatedAt,
+            url: card.url ?? '',
+            tags: card.tags,
+            type: card.type,
+            archived: card.archived,
+            archivedAt: card.archivedAt,
+            source: 'saved-card',
+            sourceAuthority: 0.8,
+          };
+          const meta = ctx.buildSearchMatchMeta(article, keywords);
+          const score = rank.normalizedScore;
+          const item = {
+            article,
+            score,
+            breakdown: {
+              bm25Raw: rank.rrfScore,
+              bm25Morphological: rank.morphologicalRank ? 1 / (60 + rank.morphologicalRank) : 0,
+              bm25Ngram: rank.ngramRank ? 1 / (60 + rank.ngramRank) : 0,
+              bm25RawText: rank.rawTextRank ? 1 / (60 + rank.rawTextRank) : 0,
+              normalizedMorphological: rank.morphologicalRank ? (1 / (60 + rank.morphologicalRank)) / rank.rrfScore : 0,
+              normalizedNgram: rank.ngramRank ? (1 / (60 + rank.ngramRank)) / rank.rrfScore : 0,
+              tokenWeights: numericPhraseFallbackUsed
+                ? { morphological: 0, ngram: 0, rawText: 1 }
+                : useRawOnlyFts && !rawOnlyFallbackUsed
+                ? { morphological: 0, ngram: 0, rawText: 1 }
+                : useMorphologyOnlyFts && !rawOnlyFallbackUsed
+                  ? { morphological: 1, ngram: 0, rawText: 0 }
+                  : { morphological: 1 / 3, ngram: 1 / 3, rawText: 1 / 3 },
+              contextBonus: 1,
+              timeDecay: 1,
+              finalScore: score,
+              matchedTerms: [],
+            },
+            scoreSources: {
+              method: numericPhraseFallbackUsed ? 'sqlite-exact-numeric-phrase'
+                : useRawOnlyFts && !rawOnlyFallbackUsed ? 'sqlite-fts5-raw-bm25'
+                : useMorphologyOnlyFts && !rawOnlyFallbackUsed ? 'sqlite-fts5-morphological-bm25' : 'sqlite-fts5-rrf',
+              rrfScore: rank.rrfScore,
+              morphologicalRank: rank.morphologicalRank,
+              ngramRank: rank.ngramRank,
+              rawTextRank: rank.rawTextRank,
+              reciprocalRankConstant: 60,
+            },
+            ...meta,
+            snippet: buildSearchSnippet(article, [...meta.matchedKeywords, ...keywords]),
+          };
+          if (score < archiveThreshold) archived.push({ ...item, reason: `スコア閾値割れ (${score.toFixed(3)} < ${archiveThreshold})` });
+          else active.push(item);
+        }
+        const elapsedMs = performance.now() - startedAt;
+        const count = savedCardCount();
+        const allResults = [...active, ...archived];
+        res.json({
+          active,
+          belowThreshold: archived,
+          archived,
+          stats: {
+            inputCount: candidateCount,
+            afterDedup: candidateCount,
+            activeCount: active.length,
+            archivedCount: archived.length,
+            modeUsed: numericPhraseFallbackUsed ? 'saved-card-numeric-phrase-fallback'
+              : useRawOnlyFts && !rawOnlyFallbackUsed ? 'saved-card-fts5-raw-bm25'
+              : useMorphologyOnlyFts && !rawOnlyFallbackUsed ? 'saved-card-fts5-morphological-bm25' : 'saved-card-fts5-rrf',
+            avgScore: active.length ? active.reduce((sum, item) => sum + Number(item.score), 0) / active.length : 0,
+            timings: {
+              tokenPreparationMs: Number(tokenPreparationMs.toFixed(3)),
+              scoringMs: Number(scoringMs.toFixed(3)),
+              sortingLimitMs: 0,
+              totalSearchMs: Number(elapsedMs.toFixed(3)),
+            },
+          },
+          scope: {
+            corpus: 'cards',
+            searchMethod: numericPhraseFallbackUsed ? 'numeric-phrase-scan-saved-cards'
+              : useRawOnlyFts
+              ? rawOnlyFallbackUsed ? 'fts5-raw-fallback-rrf-saved-cards' : 'fts5-raw-saved-cards'
+              : useMorphologyOnlyFts
+                ? rawOnlyFallbackUsed ? 'fts5-morph-fallback-rrf-saved-cards' : 'fts5-morph-saved-cards'
+                : 'fts5-rrf-saved-cards',
+            candidateCount,
+            totalCount: count,
+            searchedCount: count,
+            sources: allResults.length ? ['saved-card'] : [],
+            availableSources: count ? ['saved-card'] : [],
+            bySource: { 'saved-card': { total: count, searched: candidateCount } },
+            filtersApplied: { excludedTerms: body.filters?.excludedTerms ?? [], status: 'all', since: null, sources: [] },
+            ...(process.env.NODE_ENV === 'test' && process.env.PERSONAL_REFIND_EVAL_CAPTURE === '1'
+              ? { candidateIdsBeforeRerank: selected.map(({ card }) => card.id) } : {}),
+            index: {
+              morphology: !useRawOnlyFts || rawOnlyFallbackUsed,
+              ngram: !useRawOnlyFts && !useMorphologyOnlyFts || rawOnlyFallbackUsed,
+              raw: !useMorphologyOnlyFts || rawOnlyFallbackUsed,
+              candidateCountExact: true,
+            },
+            fallbackUsed: rawOnlyFallbackUsed || numericPhraseFallbackUsed,
+            directNumericPhraseFallback: numericPhraseFallbackUsed,
+          },
+        });
+        return;
+      }
+      const cards = ctx.loadCards().filter(card => (!cardFilters?.tag || card.tags.includes(cardFilters.tag))
+        && (!cardFilters?.kjGroupId || card.kjGroupId === cardFilters.kjGroupId)
+        && (!cardFilters?.type || card.type === cardFilters.type)
+        && (cardFilters?.archived === undefined || card.archived === cardFilters.archived));
+      const excluded = (body.filters?.excludedTerms ?? []).map(term => term.normalize('NFKC').toLowerCase());
+      const articles = cards.map((card): Article => ({
+        id: card.id,
+        title: card.title,
+        body: card.body,
+        summary: card.summary,
+        publishedAt: new Date(card.createdAt),
+        createdAt: card.createdAt,
+        updatedAt: card.updatedAt,
+        url: card.url ?? '',
+        tags: card.tags,
+        type: card.type,
+        archived: card.archived,
+        archivedAt: card.archivedAt,
+        source: 'saved-card',
+        sourceAuthority: 0.8,
+        tokens: card.tokens,
+        docLength: card.docLength,
+        morphologicalTokens: card.morphologicalTokens,
+        ngramTokens: card.ngramTokens,
+        morphologicalDocLength: card.morphologicalDocLength,
+        ngramDocLength: card.ngramDocLength,
+      })).filter(card => !excluded.some(term => `${card.title} ${card.body} ${card.summary ?? ''}`.normalize('NFKC').toLowerCase().includes(term)));
+      const resultLimit = Math.max(1, Math.min(500, body.options?.resultLimit ?? 50));
+      const candidateLimit = useE5Rrf
+        ? Math.max(resultLimit, Number(process.env.CARD_SEARCH_E5_CANDIDATES ?? 100))
+        : resultLimit;
+      const baselineOptions = {
+        ...body.options,
+        dedupThreshold: body.options?.dedupThreshold ?? 1,
+        corpus: 'cards' as const,
+      };
+      let result = await ctx.runPipeline(articles, body.config, 'custom', {
+        ...baselineOptions,
+        ...(useE5Rrf ? { resultLimit: candidateLimit, archiveScoreThreshold: Number.NEGATIVE_INFINITY } : {}),
+      });
+      let candidateIdsBeforeRerank = [...result.active, ...result.archived].map(item => item.article.id);
+      let e5FallbackUsed = false;
+      let e5CandidateCount = 0;
+      if (useE5Rrf && result.active.length) {
+        e5CandidateCount = result.active.length;
+        candidateIdsBeforeRerank = result.active.map(item => item.article.id);
+        const e5Started = performance.now();
+        const query = body.config.keywords.flatMap(keyword => [keyword.term, ...(keyword.synonyms ?? [])]).join(' ');
+        try {
+          const ranked = await rerankWithE5Rrf(result.active, query);
+          const archiveThreshold = body.options?.archiveScoreThreshold ?? 0.5;
+          const reranked = ranked.map(entry => ({
+            ...entry.item,
+            score: entry.normalizedScore,
+            breakdown: { ...entry.item.breakdown, finalScore: entry.normalizedScore },
+            scoreSources: {
+              method: 'bm25-e5-rrf',
+              model: 'multilingual-e5-small',
+              bm25Score: entry.item.score,
+              bm25Rank: entry.bm25Rank,
+              e5Rank: entry.e5Rank,
+              cosineSimilarity: entry.similarity,
+              rrfScore: entry.rrfScore,
+              rrfK: 60,
+            },
+          }));
+          const eligible = reranked;
+          const baselineScoreById = new Map(ranked.map(entry => [entry.item.article.id, entry.item.score]));
+          const active = eligible.filter(item => baselineScoreById.get(item.article.id)! >= archiveThreshold);
+          const belowThreshold = eligible.filter(item => baselineScoreById.get(item.article.id)! < archiveThreshold)
+            .map(item => ({ article: item.article, reason: `BM25スコア閾値割れ (${baselineScoreById.get(item.article.id)!.toFixed(3)} < ${archiveThreshold})` }));
+          result.active = active.slice(0, resultLimit);
+          result.belowThreshold = belowThreshold.slice(0, Math.max(0, resultLimit - result.active.length));
+          result.archived = result.belowThreshold;
+          result.stats.activeCount = active.length;
+          result.stats.archivedCount = belowThreshold.length;
+          result.stats.avgScore = result.active.length ? result.active.reduce((sum, item) => sum + item.score, 0) / result.active.length : 0;
+          result.stats.modeUsed = 'bm25-e5-rrf';
+          if (result.stats.timings) result.stats.timings.e5RerankMs = Number((performance.now() - e5Started).toFixed(3));
+        } catch (error) {
+          e5FallbackUsed = true;
+          logger.warn({ event: 'saved_card_e5_fallback', reason: error instanceof Error ? error.name : 'unknown' }, 'E5 reranking unavailable; using BM25 results');
+          result = await ctx.runPipeline(articles, body.config, 'custom', baselineOptions);
+          candidateIdsBeforeRerank = [...result.active, ...result.archived].map(item => item.article.id);
+        }
+      }
+      const keywords = ctx.buildSearchKeywordCandidates(body.config);
+      const cleanArticle = (source: Article) => {
+        const { tokens: _tokens, docLength: _docLength, morphologicalTokens: _morphologicalTokens,
+          ngramTokens: _ngramTokens, morphologicalDocLength: _morphologicalDocLength,
+          ngramDocLength: _ngramDocLength, ...article } = source;
+        return article;
+      };
+      const serialize = (item: typeof result.active[number]) => {
+        const article = cleanArticle(item.article);
+        const meta = ctx.buildSearchMatchMeta(article, keywords, item.breakdown?.matchedTerms);
+        return { ...item, article, ...meta, snippet: buildSearchSnippet(article, [...meta.matchedKeywords, ...keywords]) };
+      };
+      const searched = articles.length;
+      res.json({
+        ...result,
+        scope: {
+          corpus: 'cards',
+          searchMethod: e5FallbackUsed ? 'bm25-e5-fallback-saved-cards' : useE5Rrf && result.stats.modeUsed === 'bm25-e5-rrf' ? 'bm25-e5-rrf-saved-cards' : cardSearchEngine === 'fts5' ? 'bm25-saved-cards-fallback' : 'bm25-saved-cards',
+          fallbackUsed: e5FallbackUsed,
+          e5CandidateCount,
+          candidateCount: cards.length,
+          totalCount: cards.length,
+          searchedCount: searched,
+          sources: searched ? ['saved-card'] : [],
+          availableSources: cards.length ? ['saved-card'] : [],
+          bySource: { 'saved-card': { total: cards.length, searched } },
+          filtersApplied: { excludedTerms: body.filters?.excludedTerms ?? [], status: 'all', since: null, sources: [] },
+          ...(process.env.NODE_ENV === 'test' && process.env.PERSONAL_REFIND_EVAL_CAPTURE === '1' ? { candidateIdsBeforeRerank } : {}),
+        },
+        active: result.active.map(serialize),
+        archived: result.archived.map(item => ({ ...item, article: cleanArticle(item.article) })),
+      });
+    } catch (err) {
+      logger.error({ event: 'saved_card_search_error', requestId: getRequestId(req), error: errorMeta(err) }, 'saved card search failed');
+      sendError(req, res, 500, 'Internal server error');
+    }
   });
 
   router.post('/cards', async (req, res) => {

@@ -121,6 +121,237 @@ export function loadArticlesFromDb(): Article[] {
   return rows.map(row => rowToArticle(row, sources.get(row.id) ?? []));
 }
 
+export type ArticleFtsRank = { id: string; morphRank: number | null; ngramRank: number | null; score?: number };
+export type ArticleFtsSearchResult = { ranks: ArticleFtsRank[]; matchedCount: number; matchedCountIsLowerBound?: boolean };
+export type ArticleFtsRrfRank = ArticleFtsRank & { rrfScore: number };
+export type ArticleFtsRrfSearchResult = { ranks: ArticleFtsRrfRank[]; matchedCount: number; matchedCountIsLowerBound?: boolean };
+
+function ftsMatchExpression(tokens: string[]): string | null {
+  const unique = [...new Set(tokens.map(token => token.trim()).filter(Boolean))];
+  return unique.length ? unique.map(token => `"${token.replace(/"/g, '""')}"`).join(' OR ') : null;
+}
+
+/** FTS lookup returns full modality ranks because omitted tail ranks still contribute to RRF scores. */
+export function searchArticleIdsFts5(morphologicalTokens: string[], ngramTokens: string[], filters: ArticleSearchScopeFilters = {}): ArticleFtsSearchResult {
+  const morphExpression = ftsMatchExpression(morphologicalTokens);
+  const ngramExpression = ftsMatchExpression(ngramTokens);
+  const ranks = new Map<string, ArticleFtsRank>();
+  const conditions = ["COALESCE(a.candidate_status, 'unreviewed') != 'expired'"];
+  const filterParams: string[] = [];
+  if (filters.since) { conditions.push('a.first_seen_at > ?'); filterParams.push(filters.since); }
+  if (filters.status && filters.status !== 'all') { conditions.push('a.candidate_status = ?'); filterParams.push(filters.status); }
+  if (filters.sources?.length) {
+    conditions.push(`EXISTS (SELECT 1 FROM article_sources selected WHERE selected.article_id=a.id AND selected.source IN (${filters.sources.map(() => '?').join(',')}))`);
+    filterParams.push(...filters.sources);
+  }
+  const where = conditions.join(' AND ');
+  if (morphExpression) {
+    const rows = db.prepare(`SELECT articles_morph_fts.id, bm25(articles_morph_fts) AS score FROM articles_morph_fts JOIN articles a ON a.id=articles_morph_fts.id WHERE articles_morph_fts MATCH ? AND ${where} ORDER BY score, articles_morph_fts.id`).all(morphExpression, ...filterParams) as Array<{id: string; score: number}>;
+    rows.forEach((row, index) => ranks.set(row.id, { id: row.id, morphRank: index + 1, ngramRank: null }));
+  }
+  if (ngramExpression) {
+    const rows = db.prepare(`SELECT articles_ngram_fts.id, bm25(articles_ngram_fts) AS score FROM articles_ngram_fts JOIN articles a ON a.id=articles_ngram_fts.id WHERE articles_ngram_fts MATCH ? AND ${where} ORDER BY score, articles_ngram_fts.id`).all(ngramExpression, ...filterParams) as Array<{id: string; score: number}>;
+    rows.forEach((row, index) => {
+      const current = ranks.get(row.id) ?? { id: row.id, morphRank: null, ngramRank: null };
+      current.ngramRank = index + 1;
+      ranks.set(row.id, current);
+    });
+  }
+  return {
+    ranks: [...ranks.values()].sort((a, b) => Math.min(a.morphRank ?? Infinity, a.ngramRank ?? Infinity) - Math.min(b.morphRank ?? Infinity, b.ngramRank ?? Infinity)),
+    matchedCount: ranks.size,
+  };
+}
+
+/** Returns morphology top-K rows without scanning/counting the full FTS match set. */
+export function searchArticleIdsFts5MorphologicalTopK(
+  morphologicalTokens: string[],
+  resultLimit: number,
+  filters: ArticleSearchScopeFilters = {},
+): ArticleFtsSearchResult {
+  const expression = ftsMatchExpression(morphologicalTokens);
+  if (!expression) return { ranks: [], matchedCount: 0 };
+
+  const conditions = ["COALESCE(a.candidate_status, 'unreviewed') != 'expired'"];
+  const filterParams: string[] = [];
+  if (filters.since) { conditions.push('a.first_seen_at > ?'); filterParams.push(filters.since); }
+  if (filters.status && filters.status !== 'all') { conditions.push('a.candidate_status = ?'); filterParams.push(filters.status); }
+  if (filters.sources?.length) {
+    conditions.push(`EXISTS (SELECT 1 FROM article_sources selected WHERE selected.article_id=a.id AND selected.source IN (${filters.sources.map(() => '?').join(',')}))`);
+    filterParams.push(...filters.sources);
+  }
+  const limit = Math.max(1, Math.min(1000, Math.floor(resultLimit)));
+  const canFilterStatusAfterTopK = !filters.since
+    && (!filters.status || filters.status === 'all')
+    && !filters.sources?.length;
+  let fetchLimit = limit;
+  let rows: Array<{id: string; score?: number}> = [];
+  let hasMoreCandidates = false;
+  while (true) {
+    if (canFilterStatusAfterTopK) {
+      const ftsRows = db.prepare(`
+        SELECT id, -bm25(articles_morph_fts) AS score FROM articles_morph_fts
+        WHERE articles_morph_fts MATCH ?
+        ORDER BY bm25(articles_morph_fts), id
+        LIMIT ?
+      `).all(expression, fetchLimit) as Array<{id: string; score: number}>;
+      hasMoreCandidates = ftsRows.length === fetchLimit;
+      const statuses = ftsRows.length
+        ? db.prepare(`SELECT id,candidate_status FROM articles WHERE id IN (${ftsRows.map(() => '?').join(',')})`)
+          .all(...ftsRows.map(row => row.id)) as Array<{id: string; candidate_status: string | null}>
+        : [];
+      const statusById = new Map(statuses.map(row => [row.id, row.candidate_status ?? 'unreviewed']));
+      rows = ftsRows.filter(row => statusById.get(row.id) !== 'expired');
+      if (rows.length < limit && hasMoreCandidates) fetchLimit *= 2;
+      else break;
+    } else {
+      const from = 'FROM articles_morph_fts JOIN articles a ON a.id=articles_morph_fts.id';
+      const where = `WHERE articles_morph_fts MATCH ? AND ${conditions.join(' AND ')}`;
+      rows = db.prepare(`
+        SELECT articles_morph_fts.id, -bm25(articles_morph_fts) AS score
+        ${from}
+        ${where}
+        ORDER BY score, articles_morph_fts.id
+        LIMIT ?
+      `).all(expression, ...filterParams, limit) as Array<{id: string}>;
+      hasMoreCandidates = rows.length === limit;
+      break;
+    }
+  }
+  rows = rows.slice(0, limit);
+  return {
+    ranks: rows.map((row, index) => ({ id: row.id, morphRank: index + 1, ngramRank: null, ...(row.score === undefined ? {} : { score: row.score }) })),
+    matchedCount: rows.length,
+    matchedCountIsLowerBound: hasMoreCandidates || rows.length === limit,
+  };
+}
+
+/** Computes complete modality ranks and exact RRF top-K inside SQLite. */
+export function searchArticleIdsFts5Rrf(morphologicalTokens: string[], ngramTokens: string[], resultLimit: number, filters: ArticleSearchScopeFilters = {}): ArticleFtsRrfSearchResult {
+  const morphExpression = ftsMatchExpression(morphologicalTokens);
+  const ngramExpression = ftsMatchExpression(ngramTokens);
+  const conditions = ["COALESCE(a.candidate_status, 'unreviewed') != 'expired'"];
+  const filterParams: string[] = [];
+  if (filters.since) { conditions.push('a.first_seen_at > ?'); filterParams.push(filters.since); }
+  if (filters.status && filters.status !== 'all') { conditions.push('a.candidate_status = ?'); filterParams.push(filters.status); }
+  if (filters.sources?.length) {
+    conditions.push(`EXISTS (SELECT 1 FROM article_sources selected WHERE selected.article_id=a.id AND selected.source IN (${filters.sources.map(() => '?').join(',')}))`);
+    filterParams.push(...filters.sources);
+  }
+  const where = conditions.join(' AND ');
+  const morphSql = morphExpression
+    ? `SELECT articles_morph_fts.id AS id, ROW_NUMBER() OVER (ORDER BY bm25(articles_morph_fts), articles_morph_fts.id) AS fts_rank
+       FROM articles_morph_fts JOIN articles a ON a.id=articles_morph_fts.id
+       WHERE articles_morph_fts MATCH ? AND ${where}`
+    : 'SELECT NULL AS id, NULL AS fts_rank WHERE 0';
+  const ngramSql = ngramExpression
+    ? `SELECT articles_ngram_fts.id AS id, ROW_NUMBER() OVER (ORDER BY bm25(articles_ngram_fts), articles_ngram_fts.id) AS fts_rank
+       FROM articles_ngram_fts JOIN articles a ON a.id=articles_ngram_fts.id
+       WHERE articles_ngram_fts MATCH ? AND ${where}`
+    : 'SELECT NULL AS id, NULL AS fts_rank WHERE 0';
+  const params = [
+    ...(morphExpression ? [morphExpression, ...filterParams] : []),
+    ...(ngramExpression ? [ngramExpression, ...filterParams] : []),
+    Math.max(1, Math.min(500, Math.floor(resultLimit))),
+  ];
+  const rows = db.prepare(`
+    WITH morph AS MATERIALIZED (${morphSql}),
+    ngram AS MATERIALIZED (${ngramSql}),
+    ids AS MATERIALIZED (SELECT id FROM morph UNION SELECT id FROM ngram),
+    fused AS (
+      SELECT ids.id, morph.fts_rank AS morph_rank, ngram.fts_rank AS ngram_rank,
+        COALESCE(1.0 / (60 + morph.fts_rank), 0) + COALESCE(1.0 / (60 + ngram.fts_rank), 0) AS rrf_score
+      FROM ids LEFT JOIN morph ON morph.id=ids.id LEFT JOIN ngram ON ngram.id=ids.id
+    )
+    SELECT *, COUNT(*) OVER() AS matched_count FROM fused
+    ORDER BY rrf_score DESC,
+      MIN(COALESCE(morph_rank, 2147483647), COALESCE(ngram_rank, 2147483647)),
+      CASE WHEN morph_rank IS NULL THEN 1 ELSE 0 END, morph_rank, ngram_rank, id
+    LIMIT ?
+  `).all(...params) as Array<{id:string; morph_rank:number | null; ngram_rank:number | null; rrf_score:number; matched_count:number}>;
+  return {
+    ranks: rows.map(row => ({ id: row.id, morphRank: row.morph_rank, ngramRank: row.ngram_rank, rrfScore: row.rrf_score })),
+    matchedCount: rows[0]?.matched_count ?? 0,
+  };
+}
+
+/** Loads bodies and token arrays only for FTS-matched documents. */
+export function loadArticlesFromDbByIds(ids: string[]): Article[] {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return [];
+  const rows: ArticleRow[] = [];
+  for (let offset = 0; offset < unique.length; offset += 400) {
+    const batch = unique.slice(offset, offset + 400);
+    rows.push(...db.prepare(`
+      SELECT articles.*, article_reader_content.body AS reader_body,
+        article_reader_content.tokens_json AS reader_tokens, article_reader_content.morphological_tokens_json AS reader_morphological,
+        article_reader_content.content_hash AS reader_hash
+      FROM articles LEFT JOIN article_reader_content ON articles.id = article_reader_content.article_id
+      WHERE articles.id IN (${batch.map(() => '?').join(',')})
+    `).all(...batch) as ArticleRow[]);
+  }
+  const sources = new Map<string, string[]>();
+  const sourceRows = db.prepare(`SELECT article_id, source FROM article_sources WHERE article_id IN (${unique.map(() => '?').join(',')}) ORDER BY source`).all(...unique) as Array<{article_id: string; source: string}>;
+  for (const row of sourceRows) (sources.get(row.article_id) ?? (sources.set(row.article_id, []), sources.get(row.article_id)!)).push(row.source);
+  const byId = new Map(rows.map(row => [row.id, rowToArticle(row, sources.get(row.id) ?? [])]));
+  return unique.map(id => byId.get(id)).filter((article): article is Article => !!article);
+}
+
+type ArticleSearchIndexStatus = { articles: number; morphologyRows: number; ngramRows: number; missingTokenRows: number };
+let articleSearchIndexStatusCache: ArticleSearchIndexStatus | null = null;
+
+export function invalidateArticleSearchIndexStatus(): void {
+  articleSearchIndexStatusCache = null;
+}
+
+export function articleSearchIndexStatus(): ArticleSearchIndexStatus {
+  if (articleSearchIndexStatusCache) return articleSearchIndexStatusCache;
+  const articles = Number((db.prepare('SELECT COUNT(*) AS count FROM articles').get() as {count: number}).count);
+  const morphologyRows = Number((db.prepare('SELECT COUNT(*) AS count FROM articles_morph_fts').get() as {count: number}).count);
+  const ngramRows = Number((db.prepare('SELECT COUNT(*) AS count FROM articles_ngram_fts').get() as {count: number}).count);
+  // An empty result from one tokenizer is valid when the other representation remains searchable.
+  const missingTokenRows = Number((db.prepare("SELECT COUNT(*) AS count FROM articles WHERE COALESCE(morphological_tokens_json,'[]')='[]' AND COALESCE(ngram_tokens_json,tokens_json,'[]')='[]'").get() as {count: number}).count);
+  articleSearchIndexStatusCache = { articles, morphologyRows, ngramRows, missingTokenRows };
+  return articleSearchIndexStatusCache;
+}
+
+/** FTS is maintained by migrations and SQLite triggers; do not count millions of rows per request. */
+export function articleSearchFtsAvailable(): boolean {
+  const count = Number((db.prepare(`SELECT COUNT(*) AS count FROM sqlite_master
+    WHERE type='table' AND name IN ('articles_morph_fts','articles_ngram_fts')`).get() as {count: number}).count);
+  return count === 2;
+}
+
+export type ArticleSearchScopeFilters = { excludedTerms?: string[]; status?: string; since?: string | null; sources?: string[] };
+
+/** Aggregate scope metadata in SQLite without materializing article bodies in Node. */
+export function getArticleSearchScope(filters: ArticleSearchScopeFilters = {}) {
+  const where = ["COALESCE(a.candidate_status, 'unreviewed') != 'expired'"];
+  const params: string[] = [];
+  if (filters.since) { where.push('a.first_seen_at > ?'); params.push(filters.since); }
+  if (filters.status && filters.status !== 'all') { where.push('a.candidate_status = ?'); params.push(filters.status); }
+  if (filters.sources?.length) {
+    where.push(`EXISTS (SELECT 1 FROM article_sources selected WHERE selected.article_id=a.id AND selected.source IN (${filters.sources.map(() => '?').join(',')}))`);
+    params.push(...filters.sources);
+  }
+  for (const term of filters.excludedTerms ?? []) {
+    const normalized = term.normalize('NFKC').toLowerCase();
+    if (normalized) { where.push("instr(lower(COALESCE(a.title,'') || ' ' || COALESCE(a.body,'') || ' ' || COALESCE(a.summary,'')), lower(?)) = 0"); params.push(normalized); }
+  }
+  const condition = where.join(' AND ');
+  const totalCount = Number((db.prepare('SELECT COUNT(*) AS count FROM articles').get() as {count: number}).count);
+  const searchedCount = Number((db.prepare(`SELECT COUNT(*) AS count FROM articles a WHERE ${condition}`).get(...params) as {count: number}).count);
+  const all = db.prepare(`SELECT COALESCE(s.source, 'unknown') AS source, COUNT(DISTINCT a.id) AS count FROM articles a LEFT JOIN article_sources s ON s.article_id=a.id GROUP BY COALESCE(s.source, 'unknown')`).all() as Array<{source: string; count: number}>;
+  const searched = db.prepare(`SELECT COALESCE(s.source, 'unknown') AS source, COUNT(DISTINCT a.id) AS count FROM articles a LEFT JOIN article_sources s ON s.article_id=a.id WHERE ${condition} GROUP BY COALESCE(s.source, 'unknown')`).all(...params) as Array<{source: string; count: number}>;
+  const allCounts = new Map(all.map(row => [row.source, Number(row.count)]));
+  const searchedCounts = new Map(searched.map(row => [row.source, Number(row.count)]));
+  const sources = [...searchedCounts].filter(([, count]) => count > 0).map(([source]) => source);
+  const availableSources = [...allCounts.keys()];
+  const bySource: Record<string, {total: number; searched: number}> = {};
+  for (const source of new Set([...allCounts.keys(), ...searchedCounts.keys()])) bySource[source] = {total: allCounts.get(source) ?? 0, searched: searchedCounts.get(source) ?? 0};
+  return { totalCount, searchedCount, sources, availableSources, bySource };
+}
+
 export function getArticleById(id: string): Article | null {
   const row = db.prepare(`SELECT articles.*, r.body AS reader_body,
     r.tokens_json AS reader_tokens, r.morphological_tokens_json AS reader_morphological, r.content_hash AS reader_hash
@@ -133,7 +364,9 @@ export function getArticleById(id: string): Article | null {
 export function getArticleByUrl(url: string): Article | null {
   if (!url) return null;
   const key = articleIdentityKey(url);
-  const row = db.prepare('SELECT id FROM articles WHERE url = ? OR normalized_url = ? ORDER BY CASE WHEN url=? THEN 0 ELSE 1 END, created_at LIMIT 1').get(url, key, url) as { id: string } | undefined;
+  // the exact URL first, then the normalised one (two indexed lookups; an OR of the two scanned the table)
+  const row = (db.prepare("SELECT id FROM articles WHERE url = ? AND url <> '' ORDER BY created_at LIMIT 1").get(url)
+    ?? db.prepare('SELECT id FROM articles WHERE normalized_url = ? ORDER BY created_at LIMIT 1').get(key)) as { id: string } | undefined;
   if (row) return getArticleById(row.id);
   const legacy = (db.prepare('SELECT id, url FROM articles WHERE normalized_url IS NULL').all() as Array<{id: string; url: string}>).find(item => articleIdentityKey(item.url) === key);
   return legacy ? getArticleById(legacy.id) : null;
@@ -162,13 +395,10 @@ export function storeReaderContent(content: Awaited<ReturnType<typeof prepareRea
 
 export function findArticleTokenCache(article: Article): Pick<Article, "tokens" | "docLength" | "morphologicalTokens" | "ngramTokens" | "morphologicalDocLength" | "ngramDocLength"> | null {
   const hash = articleContentHash(article);
-  const row = db.prepare(`
-    SELECT tokens_json, doc_length, morphological_tokens_json, ngram_tokens_json, morphological_doc_length, ngram_doc_length, content_hash
-    FROM articles
-    WHERE id = ? OR url = ?
-    ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END
-    LIMIT 1
-  `).get(article.id, article.url, article.id) as Pick<ArticleRow, "tokens_json" | "doc_length" | "morphological_tokens_json" | "ngram_tokens_json" | "morphological_doc_length" | "ngram_doc_length" | "content_hash"> | undefined;
+  // id first, then url: "id = ? OR url = ?" cannot use the indexes and scanned the whole table for every article
+  const columns = 'tokens_json, doc_length, morphological_tokens_json, ngram_tokens_json, morphological_doc_length, ngram_doc_length, content_hash';
+  const row = (db.prepare(`SELECT ${columns} FROM articles WHERE id = ?`).get(article.id)
+    ?? (article.url ? db.prepare(`SELECT ${columns} FROM articles WHERE url = ? AND url <> ''`).get(article.url) : undefined)) as Pick<ArticleRow, "tokens_json" | "doc_length" | "morphological_tokens_json" | "ngram_tokens_json" | "morphological_doc_length" | "ngram_doc_length" | "content_hash"> | undefined;
 
   if (!row || row.content_hash !== hash) return null;
   const tokens = parseJsonArray(row.tokens_json);
@@ -326,6 +556,7 @@ export function saveArticlesToDb(articles: Article[], fetchedAt = new Date().toI
   });
 
   tx(articles);
+  if (articles.length) invalidateArticleSearchIndexStatus();
   return { inserted, updated, skippedDuplicateUrls, canonicalIds };
 }
 
@@ -356,5 +587,6 @@ export function loadArticleStats(): ArticleStats | null {
 
 export function deleteArticle(id: string): boolean {
   const result = db.prepare("DELETE FROM articles WHERE id = ?").run(id);
+  if (result.changes > 0) invalidateArticleSearchIndexStatus();
   return result.changes > 0;
 }

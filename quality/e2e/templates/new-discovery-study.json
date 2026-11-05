@@ -1,0 +1,9 @@
+{
+  "protocolVersion": "new-discovery-v1-2026-10-25",
+  "purpose": "new-article-discovery",
+  "frozenAt": null,
+  "queryFingerprint": null,
+  "corpusFingerprint": null,
+  "engineFingerprint": null,
+  "queries": []
+}

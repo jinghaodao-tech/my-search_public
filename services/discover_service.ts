@@ -265,22 +265,25 @@ export function trustOf(hit: Pick<DiscoverHit, 'site' | 'popularity'>): { author
 
 /** Words of the purpose itself (nouns etc. by the morphological analyzer), when no AI made queries. */
 const PURPOSE_STOP_WORDS = new Set(['する', 'いる', 'ある', 'なる', 'できる', 'こと', 'もの', 'ため', 'よう', 'たい', '知る', '調べる', '方法', 'について', '結果', '理由', '場合', '必要', 'やり方', '思う', '使う', '動かす', 'したい']);
+const WEB_QUERY_STOP_WORDS = new Set(['a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'to', 'of', 'for', 'and', 'or', 'in', 'on', 'at', 'by', 'with', 'from', 'as', 'it', 'this', 'that', 'after', 'before', 'due']);
 
-/** The content words of the purpose, in order (English words first), at most 6. */
+/** Local-search terms use the whole query; Web fallback queries are shortened separately below. */
 export async function purposeWords(purpose: string): Promise<string[]> {
-  const ascii = purpose.match(/[A-Za-z][A-Za-z0-9.+#-]{1,}/g) ?? [];
+  const queryText = purpose.replace(/^\s*(?:\[[^\]]{1,50}\]\s*)+/u, '').normalize('NFKC')
+    // 憶 is a common typo for the numeric unit 億; do not alter unrelated words such as 記憶.
+    .replace(/(\d+(?:\.\d+)?)憶/gu, '$1億');
+  const technical = queryText.match(/[A-Za-z][A-Za-z0-9]*(?:[.+#-][A-Za-z0-9+#-]+)*|\d+(?:\.\d+)?(?:%|[A-Za-z]+|万円|億円|千円|円|系|世代|番|型|万|億|兆|千|百)/gu) ?? [];
   // nouns carry the topic (書き込み, 再現); verbs and adjectives (知りたい, 動かす) do not
-  const tokens = await tokenizeNouns(purpose.replace(/[A-Za-z][A-Za-z0-9.+#-]{1,}/g, ' '));
-  return [...new Set([...ascii.map(word => word.toLowerCase()), ...tokens])]
-    .filter(word => word.length > 1 && !PURPOSE_STOP_WORDS.has(word))
-    .slice(0, 6);
+  const tokens = await tokenizeNouns(queryText.replace(/[A-Za-z][A-Za-z0-9.+#-]{1,}/g, ' '));
+  return [...new Set([...technical.map(word => word.toLowerCase()), ...tokens])]
+    .filter(word => word.length > 1 && !PURPOSE_STOP_WORDS.has(word));
 }
 
 export async function fallbackQueries(purpose: string): Promise<string[]> {
-  const words = (await purposeWords(purpose)).slice(0, 4);
+  const words = (await purposeWords(purpose)).filter(word => !WEB_QUERY_STOP_WORDS.has(word.toLowerCase()));
   if (words.length === 0) return [];
   const queries = [words.slice(0, 3).join(' ')];
-  if (words.length > 1) queries.push(words.slice(0, 2).join(' '));
+  if (words.length > 3) queries.push(words.slice(-3).join(' '));
   return [...new Set(queries)];
 }
 
@@ -369,6 +372,12 @@ export function restoreAlnum(term: string): string {
  */
 export function purposeTermWeight(term: string): number {
   return /^[a-z0-9.+#-]+$/i.test(term.trim()) ? 3 : 2;
+}
+
+function containsPurposeTerm(text: string, term: string): boolean {
+  if (!/^[a-z0-9.+#-]+$/i.test(term)) return text.includes(term);
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![a-z0-9_])${escaped}(?![a-z0-9_])`, 'i').test(text);
 }
 
 /**
@@ -520,12 +529,12 @@ export async function discover(
     // How much of the purpose the text covers. A page that matches only the AI's extra words
     // (e.g. a generic 仕組み) and not what was asked for sinks.
     const totalWeight = purposeTerms.reduce((sum, term) => sum + purposeTermWeight(term), 0);
-    const coverage = totalWeight ? purposeTerms.reduce((sum, term, i) => sum + (text.includes(protectedPurpose[i]) ? purposeTermWeight(term) : 0), 0) / totalWeight : 1;
-    // The specific words (English / alphanumeric) name the topic: a page with none of them is
-    // about something else even when it shares the general words, so it goes down a lot.
+    const coverage = totalWeight ? purposeTerms.reduce((sum, term, i) => sum + (containsPurposeTerm(text, protectedPurpose[i]) ? purposeTermWeight(term) : 0), 0) / totalWeight : 1;
+    // Cover each named technology, not just any one; partial matches remain visible with a penalty.
     const keyTerms = purposeTerms.map((term, i) => (purposeTermWeight(term) === 3 ? protectedPurpose[i] : null)).filter((term): term is string => !!term);
-    const missingKeyTerms = keyTerms.length > 0 && !keyTerms.some(term => text.includes(term));
-    const relevance = scored.score * (0.4 + 0.6 * coverage) * (missingKeyTerms ? 0.3 : 1);
+    const missingKeyTerms = keyTerms.filter(term => !containsPurposeTerm(text, term));
+    const keyCoverage = keyTerms.length ? (keyTerms.length - missingKeyTerms.length) / keyTerms.length : 1;
+    const relevance = scored.score * (0.4 + 0.6 * coverage) * Math.max(0.3, keyCoverage);
     return {
       title: hit.title,
       url: hit.url,
@@ -542,13 +551,13 @@ export async function discover(
       breakdown: {
         relevance: Number(relevance.toFixed(4)),
         purposeCoverage: Number(coverage.toFixed(2)),
-        missingKeyTerms: missingKeyTerms ? keyTerms.map(restoreAlnum) : [],
+        missingKeyTerms: missingKeyTerms.map(restoreAlnum),
         timeDecay: Number(scored.breakdown.timeDecay.toFixed(3)),
         trust: hit.trust.authority,
         trustBase: hit.trust.base,
         popularityBonus: hit.trust.popularityBonus,
         trustReason: hit.trust.reason,
-        matchedTerms: mode.keywords.map(keyword => keyword.term).filter(term => text.includes(term)).map(restoreAlnum).slice(0, 10),
+        matchedTerms: mode.keywords.map(keyword => keyword.term).filter(term => containsPurposeTerm(text, term)).map(restoreAlnum).slice(0, 10),
       },
     };
   }).sort((a, b) => b.score - a.score).slice(0, limit);

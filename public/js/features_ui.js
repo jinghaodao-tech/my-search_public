@@ -27,23 +27,31 @@ function renderDemoBanner() {
   if (!banner) return;
   banner.textContent = '';
   const text = document.createElement('span');
-  text.textContent = 'デモ版です。データは全員で共有され、しばらく使われないと見本の状態に戻ります。個人的な内容は入れないでください。見本: ';
+  text.textContent = 'デモ版：データは共有され、しばらく使われないと見本に戻ります。個人的な内容は入れないでください。';
   banner.appendChild(text);
+  const samples = document.createElement('details');
+  samples.className = 'demo-samples';
+  const summary = document.createElement('summary');
+  summary.textContent = `見本を開く (${appFeatures.samples.length})`;
+  const list = document.createElement('div');
+  list.className = 'demo-samples-list';
   for (const sample of appFeatures.samples) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'demo-sample';
     button.textContent = sample.title;
     button.onclick = () => openReader(sample.url);
-    banner.appendChild(button);
+    list.appendChild(button);
     if (sample.download) {
       const link = document.createElement('a');
       link.href = sample.download;
       link.download = '';
       link.textContent = '（PDFをダウンロードして「PDFを開く」でも試せます）';
-      banner.appendChild(link);
+      list.appendChild(link);
     }
   }
+  samples.append(summary, list);
+  banner.appendChild(samples);
   banner.hidden = false;
 }
 

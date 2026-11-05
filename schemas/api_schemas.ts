@@ -44,7 +44,7 @@ export const runConfigSchema = z.object({
   b: z.number().finite().min(0).max(1),
   lambda: z.number().finite().min(0).max(10),
   contextBonus: z.number().finite().min(0).max(20),
-  keywords: z.array(bm25KeywordSchema).max(200),
+  keywords: z.array(bm25KeywordSchema).max(500),
 }).passthrough();
 
 const runArticleSchema = z.object({
@@ -87,6 +87,18 @@ export const runBodySchema = z.object({
   articles: z.array(runArticleSchema).max(10000).optional(),
   options: runOptionsSchema.optional(),
   filters: searchFiltersSchema.optional(),
+}).strict();
+
+export const cardSearchBodySchema = z.object({
+  config: runConfigSchema,
+  options: runOptionsSchema.optional(),
+  filters: searchFiltersSchema.optional(),
+  cardFilters: z.object({
+    tag: z.string().trim().max(50).optional(),
+    kjGroupId: z.string().trim().max(200).optional(),
+    type: z.enum(['article', 'memo', 'csv']).optional(),
+    archived: z.boolean().optional(),
+  }).strict().optional(),
 }).strict();
 
 export const candidateStatusSchema = z.enum(["unreviewed", "reviewed_not_saved", "deferred", "saved_as_card", "expired"]);

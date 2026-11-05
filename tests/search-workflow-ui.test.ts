@@ -87,3 +87,40 @@ it('groups similar titles without removing comparison articles', () => {
   expect(body.querySelectorAll('article').length).toBe(3);
   dom.window.close();
 });
+
+it('keeps the normal Reader usable after an article network failure', async () => {
+  const dom = new JSDOM(fs.readFileSync('public/index.html', 'utf8'), { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true });
+  const w = dom.window;
+  w.api = { post: async (url: string) => {
+    if (url === '/api/reader/extract') throw new TypeError('Failed to fetch');
+    return { tools: [], sourceHash: 'manual-source' };
+  } };
+  w.formatApiError = (error: Error) => error.message;
+  w.eval(fs.readFileSync('public/js/memo_render.js', 'utf8') + '\n;\n' + fs.readFileSync('public/js/reader_ui.js', 'utf8') + '\nwindow.testReaderFallback = { loadReaderArticle, applyManualReaderText, getArticle: () => readerArticle };');
+
+  const flow = w.testReaderFallback;
+  (w.document.getElementById('reader-url') as HTMLInputElement).value = 'https://example.test/offline';
+  await flow.loadReaderArticle();
+  expect(w.document.querySelector('#reader-article .reader-error')?.textContent).toContain('Failed to fetch');
+
+  (w.document.getElementById('reader-fallback-title') as HTMLInputElement).value = '手入力した記事';
+  (w.document.getElementById('reader-manual-text') as HTMLTextAreaElement).value = 'ネットワーク停止後も使える本文。';
+  await flow.applyManualReaderText();
+  expect(w.document.getElementById('reader-article')?.textContent).toContain('ネットワーク停止後も使える本文。');
+  expect(w.document.querySelector('#reader-article .reader-error')).toBeNull();
+  expect(flow.getArticle().title).toBe('手入力した記事');
+  w.close();
+});
+
+it('discards expired Reader session references without touching persisted article data', () => {
+  const dom = new JSDOM(fs.readFileSync('public/index.html', 'utf8'), { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true });
+  const w = dom.window;
+  w.eval(fs.readFileSync('public/js/memo_render.js', 'utf8') + '\n;\n' + fs.readFileSync('public/js/reader_ui.js', 'utf8') + '\nwindow.readSessionForTest = readLastReaderSession;');
+  w.localStorage.setItem('mySearch:lastReaderSession:v1', JSON.stringify({
+    version: 1, cardId: 'isolated-card', url: null, candidateId: null,
+    paragraphIndex: null, paragraphFingerprint: null, updatedAt: Date.now() - 31 * 24 * 60 * 60 * 1000,
+  }));
+  expect((w as unknown as { readSessionForTest: () => unknown }).readSessionForTest()).toBeNull();
+  expect(w.localStorage.getItem('mySearch:lastReaderSession:v1')).toBeNull();
+  dom.window.close();
+});

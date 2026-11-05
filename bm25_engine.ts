@@ -11,6 +11,7 @@
  */
 
 import kuromoji from "kuromoji";
+import { createHash } from "node:crypto";
 import { PROJECT_ROOT } from './utils/project_root.js';
 import * as path from "path";
 
@@ -68,6 +69,41 @@ export interface Article {
   updatedAt?: string;
   archived?: boolean;
   archivedAt?: string;
+}
+
+/** Numeric values with Japanese units are compared against normalized source text at request time. */
+export function numericUnitSearchTerms(terms: readonly string[]): string[] {
+  return [...new Set(terms
+    .map((term) => term.normalize('NFKC').toLowerCase().trim()
+      // Correct this common homophone only when it is attached to a numeric-unit term.
+      .replace(/^(\d+(?:\.\d+)?)憶(円)?$/u, '$1億$2'))
+    .filter((term) => /^\d+(?:\.\d+)?(?:%|万円|億円|千円|円|系|世代|番|型|万|億|兆|千|百)$/u.test(term)))];
+}
+
+function addTransientNumericPhraseTokens(articles: Article[], terms: readonly string[]): Article[] {
+  if (!terms.length) return articles;
+  return articles.map((article) => {
+    const content = `${article.title} ${article.body} ${article.summary ?? ''}`.normalize('NFKC').toLowerCase();
+    const matched = terms.filter((term) => content.includes(term));
+    if (!matched.length) return article;
+    const appendUnique = (tokens: string[] | undefined) => {
+      const result = [...(tokens ?? [])];
+      for (const term of matched) if (!result.includes(term)) result.push(term);
+      return result;
+    };
+    const tokens = appendUnique(article.tokens);
+    const morphologicalTokens = appendUnique(article.morphologicalTokens ?? article.tokens);
+    const ngramTokens = appendUnique(article.ngramTokens ?? article.tokens);
+    return {
+      ...article,
+      tokens,
+      ngramTokens,
+      morphologicalTokens,
+      docLength: (article.docLength ?? article.tokens?.length ?? 0) + tokens.length - (article.tokens?.length ?? 0),
+      ngramDocLength: (article.ngramDocLength ?? article.ngramTokens?.length ?? article.tokens?.length ?? 0) + ngramTokens.length - (article.ngramTokens?.length ?? article.tokens?.length ?? 0),
+      morphologicalDocLength: (article.morphologicalDocLength ?? article.morphologicalTokens?.length ?? article.tokens?.length ?? 0) + morphologicalTokens.length - (article.morphologicalTokens?.length ?? article.tokens?.length ?? 0),
+    };
+  });
 }
 
 interface ScoredArticle {
@@ -129,6 +165,7 @@ interface ArchiveDecision {
 
 export interface BenchmarkTimings {
   dbLoadMs?: number;
+  e5RerankMs?: number;
   tokenPreparationMs: number;
   scoringMs: number;
   sortingLimitMs: number;
@@ -328,13 +365,39 @@ async function getTokenizer(): Promise<KuromojiTokenizer> {
 export async function tokenizeMorphological(text: string): Promise<string[]> {
   const tokenizer = await getTokenizer();
   const normalized = text.normalize("NFKC").toLowerCase();
-  const tokens = tokenizer.tokenize(normalized);
+  const tokens = normalized.length <= 8_192
+    ? tokenizer.tokenize(normalized)
+    : tokenizeLongTextInChunks(tokenizer, normalized);
 
   const morphologicalTokens = tokens
     .filter((t) => KEEP_POS.has(t.pos))
     .map((t) => (t.base_form ?? t.surface_form).toLowerCase())
     .filter((t) => t.length > 1);
   return morphologicalTokens;
+}
+
+function tokenizeLongTextInChunks(tokenizer: KuromojiTokenizer, text: string): KuromojiToken[] {
+  const chunkSize = 8_192;
+  const boundarySearchSize = 1_024;
+  const tokens: KuromojiToken[] = [];
+  for (let start = 0; start < text.length;) {
+    let end = Math.min(start + chunkSize, text.length);
+    if (end < text.length) {
+      const searchFrom = Math.max(start + Math.floor(chunkSize * 0.75), end - boundarySearchSize);
+      let boundary = end;
+      for (let index = end - 1; index >= searchFrom; index -= 1) {
+        if (/[\s。．、，,!?:;！？]/u.test(text[index]!)) {
+          boundary = index + 1;
+          break;
+        }
+      }
+      end = boundary;
+      if (end < text.length && /[\uDC00-\uDFFF]/u.test(text[end]!)) end += 1;
+    }
+    tokens.push(...tokenizer.tokenize(text.slice(start, end)));
+    start = end;
+  }
+  return tokens;
 }
 
 /** Content nouns only (for turning a sentence into search words): no pronouns, numbers or dependent nouns. */
@@ -374,14 +437,26 @@ export type StoredTokenSet = {
   ngramDocLength: number;
 };
 
-export async function buildStoredTokenSet(text: string): Promise<StoredTokenSet> {
-  const morphologicalTokens = await tokenizeMorphological(text);
-  const ngramSet = new Set(expandJapaneseTokens(morphologicalTokens));
+function japaneseCharacterBigrams(text: string): string[] {
+  const bigrams = new Set<string>();
   const normalized = text.normalize("NFKC").toLowerCase();
   for (const sequence of normalized.matchAll(/[\u3040-\u30ff\u3400-\u9fff]{2,}/gu)) {
     const chars = Array.from(sequence[0]);
-    for (let index = 0; index < chars.length - 1; index += 1) ngramSet.add(chars.slice(index, index + 2).join(""));
+    for (let index = 0; index < chars.length - 1; index += 1) bigrams.add(chars.slice(index, index + 2).join(""));
   }
+  return [...bigrams];
+}
+
+async function keywordSearchTokens(term: string): Promise<string[]> {
+  const analyzed = await tokenizeQuery(term);
+  // Unknown Japanese words have no morphology tokens; match their same bigrams as indexed documents.
+  return analyzed.length ? analyzed : japaneseCharacterBigrams(term);
+}
+
+export async function buildStoredTokenSet(text: string): Promise<StoredTokenSet> {
+  const morphologicalTokens = await tokenizeMorphological(text);
+  const ngramSet = new Set(expandJapaneseTokens(morphologicalTokens));
+  for (const token of japaneseCharacterBigrams(text)) ngramSet.add(token);
   const ngramTokens = [...ngramSet];
   return {
     morphologicalTokens,
@@ -425,7 +500,7 @@ async function buildKeywordWeightMap(
   for (const kw of keywords) {
     const terms = [kw.term, ...(kw.synonyms ?? [])];
     for (const term of terms) {
-      const tokens = await tokenizeQuery(term);
+      const tokens = await keywordSearchTokens(term);
       const normalizedTerm = term.normalize("NFKC").toLowerCase().trim();
       const candidates = [...new Set([normalizedTerm, ...tokens])].filter(Boolean);
       const phraseWeight = tokens.length > 1 && tokens.some((token) => JAPANESE_CHAR.test(token))
@@ -457,7 +532,8 @@ async function buildQueryTokens(keywords: KeywordWeight[]): Promise<string[]> {
     .flatMap((keyword) => [keyword.term, ...(keyword.synonyms ?? [])])
     .map((term) => term.normalize("NFKC").toLowerCase().trim())
     .filter(Boolean);
-  return [...new Set([...rawTerms, ...tokens])];
+  const fallbackTokens = (await Promise.all(keywords.flatMap((keyword) => [keyword.term, ...(keyword.synonyms ?? [])]).map(keywordSearchTokens))).flat();
+  return [...new Set([...rawTerms, ...tokens, ...fallbackTokens])];
 }
 
 async function buildMorphologicalQueryTokens(keywords: KeywordWeight[]): Promise<string[]> {
@@ -483,11 +559,20 @@ function computeContextBonus(
 ): number {
   const termSet = new Set(queryTerms);
   let maxCooccur = 0;
-  for (let i = 0; i < tokens.length; i++) {
-    const found = new Set(
-      tokens.slice(i, i + windowSize).filter((t) => termSet.has(t))
-    );
-    maxCooccur = Math.max(maxCooccur, found.size);
+  if (termSet.size > 0) {
+    // the number of different query terms in every window of `windowSize` tokens, moving one token at a time
+    // (the same result as slicing each window, without copying it: long documents made this the slowest part)
+    const counts = new Map<string, number>();
+    let distinct = 0;
+    const add = (t: string) => { if (!termSet.has(t)) return; const c = counts.get(t) ?? 0; if (c === 0) distinct += 1; counts.set(t, c + 1); };
+    const remove = (t: string) => { if (!termSet.has(t)) return; const c = counts.get(t)!; if (c === 1) distinct -= 1; counts.set(t, c - 1); };
+    for (let i = 0; i < Math.min(windowSize, tokens.length); i++) add(tokens[i]);
+    maxCooccur = distinct;
+    for (let i = 1; i < tokens.length && maxCooccur < termSet.size; i++) {
+      remove(tokens[i - 1]);
+      if (i + windowSize - 1 < tokens.length) add(tokens[i + windowSize - 1]);
+      if (distinct > maxCooccur) maxCooccur = distinct;
+    }
   }
   const ratio = Math.min(maxCooccur / Math.max(queryTerms.length, 1), 1);
   return 1 + (maxBonus - 1) * ratio;
@@ -624,7 +709,14 @@ class BM25Engine {
     timeDecayFloor: number,
     morphologicalQueryTokens: string[] = []
   ): ScoredArticle[] {
-    const scored = articles.map((a) => this.score(a, mode, synonymMap, keywordWeights, queryTokens, keywordGroups, timeDecayFloor, morphologicalQueryTokens));
+    // A document without any query term scores exactly 0 and is dropped by the caller: skip it early.
+    const wanted = new Set<string>([...queryTokens, ...morphologicalQueryTokens].map((token) => synonymMap.get(token) ?? token));
+    const surface = new Set<string>([...queryTokens, ...morphologicalQueryTokens, ...wanted]);
+    for (const [token, canonical] of synonymMap) if (wanted.has(canonical)) surface.add(token);
+    const mentions = (list: string[] | undefined) => { if (list) for (const token of list) if (surface.has(token)) return true; return false; };
+    const scored = articles
+      .filter((a) => mentions(a.tokens) || mentions(a.morphologicalTokens))
+      .map((a) => this.score(a, mode, synonymMap, keywordWeights, queryTokens, keywordGroups, timeDecayFloor, morphologicalQueryTokens));
     const maxMorphological = Math.max(...scored.map((item) => item.breakdown.bm25Morphological), 0);
     const maxNgram = Math.max(...scored.map((item) => item.breakdown.bm25Ngram), 0);
     const morphologicalWeight = mode.morphologicalWeight ?? 0.3;
@@ -647,7 +739,8 @@ class BM25Engine {
 async function buildCorpusStats(
   articles: Article[],
   mode: ModeConfig,
-  synonymMap: Map<string, string>
+  synonymMap: Map<string, string>,
+  needed?: Set<string>
 ): Promise<CorpusStats> {
   const termDocFreq = new Map<string, number>();
   const morphologicalTermDocFreq = new Map<string, number>();
@@ -661,9 +754,10 @@ async function buildCorpusStats(
     const morphologicalTokens = (article.morphologicalTokens ?? []).map((token) => synonymMap.get(token) ?? token);
     totalLen += article.docLength ?? tokens.length;
     morphologicalTotalLen += article.morphologicalDocLength ?? morphologicalTokens.length;
-    const seen = new Set(tokens);
+    // Only the terms the search looks up are counted (counting every word of every document was most of the time)
+    const seen = new Set(needed ? tokens.filter((t) => needed.has(t)) : tokens);
     for (const t of seen) termDocFreq.set(t, (termDocFreq.get(t) ?? 0) + 1);
-    for (const t of new Set(morphologicalTokens)) morphologicalTermDocFreq.set(t, (morphologicalTermDocFreq.get(t) ?? 0) + 1);
+    for (const t of new Set(needed ? morphologicalTokens.filter((t) => needed.has(t)) : morphologicalTokens)) morphologicalTermDocFreq.set(t, (morphologicalTermDocFreq.get(t) ?? 0) + 1);
   }
 
   return {
@@ -839,8 +933,27 @@ export function duplicatePairRecall(articles: Article[], threshold = 0.8): numbe
   return [...exact].filter((pair) => detected.has(pair)).length / exact.size;
 }
 
+// The same articles give the same result: remember the last few (searching repeats over one collection).
+const dedupCache = new Map<string, Set<string>>();
+function dedupFingerprint(articles: Article[], threshold: number): string {
+  const hash = createHash("sha1");
+  hash.update(String(threshold));
+  for (const article of articles) hash.update(`\u0000${article.id}\u0001${article.title}\u0001${article.body.slice(0, 500)}\u0001${article.body.length}\u0001${article.sourceAuthority}`);
+  return hash.digest("hex");
+}
+
 export function deduplicateArticles(articles: Article[], threshold = 0.8): Article[] {
   if (threshold >= 1) return articles;
+  const key = dedupFingerprint(articles, threshold);
+  const cached = dedupCache.get(key);
+  if (cached) return articles.filter((article) => cached.has(article.id));
+  const kept = deduplicateUncached(articles, threshold);
+  dedupCache.set(key, new Set(kept.map((article) => article.id)));
+  if (dedupCache.size > 8) dedupCache.delete(dedupCache.keys().next().value!);
+  return kept;
+}
+
+function deduplicateUncached(articles: Article[], threshold: number): Article[] {
   const hashes = articles.map((article) => shingleHash(`${article.title} ${article.body.slice(0, 500)}`));
   const keep = new Array<boolean>(articles.length).fill(true);
   const pairs = lshCandidatePairs(hashes).filter(([left, right]) => meetsJaccardThreshold(hashes[left]!, hashes[right]!, threshold));
@@ -902,7 +1015,8 @@ export async function runPipeline(
   } = options;
 
   // Layer 1: LSH 重複排除
-  const deduped = deduplicateArticles(rawArticles, dedupThreshold);
+  const numericTerms = numericUnitSearchTerms(mode.keywords.flatMap((keyword) => [keyword.term, ...(keyword.synonyms ?? [])]));
+  const deduped = deduplicateArticles(addTransientNumericPhraseTokens(rawArticles, numericTerms), dedupThreshold);
 
   // Layer 2: コーパス統計構築 → BM25 スコアリング
   const queryTokens = await buildQueryTokens(mode.keywords);
@@ -927,10 +1041,19 @@ export async function runPipeline(
   const morphologicalQueryTokens = await buildMorphologicalQueryTokens(mode.keywords);
   const synonymMap = await buildSynonymMap(mode.keywords);
   const keywordGroups = await Promise.all(mode.keywords.map(async (keyword) => {
-    const tokens = await tokenizeQuery(keyword.term);
+    const tokens = await keywordSearchTokens(keyword.term);
     return [...new Set(tokens.map((token) => synonymMap.get(token) ?? token))];
   }));
-  const corpus = await buildCorpusStats(resolved.articles, mode, synonymMap);
+  // every term whose document frequency is looked up below (query, morphological query, keyword weights)
+  const canonicalOf = (token: string) => synonymMap.get(token) ?? token;
+  const neededTerms = new Set<string>([...queryTokens.map(canonicalOf), ...morphologicalQueryTokens.map(canonicalOf), ...keywordGroups.flat()]);
+  for (const keyword of mode.keywords) {
+    for (const term of [keyword.term, ...(keyword.synonyms ?? [])]) {
+      neededTerms.add(canonicalOf(term.normalize("NFKC").toLowerCase().trim()));
+      for (const token of await tokenizeQuery(term)) neededTerms.add(canonicalOf(token));
+    }
+  }
+  const corpus = await buildCorpusStats(resolved.articles, mode, synonymMap, neededTerms);
   const keywordWeights = await buildKeywordWeightMap(mode.keywords, synonymMap, corpus);
   timings.tokenPreparationMs = Number((nowMs() - prepStart).toFixed(3));
   const engine = new BM25Engine(corpus);
@@ -962,7 +1085,8 @@ export async function runPipeline(
     }
   }
 
-  const safeResultLimit = Math.min(Math.max(Math.floor(resultLimit), 1), 500);
+  // Keep the public HTTP option capped at 500; allow offline ranking diagnostics to inspect Top1000.
+  const safeResultLimit = Math.min(Math.max(Math.floor(resultLimit), 1), 1000);
   const limitedActive = active.slice(0, safeResultLimit);
   const limitedArchived = archived.slice(0, Math.max(0, safeResultLimit - limitedActive.length));
   timings.sortingLimitMs = Number((nowMs() - sortStart).toFixed(3));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { article, bm25Engine, searchMode, tokenArticle } from "./helpers.js";
-import { duplicatePairRecall } from "../bm25_engine.js";
+import { duplicatePairRecall, numericUnitSearchTerms } from "../bm25_engine.js";
 
 const SEARCH = "\u691c\u7d22";
 const IMPLEMENTATION = "\u5b9f\u88c5";
@@ -11,6 +11,10 @@ const IMPORTANT = "\u91cd\u8981";
 const CRITICAL = "\u5927\u4e8b";
 
 describe("BM25 search", () => {
+  it("normalizes numeric-unit phrases and corrects 憶 only when attached to a number", () => {
+    expect(numericUnitSearchTerms(["３憶", "３憶円", "記憶", "3億"])).toEqual(["3億", "3億円"]);
+  });
+
   it("ranks exact and partial matches above unrelated cards", async () => {
     const result = await bm25Engine.runPipeline(
       [
@@ -50,6 +54,26 @@ describe("BM25 search", () => {
     expect(missing.active).toHaveLength(0);
   });
 
+  it("matches numeric-unit phrases from current text when the saved token cache predates them", async () => {
+    const staleCache = {
+      ...tokenArticle("numeric-target", "年8億円の研究予算", ["年", "研究予算"]),
+      body: "研究費は年8億円に達した。",
+      morphologicalTokens: ["月", "トークン"],
+      ngramTokens: ["月", "トークン"],
+      morphologicalDocLength: 2,
+      ngramDocLength: 2,
+    };
+    const result = await bm25Engine.runPipeline(
+      [staleCache, tokenArticle("unrelated", "別のメモ", ["億円", "予算"])],
+      searchMode([{ term: "８億", weight: 1 }]),
+      "acceptance",
+      { archiveScoreThreshold: -1, dedupThreshold: 1, resultLimit: 10 },
+    );
+
+    expect(result.active.map((item: any) => item.article.id)).toContain("numeric-target");
+    expect(result.active.map((item: any) => item.article.id)).not.toContain("unrelated");
+  });
+
   it("reflects keyword weight and synonyms in scores", async () => {
     const result = await bm25Engine.runPipeline(
       [
@@ -78,6 +102,20 @@ describe("BM25 search", () => {
     );
 
     expect(result.active.length).toBeLessThanOrEqual(5);
+  });
+
+  it("allows offline ranking diagnostics to inspect up to 1000 results", async () => {
+    const corpus = Array.from({ length: 501 }, (_, index) =>
+      tokenArticle(`diagnostic-${index}`, `diagnostic card ${index}`, [SEARCH, String(index)]),
+    );
+    const result = await bm25Engine.runPipeline(
+      corpus,
+      searchMode([{ term: SEARCH, weight: 1 }]),
+      "acceptance",
+      { archiveScoreThreshold: -1, dedupThreshold: 1, resultLimit: 1000 },
+    );
+
+    expect(result.active).toHaveLength(501);
   });
 
   it("gives higher contribution to weighted keywords than normal keywords", async () => {

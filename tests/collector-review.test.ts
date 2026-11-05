@@ -121,6 +121,16 @@ describe('collector review: configuration and scheduling', () => {
     service.setCollectorConfig(DEFAULT_CONFIG);
   });
 
+  it('does not eagerly materialize the saved article corpus in the collector cache', async () => {
+    saveArticlesToDb([article('lazy-collector-cache', 'SQLite', 'stored in the isolated test database')]);
+    const service = createCollectorService();
+    expect(service.getCachedArticles()).toBeNull();
+    expect(service.getCollectionStatus().accumulatedArticleCount).toBeGreaterThan(0);
+    expect(service.loadArticles()?.articles.map(item => item.id)).toContain('lazy-collector-cache');
+    const response = await request(app).get('/api/articles').expect(200);
+    expect(response.body.articles.map((item: {id: string}) => item.id)).toContain('lazy-collector-cache');
+  });
+
   it('prevents concurrent collection and records failure before retry', async () => {
     let finish!: (r: CollectResult) => void;
     const collect = vi.fn(() => new Promise<CollectResult>(resolve => { finish = resolve; }));

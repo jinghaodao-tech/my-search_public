@@ -10,10 +10,13 @@
  * Methods only list articles; reading each page (title, dates, full text) is done by the
  * collector, which checks robots.txt and the site's body policy first.
  */
-import { parseFeed } from './discover_service.js';
+import RSSParser from 'rss-parser';
+import { JSDOM } from 'jsdom';
+import { selectRssContent, type SelectedRssContent } from './rss_content.js';
 import { SafeFetchError, type SafeFetcher, type SafeFetchOptions } from './safe_fetch.js';
 import {
   acceptsUrl,
+  articleKey,
   candidatePrefixes,
   cleanPrefixes,
   dateOrUndefined,
@@ -51,6 +54,7 @@ export type FoundArticle = {
   updatedAt?: string;
   summary?: string;
   body?: string;
+  bodyKind?: SelectedRssContent['bodyKind'];
   externalId?: string;
 };
 
@@ -173,6 +177,12 @@ async function listSitemap(env: SiteEnv, config: AdapterConfig, options: ListOpt
   const entries = new Map<string, FoundArticle & { order: number }>();
   const groups = new Map<string, number>();
   const hostScope = { hosts: env.scope.hosts, pathPrefix: '/' };
+  const grouped = new Set<string>();
+  const groupUrl = (url: string | null) => {
+    if (!url || !looksLikeArticle(url, hostScope)) return;
+    const key = articleKey(url);
+    if (!grouped.has(key)) { grouped.add(key); countGroup(groups, url); }
+  };
   let order = 0;
   let failedFiles = 0;
   while (queue.length && seenFiles.size < maxFiles && entries.size < HARD_CAP) {
@@ -189,15 +199,17 @@ async function listSitemap(env: SiteEnv, config: AdapterConfig, options: ListOpt
     }
     if (parsed.kind === 'index') {
       for (const child of rankChildSitemaps(parsed.entries, env.scope)) {
-        if (env.scope.hosts.includes(new URL(child.loc).hostname.toLowerCase())) queue.push(child.loc);
+        const url = normalizeArticleUrl(child.loc, file);
+        if (url && env.scope.hosts.includes(new URL(url).hostname.toLowerCase())) queue.push(url);
       }
       continue;
     }
     for (const entry of parsed.entries) {
       const url = normalizeArticleUrl(entry.loc);
-      if (url && looksLikeArticle(url, hostScope)) countGroup(groups, url);
-      if (!url || !looksLikeArticle(url, env.scope) || entries.has(url)) continue;
-      entries.set(url, { url, title: entry.title, publishedAt: dateOrUndefined(entry.published), updatedAt: dateOrUndefined(entry.lastmod), order: order++ });
+      groupUrl(url);
+      if (!url || !looksLikeArticle(url, env.scope) || entries.has(articleKey(url))) continue;
+      entries.set(articleKey(url), { url, title: entry.title, publishedAt: dateOrUndefined(entry.published), updatedAt: dateOrUndefined(entry.lastmod), order: order++ });
+      if (entries.size >= HARD_CAP) break;
     }
   }
   const truncated = seenFiles.size >= maxFiles && queue.length > 0;
@@ -217,9 +229,11 @@ async function listSitemap(env: SiteEnv, config: AdapterConfig, options: ListOpt
         read += 1;
         for (const entry of parsed.entries) {
           const url = normalizeArticleUrl(entry.loc);
-          if (!url || !looksLikeArticle(url, env.scope) || entries.has(url)) continue;
+          groupUrl(url);
+          if (!url || !looksLikeArticle(url, env.scope) || entries.has(articleKey(url))) continue;
           // older files go after everything else, whatever their dates say
-          entries.set(url, { url, title: entry.title, publishedAt: dateOrUndefined(entry.published), updatedAt: dateOrUndefined(entry.lastmod), order: HARD_CAP + order++, older: true } as FoundArticle & { order: number });
+          entries.set(articleKey(url), { url, title: entry.title, publishedAt: dateOrUndefined(entry.published), updatedAt: dateOrUndefined(entry.lastmod), order: HARD_CAP + order++, older: true } as FoundArticle & { order: number });
+          if (entries.size >= HARD_CAP) break;
         }
       } catch (error) {
         failedFiles += 1;
@@ -284,12 +298,33 @@ async function listListPage(env: SiteEnv, config: AdapterConfig, options: ListOp
 
 // ─── feed ────────────────────────────────────────────────────
 
-async function listFeed(env: SiteEnv, config: AdapterConfig): Promise<ListResult> {
+async function listFeed(env: SiteEnv, config: AdapterConfig, options: ListOptions): Promise<ListResult> {
   const response = await typedFetch(env.fetch, config.feedUrl!, { accept: 'application/rss+xml,application/atom+xml,application/xml,text/xml' }, XML_TYPES, env.scope);
-  const articles = parseFeed(response.text(), response.url)
-    .map(hit => ({ ...hit, url: normalizeArticleUrl(hit.url) ?? hit.url }))
-    .filter(hit => acceptsUrl(hit.url, env.scope))
-    .map(hit => ({ url: hit.url, title: hit.title, summary: hit.summary || undefined, publishedAt: hit.publishedAt.getTime() > 0 ? hit.publishedAt.toISOString() : undefined, updatedAt: hit.updatedAt && hit.updatedAt.getTime() > 0 ? hit.updatedAt.toISOString() : undefined }));
+  const xml = response.text();
+  const document = new JSDOM(xml, { contentType: 'application/xml' });
+  const isAtom = document.window.document.documentElement.localName === 'feed';
+  document.window.close();
+  const parser = new RSSParser({ defaultRSS: 2, customFields: { item: ['updated', 'published'] } });
+  const feed = await parser.parseString(xml);
+  const articles: FoundArticle[] = [];
+  for (const item of feed.items) {
+    if (!item.title) continue;
+    const link = item.link || item.guid;
+    if (!link) continue;
+    let url: string | null;
+    try { url = normalizeArticleUrl(new URL(link, response.url).toString()); } catch { continue; }
+    if (!url || !acceptsUrl(url, env.scope)) continue;
+    const selected = selectRssContent(item);
+    articles.push({
+      url,
+      title: stripTags(item.title),
+      summary: selected.summary || undefined,
+      // rss-parser falls back to Atom's updated date; an unknown publication must stay unknown.
+      publishedAt: dateOrUndefined(isAtom ? item.published : item.isoDate || item.pubDate),
+      updatedAt: typeof item.updated === 'string' ? dateOrUndefined(item.updated) : undefined,
+      ...(options.includeBody ? { body: selected.body || undefined, bodyKind: selected.bodyKind } : {}),
+    });
+  }
   return { articles, total: articles.length, warnings: ['RSS/Atomで取れるのは最新の記事だけです（過去の記事は取得できません）'] };
 }
 
@@ -297,7 +332,7 @@ export async function listArticles(env: SiteEnv, config: AdapterConfig, options:
   if (config.type === 'wordpress') return listWordPress(env, config, options);
   if (config.type === 'sitemap') return listSitemap(env, config, options);
   if (config.type === 'listpage') return listListPage(env, config, options);
-  return listFeed(env, config);
+  return listFeed(env, config, options);
 }
 
 // ─── detection ───────────────────────────────────────────────
