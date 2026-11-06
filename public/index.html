@@ -324,8 +324,7 @@
     <div id="detail-header">
       <h3 id="detail-title">カード詳細</h3>
       <button class="btn-icon" onclick="exportMarkdown(currentCardId)" title="Export Markdown">MD</button>
-      <button class="btn-icon" onclick="openReaderForCard(currentCardId)" title="読みながら編集">読んで編集</button>
-      <button class="btn-icon" onclick="openEditModal(currentCardId)" title="編集">編集</button>
+      <button class="btn-icon" id="reader-edit-btn" onclick="openEditModal(currentCardId)" title="タイトル・本文・メモ・出典を編集">編集</button>
       <button class="btn-icon" onclick="closeDetail()" title="閉じる">×</button>
     </div>
     <div id="detail-body"></div>
@@ -337,9 +336,9 @@
 <div class="modal-overlay" id="modal-reader">
   <div class="modal reader-modal">
     <div class="reader-bar">
-      <input type="url" id="reader-url" placeholder="https://... 記事やPDFのURL" onkeydown="if(event.key==='Enter')loadReaderArticle()">
-      <button class="btn btn-secondary btn-sm" onclick="loadReaderArticle()">読む</button>
-      <details class="reader-secondary-actions">
+      <input type="url" id="reader-url" aria-label="記事のURL" placeholder="https://... 記事やPDFのURL" onkeydown="if(event.key==='Enter')loadReaderArticle()">
+      <button class="btn btn-secondary btn-sm" id="reader-load-btn" onclick="loadReaderArticle()">読む</button>
+      <details class="reader-secondary-actions" id="reader-load-menu">
         <summary>ほかの読み込み</summary>
         <div class="reader-secondary-actions-menu">
           <button class="btn btn-secondary btn-sm" onclick="chooseReaderPdf()" title="手元のPDF（論文・技術書など、DRMの無いもの）を開く">PDFを開く</button>
@@ -367,6 +366,12 @@
       </div>
       <div class="reader-divider" id="reader-divider" title="ドラッグで幅を調整（ダブルクリックで元に戻す）"></div>
       <div class="reader-right">
+        <div class="reader-card-fields">
+          <label for="reader-edit-title">タイトル</label>
+          <input type="text" id="reader-edit-title" maxlength="200" placeholder="タイトル">
+          <label for="reader-card-color-strip">カードの色</label>
+          <div class="color-strip" id="reader-card-color-strip"></div>
+        </div>
         <div id="reader-draft" class="reader-draft" style="display:none">
           保存していない下書きがあります（<span id="reader-draft-time"></span>）
           <button class="btn btn-secondary btn-sm" onclick="restoreReaderDraft()">復元</button>
@@ -414,46 +419,14 @@
           <button class="btn btn-secondary btn-sm" onclick="quoteReaderSelection()" title="左で選んだ文を引用（Alt+Q／ドラッグでも可）">選択を引用</button>
           <button class="btn btn-secondary btn-sm" id="reader-cross-quote-open" onclick="prepareQuoteTransfer()" title="選択した引用を、指定した別の保存メモへ追加" hidden>別メモへ引用</button>
           <button class="btn btn-secondary btn-sm" onclick="copyCitedSelection()" title="左で選んだ文を「引用」（著者，年，ページ）の形でコピー">出典つきでコピー</button>
-          <button class="btn btn-primary btn-sm" id="reader-save-btn" onclick="saveReaderCard()">メモと本文を保存</button>
+          <button class="btn btn-danger btn-sm" id="reader-delete-btn" onclick="deleteCurrentReaderCard()" hidden>削除</button>
+          <button class="btn btn-primary btn-sm" id="reader-save-btn" onclick="saveReaderCard()">保存</button>
         </div>
-        <p class="reader-note">本文は取得時点のコピーとして、メモ・出典と一緒にカードに保存されます（私的利用）。</p>
+        <p class="reader-note">左側の本文は保存済み原文（読み取り専用）です。右側のメモ・出典を編集します。原文と一緒にカードへ保存されます（私的利用）。</p>
       </div>
     </div>
   </div>
 </div>
-<div class="modal-overlay" id="modal-new">
-  <div class="modal">
-    <h2>メモ作成</h2>
-    <div class="form-group"><label>タイトル *</label><input type="text" id="new-title" placeholder="カードのタイトル"></div>
-    <div class="form-group"><label>本文</label><textarea id="new-body" placeholder="メモ内容..."></textarea></div>
-    <div class="form-group"><label>URL（任意）</label><input type="url" id="new-url" placeholder="https://..."></div>
-    <div class="form-group"><label>タグ（スペース区切り）</label><input type="text" id="new-tags" placeholder="例 AI 機械学習"></div>
-    <div class="form-group"><label>カードの色</label><div class="color-strip" id="new-color-strip"></div></div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-new')">キャンセル</button>
-      <button class="btn btn-primary" onclick="submitNewCard()">作成</button>
-    </div>
-  </div>
-</div>
-
-<!-- モーダル: 編集 -->
-<div class="modal-overlay" id="modal-edit">
-  <div class="modal">
-    <h2>カード編集</h2>
-    <input type="hidden" id="edit-id">
-    <div class="form-group"><label>タイトル</label><input type="text" id="edit-title"></div>
-    <div class="form-group"><label>本文</label><textarea id="edit-body"></textarea></div>
-    <div class="form-group"><label>URL</label><input type="url" id="edit-url"></div>
-    <div class="form-group"><label>タグ（スペース区切り）</label><input type="text" id="edit-tags"></div>
-    <div class="form-group"><label>カードの色</label><div class="color-strip" id="edit-color-strip"></div></div>
-    <div class="modal-footer">
-      <button class="btn btn-danger btn-sm" onclick="confirmDelete()" style="margin-right:auto">削除</button>
-      <button class="btn btn-secondary" onclick="closeModal('modal-edit')">キャンセル</button>
-      <button class="btn btn-primary" onclick="submitEdit()">保存</button>
-    </div>
-  </div>
-</div>
-
 <!-- モーダル: データ取り込み -->
 <div class="modal-overlay" id="modal-csv">
   <div class="modal">
@@ -524,49 +497,6 @@
     </div>
   </div>
   <button class="fab-btn" id="fab-main" onclick="toggleFab()">＋</button>
-</div>
-
-<!-- モバイル用カード編集パネル -->
-<div id="mobile-edit-panel">
-  <div id="mep-header">
-    <button class="btn btn-secondary btn-sm" onclick="closeMobileEdit()">戻る</button>
-    <span id="mep-title" style="font-size:14px;font-weight:700;flex:1"></span>
-    <button class="btn btn-danger btn-sm" id="mep-del-btn" onclick="mepDelete()">削除</button>
-  </div>
-  <div id="mep-body">
-    <div class="mep-field">
-      <div class="mep-label">タイトル</div>
-      <input class="mep-input" id="mep-title-in" placeholder="タイトル">
-    </div>
-    <div class="mep-field">
-      <div class="mep-label">要約・本文</div>
-      <textarea class="mep-ta" id="mep-body-in" placeholder="本文・メモ内容..."></textarea>
-    </div>
-    <div class="mep-field">
-      <div class="mep-label">URL</div>
-      <input class="mep-input" id="mep-url-in" placeholder="https://..." type="url">
-    </div>
-    <div class="mep-field">
-      <div class="mep-label">タグ（カンマ区切り）</div>
-      <input class="mep-input" id="mep-tags-in" placeholder="例: AI, 論文, メモ">
-    </div>
-    <div class="mep-field">
-      <div class="mep-label">メモ</div>
-      <textarea class="mep-ta" id="mep-note-in" placeholder="個人メモ..."></textarea>
-    </div>
-    <div class="mep-field">
-      <div class="mep-label">Zettelkastenリンク</div>
-      <div id="mep-zk-links" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
-      <div style="display:flex;gap:6px">
-        <input class="mep-input" id="mep-zk-in" placeholder="カードID" style="flex:1;font-family:monospace;font-size:12px">
-        <button class="btn btn-secondary btn-sm" onclick="mepAddLink()">リンク</button>
-      </div>
-    </div>
-  </div>
-  <div id="mep-footer">
-    <button class="btn btn-secondary" style="flex:1" onclick="closeMobileEdit()">キャンセル</button>
-    <button class="btn btn-primary" style="flex:2" onclick="mepSave()">保存</button>
-  </div>
 </div>
 
 <!-- BM25モード管理モーダル -->
@@ -642,7 +572,6 @@
 <script src="js/zettelkasten_ui.js"></script>
 <script src="js/bm25_ui.js"></script>
 <script src="js/ui_common.js"></script>
-<script src="js/mobile_edit.js"></script>
 <script src="js/bm25_modes_ui.js"></script>
 <script src="js/search_workflow_ui.js"></script>
 <script src="js/source_ui.js"></script>

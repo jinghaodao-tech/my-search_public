@@ -3,6 +3,9 @@
 // with textContent only, so markup from external pages is never executed.
 let readerArticle = null;
 let readerCandidateId = null;
+let readerPlainCardMode = false; // ordinary cards share this editor but keep their existing card-body format
+let readerEditorColor = null;
+let readerEditorColorTouched = false;
 let readerCardId = null; // set when an existing card is opened for editing
 let readerInitialMemo = '';
 let readerCrossQuote = null;
@@ -202,14 +205,20 @@ function openReader(url = '', candidateId = null, fromSearch = false) {
   readerToolValues = {};
   readerToolPanel = null;
   readerCandidateId = candidateId;
+  readerPlainCardMode = false;
   readerCardId = null;
   readerInitialMemo = '';
   readerCrossQuote = null;
   if (typeof resetReaderTranslation === 'function') resetReaderTranslation();
   if (readerPendingPurpose?.purpose) document.getElementById('evidence-purpose').value = readerPendingPurpose.purpose;
+  document.getElementById('reader-edit-title').value = document.getElementById('reader-fallback-title').value;
+  readerEditorColor = null;
+  readerEditorColorTouched = false;
+  updateColorStrip('reader-card-color-strip', readerEditorColor, color => { readerEditorColor = color; readerEditorColorTouched = true; });
   document.getElementById('reader-fallback-title').value = (typeof findSearchItem === 'function' ? findSearchItem(candidateId)?.article.title : '') || '';
   document.getElementById('reader-manual-text').value = '';
   setReaderSaveLabel();
+  setReaderEditorMode(false);
   document.getElementById('reader-url').value = url;
   document.getElementById('reader-memo').value = '';
   document.getElementById('reader-tags').value = '';
@@ -228,6 +237,58 @@ function openReader(url = '', candidateId = null, fromSearch = false) {
   document.getElementById('reader-url').focus();
   offerReaderDraft();
 }
+function setReaderEditorMode(plainCard) {
+  readerPlainCardMode = Boolean(plainCard);
+  document.querySelector('#modal-reader .reader-modal')?.classList.toggle('reader-plain-mode', readerPlainCardMode);
+  const del = document.getElementById('reader-delete-btn');
+  if (del) del.hidden = !readerCardId;
+  const save = document.getElementById('reader-save-btn');
+  if (save) save.textContent = readerCardId ? '保存' : (readerPlainCardMode ? 'メモを作成' : 'メモと本文を保存');
+  const url = document.getElementById('reader-url');
+  if (url) {
+    url.placeholder = readerPlainCardMode ? 'URL（任意）' : 'https://... 記事やPDFのURL';
+    url.setAttribute('aria-label', readerPlainCardMode ? 'URL（任意）' : '記事のURL');
+    url.onkeydown = event => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      if (!readerPlainCardMode) loadReaderArticle();
+    };
+  }
+}
+
+function openPlainCardEditor() {
+  invalidateContextualRequests();
+  resetEvidence();
+  readerRequestVersion++;
+  searchReaderIndex = -1;
+  document.getElementById('reader-search-actions').hidden = true;
+  readerArticle = null;
+  readerCandidateId = null;
+  readerCardId = null;
+  readerInitialMemo = '';
+  readerCrossQuote = null;
+  readerToolValues = {};
+  ephemeralReaderToolIds = new Set();
+  if (typeof resetReaderTranslation === 'function') resetReaderTranslation();
+  document.getElementById('reader-edit-title').value = '';
+  readerEditorColor = null;
+  readerEditorColorTouched = false;
+  updateColorStrip('reader-card-color-strip', readerEditorColor, color => { readerEditorColor = color; readerEditorColorTouched = true; });
+  document.getElementById('reader-fallback-title').value = '';
+  document.getElementById('reader-url').value = '';
+  document.getElementById('reader-memo').value = '';
+  document.getElementById('reader-tags').value = '';
+  document.getElementById('reader-manual-text').value = '';
+  setReaderBiblio({});
+  if (typeof resetMemoMode === 'function') resetMemoMode();
+  cancelQuoteTransfer();
+  setReaderEditorMode(true);
+  setReaderSaveLabel();
+  renderReaderArticle();
+  openModal('modal-reader');
+  document.getElementById('reader-edit-title').focus();
+}
+
 
 // Open an existing card: left = the saved copy (refetched only if none was saved), right = its memo.
 async function openReaderForCard(id) {
@@ -240,6 +301,7 @@ async function openReaderForCard(id) {
     const data = await api.get(`/api/reader/cards/${encodeURIComponent(id)}`);
     if (requestVersion !== readerRequestVersion) return false;
     readerCandidateId = null;
+    setReaderEditorMode(!data.isReaderFormat);
     readerCardId = id;
     if (typeof resetReaderTranslation === 'function') resetReaderTranslation(data.translation);
     setReaderSaveLabel();
@@ -247,13 +309,17 @@ async function openReaderForCard(id) {
     document.getElementById('reader-memo').value = data.memo || '';
     readerInitialMemo = data.memo || '';
     // the title field must show this card, not the article opened before
+    document.getElementById('reader-edit-title').value = data.title || '';
+    readerEditorColor = data.color || null;
+    readerEditorColorTouched = false;
+    updateColorStrip('reader-card-color-strip', readerEditorColor, color => { readerEditorColor = color; readerEditorColorTouched = true; });
     document.getElementById('reader-fallback-title').value = data.title || '';
     document.getElementById('reader-manual-text').value = '';
     document.getElementById('reader-tags').value = (data.tags || []).join(' ');
     setReaderBiblio(data);
     if (typeof resetMemoMode === 'function') resetMemoMode();
     const isPdf = data.paragraphs.some(paragraph => PAGE_MARKER_LINE.test(paragraph));
-    readerArticle = data.paragraphs.length
+    readerArticle = data.isReaderFormat
       ? { url: data.url, title: data.title, byline: data.byline, siteName: data.siteName, year: data.year, fileName: data.fileName, kind: isPdf ? 'pdf' : 'html', fetchedAt: data.fetchedAt || new Date().toISOString(), paragraphs: data.paragraphs, tools: data.tools || [], toolsSourceHash: data.toolsSourceHash, toolState: data.toolState }
       : null;
     initializeReaderToolValues(readerArticle);
@@ -262,7 +328,7 @@ async function openReaderForCard(id) {
     openModal('modal-reader');
     persistLastReaderSession();
     offerReaderDraft();
-    if (!readerArticle && data.url) await loadReaderArticle();
+    if (data.isReaderFormat && !readerArticle?.paragraphs.length && data.url) await loadReaderArticle();
     return true;
   } catch (error) {
     showApiError(error, 'カードを開けませんでした');
@@ -358,7 +424,7 @@ async function jumpToCrossCardSource(sourceCardId, expectedHash, paragraphIndex)
 
 function setReaderSaveLabel() {
   const button = document.getElementById('reader-save-btn');
-  if (button) button.textContent = readerCardId ? 'カードを更新' : 'メモと本文を保存';
+  if (button) button.textContent = readerCardId ? '保存' : (readerPlainCardMode ? 'メモを作成' : 'メモと本文を保存');
 }
 
 async function loadReaderArticle() {
@@ -372,6 +438,7 @@ async function loadReaderArticle() {
   try {
     const extracted = await api.post('/api/reader/extract', { url });
     if (requestVersion !== readerRequestVersion) return;
+    if (!readerCardId) document.getElementById('reader-edit-title').value = extracted.title || '';
     readerArticle = extracted;
     initializeReaderToolValues(readerArticle);
     if (typeof resetReaderTranslation === 'function' && !readerCardId) resetReaderTranslation();
@@ -1108,12 +1175,52 @@ async function saveReaderCard() {
   try { await saveReaderCardOnce(); }
   finally { readerSaving = false; controls.forEach(button => button.disabled = false); }
 }
+
+async function deleteCurrentReaderCard() {
+  if (!readerCardId || !confirm('このカードを削除しますか？')) return;
+  const id = readerCardId;
+  try {
+    await api.del(`/api/cards/${encodeURIComponent(id)}`);
+    closeModal('modal-reader');
+    if (currentCardId === id && typeof closeDetail === 'function') closeDetail();
+    toast('削除しました');
+    if (typeof loadCards === 'function') await loadCards();
+    if (typeof loadTags === 'function') await loadTags();
+  } catch (error) {
+    showApiError(error, '削除に失敗しました');
+  }
+}
 async function saveReaderCardOnce() {
+  if (readerPlainCardMode) {
+    const title = document.getElementById('reader-edit-title').value.trim();
+    const body = document.getElementById('reader-memo').value;
+    const url = document.getElementById('reader-url').value.trim();
+    const tags = document.getElementById('reader-tags').value.split(/\s+/).map(tag => tag.trim()).filter(Boolean);
+    if (!title) { toast('タイトルを入力してください', 'warn'); document.getElementById('reader-edit-title').focus(); return; }
+    try {
+      if (readerCardId) {
+        await api.put(`/api/cards/${encodeURIComponent(readerCardId)}`, { title, body, url: url || null, tags, ...(readerEditorColorTouched ? { color: readerEditorColor } : {}) });
+        toast('カードを更新しました');
+      } else {
+        await api.post('/api/cards', { title, body, url: url || undefined, tags, type: 'memo', ...(readerEditorColor ? { color: readerEditorColor } : {}) });
+        toast('メモを作成しました');
+      }
+      clearReaderDraft();
+      const savedId = readerCardId;
+      closeModal('modal-reader');
+      if (typeof loadCards === 'function') await loadCards();
+      if (typeof loadTags === 'function') await loadTags();
+      if (savedId && currentCardId === savedId && typeof selectCard === 'function') await selectCard(savedId);
+    } catch (error) {
+      showApiError(error, readerCardId ? '更新に失敗しました' : '作成に失敗しました');
+    }
+    return;
+  }
   if (typeof syncMemoTable === 'function') syncMemoTable();
   if (!readerArticle && !readerCardId) {
     const url = document.getElementById('reader-url').value.trim();
     if (!/^https?:\/\//i.test(url)) { toast('記事のURLを入力してください', 'warn'); return; }
-    readerArticle = { url, title: document.getElementById('reader-fallback-title').value.trim() || url, paragraphs: [], byline: null, siteName: null, fetchedAt: new Date().toISOString() };
+    readerArticle = { url, title: document.getElementById('reader-edit-title').value.trim() || document.getElementById('reader-fallback-title').value.trim() || url, paragraphs: [], byline: null, siteName: null, fetchedAt: new Date().toISOString() };
   }
   const tags = document.getElementById('reader-tags').value.split(/\s+/).map(tag => tag.trim()).filter(Boolean);
   if (readerCardId) {
@@ -1121,8 +1228,8 @@ async function saveReaderCardOnce() {
     const current = allCards?.find?.(card => card.id === readerCardId);
     try {
       await api.put(`/api/reader/cards/${encodeURIComponent(readerCardId)}`, {
-        title: (article.title || current?.title || 'Untitled').slice(0, 200),
-        url: article.url || null,
+        title: (document.getElementById('reader-edit-title').value.trim() || article.title || current?.title || 'Untitled').slice(0, 200),
+        url: document.getElementById('reader-url').value.trim() || null,
         fileName: article.fileName || null,
         ...readerBiblio(),
         fetchedAt: article.fetchedAt,
@@ -1130,6 +1237,7 @@ async function saveReaderCardOnce() {
         ...(typeof readerTranslationPayload === 'function' ? readerTranslationPayload(article.paragraphs) : {}),
         memo: document.getElementById('reader-memo').value,
         ...(readerToolStatePayload() ? { toolState: readerToolStatePayload() } : {}),
+        ...(readerEditorColorTouched ? { color: readerEditorColor } : {}),
         tags,
       });
       clearReaderDraft();
@@ -1145,13 +1253,14 @@ async function saveReaderCardOnce() {
   const payload = {
     url: readerArticle.url || null,
     fileName: readerArticle.fileName || null,
-    title: readerArticle.title.slice(0, 200),
+    title: (document.getElementById('reader-edit-title').value.trim() || readerArticle.title).slice(0, 200),
     ...readerBiblio(),
     fetchedAt: readerArticle.fetchedAt,
     paragraphs: readerArticle.paragraphs,
     ...(typeof readerTranslationPayload === 'function' ? readerTranslationPayload(readerArticle.paragraphs) : {}),
     memo: document.getElementById('reader-memo').value,
     ...(readerToolStatePayload() ? { toolState: readerToolStatePayload() } : {}),
+    ...(readerEditorColor ? { color: readerEditorColor } : {}),
     tags,
   };
   if (readerCandidateId) payload.candidateId = readerCandidateId;

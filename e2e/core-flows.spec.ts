@@ -34,12 +34,13 @@ async function releaseFixtureCard(request: APIRequestContext, id: string) {
 async function createCardViaUi(page: Page, title: string, body: string, tags = "e2e") {
   await openApp(page);
   await page.locator('button[onclick="openNewCardModal()"]').first().click();
-  await expect(page.locator("#modal-new")).toHaveClass(/active/);
-  await page.locator("#new-title").fill(title);
-  await page.locator("#new-body").fill(body);
-  await page.locator("#new-tags").fill(tags);
-  await page.locator("#modal-new .btn-primary").click();
-  await expect(page.locator("#modal-new")).not.toHaveClass(/active/);
+  await expect(page.locator("#modal-reader")).toHaveClass(/active/);
+  await expect(page.locator("#modal-reader .reader-modal")).toHaveClass(/reader-plain-mode/);
+  await page.locator("#reader-edit-title").fill(title);
+  await page.locator("#reader-memo").fill(body);
+  await page.locator("#reader-tags").fill(tags);
+  await page.locator("#reader-save-btn").click();
+  await expect(page.locator("#modal-reader")).not.toHaveClass(/active/);
   await expect(page.locator("#card-grid")).toContainText(title);
 }
 

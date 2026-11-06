@@ -19,7 +19,7 @@ async function openSearch(page: Page, query: string) {
 
 async function openCardReader(page: Page, title: string) {
   await page.locator('.card', { hasText: title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await expect(page.locator('#reader-article')).toBeVisible();
 }
 
