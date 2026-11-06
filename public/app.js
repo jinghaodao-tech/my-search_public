@@ -47,7 +47,7 @@ async function apiRequest(path, options = {}) {
 }
 const api = {
   async get(p) { return window.typedApiClient?.get(p) ?? apiRequest(p) },
-  async post(p,b) { return window.typedApiClient?.post(p,b) ?? apiRequest(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}) },
+  async post(p,b,options = {}) { return window.typedApiClient?.post(p,b,options) ?? apiRequest(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b),...options}) },
   async put(p,b) { return window.typedApiClient?.put(p,b) ?? apiRequest(p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}) },
   async del(p) { return window.typedApiClient?.del(p) ?? apiRequest(p,{method:'DELETE'}) },
   async download(p, options = {}) {
@@ -61,6 +61,7 @@ const api = {
     return { blob: await response.blob(), headers: response.headers };
   },
 };
+window.mySearchContextualApi = api;
 
 function formatApiError(error, fallback = '通信に失敗しました') {
   const message = error?.message || fallback;

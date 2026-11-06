@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { RouteContext } from '../services/route_context.js';
 import { CandidateSaveConflict } from '../services/candidate_service.js';
 import { parseBody, sendError } from '../services/http_service.js';
-import { ReaderError, composeReaderCardBody, fetchReadable, parseReaderCardBody, readPdf } from '../services/reader_service.js';
+import { ReaderError, composeReaderCardBody, fetchReadable, locateUniqueReaderQuote, parseReaderCardBody, readPdf } from '../services/reader_service.js';
 import { PAGE_MARKER, pdfMaxBytes } from '../services/pdf_service.js';
 import { DEMO_DOCUMENTS, demoUrl, isDemoMode, readDemoDocument } from '../services/demo_service.js';
 import { getReaderText, getReaderTranslation, saveReaderText, type ReaderTranslation } from '../repositories/reader_texts_repository.js';
@@ -12,7 +12,7 @@ import { buildEvidenceTable, pickPassagesByWords, verifyRows, type EvidenceSourc
 import { tokenizeMorphological } from '../bm25_engine.js';
 import { prepareReaderContent, storeReaderContent } from '../repositories/articles_repository.js';
 import { getReaderTools, saveReaderTools } from '../repositories/reader_tools_repository.js';
-import { assessReaderTools, normalizeReaderToolsPayload, readerToolsSourceHash } from '../services/reader_tools_service.js';
+import { assessReaderTools, normalizeReaderToolsPayload, readerToolsSourceHash, validateReaderCalculatorProposal } from '../services/reader_tools_service.js';
 import { logger } from '../utils/logger.js';
 
 const readerToolsEnabled = () => process.env.READER_TOOLS_ENABLED !== 'false';
@@ -101,6 +101,25 @@ const passagesSchema = z.object({
   proposed: z.array(proposedRowSchema).max(60).optional(),
 }).strict().refine(body => !!body.article !== !!body.cardIds, { message: 'article か cardIds のどちらか一方を指定してください' });
 
+const quoteTransferSchema = z.object({
+  targetCardId: z.string().trim().min(1).max(200),
+  sourceCardId: z.string().trim().min(1).max(200),
+  paragraphIndex: z.number().int().min(0).max(50_000),
+  quote: z.string().trim().min(1).max(3000),
+}).strict();
+const readerCalculatorProposalSchema = z.object({
+  sourceIndex: z.number().int().min(0).max(50_000),
+  sourceParagraph: z.string().max(20_000),
+  proposal: z.object({
+    title: z.string().max(100), expression: z.string().max(200), resultUnit: z.string().max(30),
+    sourceQuote: z.string().max(3000),
+    variables: z.array(z.object({
+      key: z.string().max(40), label: z.string().max(60), unit: z.string().max(30),
+      min: z.number().finite(), max: z.number().finite(), initial: z.number().finite(), quote: z.string().max(1000),
+    }).strict()).min(1).max(8),
+  }).strict(),
+}).strict();
+
 // Text read in the reader is also used when searching collected articles (only for pages that
 // were collected: matched by URL). PDF page markers are not part of the text.
 async function cacheReaderText(url: string | null, paragraphs: string[], fetchedAt: string) {
@@ -119,6 +138,7 @@ export function createReaderRouter(ctx: RouteContext) {
     res.json({
       demo,
       ai: IS_MOCK_AI || ctx.hasConfiguredProviderKey(),
+      aiMode: IS_MOCK_AI ? 'mock' : ctx.hasConfiguredProviderKey() ? 'configured-server' : 'unavailable',
       readerTools: readerToolsEnabled(),
       pdfMaxMb: Math.round(pdfMaxBytes() / 1024 / 1024),
       samples: demo ? Object.entries(DEMO_DOCUMENTS).map(([pathname, doc]) => ({ title: doc.title, url: demoUrl(pathname), download: pathname.endsWith('.pdf') ? `/demo/${doc.file}` : null })) : [],
@@ -130,6 +150,16 @@ export function createReaderRouter(ctx: RouteContext) {
     if (!body) return;
     const assessment = readerToolAssessment(body.paragraphs);
     res.json({ enabled: readerToolsEnabled(), sourceHash: readerToolsSourceHash(body.paragraphs), status: assessment.status, tools: assessment.tools });
+  });
+
+  // Validation only: model work stays in the browser for this experiment. The server
+  // accepts a candidate only if it is grounded in the selected paragraph and uses safe math.
+  router.post('/reader/tools/validate-proposal', (req, res) => {
+    const body = parseBody(readerCalculatorProposalSchema, req, res);
+    if (!body) return;
+    const tool = validateReaderCalculatorProposal(body.proposal, body.sourceParagraph, body.sourceIndex);
+    if (!tool) { sendError(req, res, 422, '提案を安全な計算として確認できませんでした。道具は作成していません', undefined, 'validation_failed'); return; }
+    res.json({ tool, verification: 'source_and_syntax_checked_semantics_unverified', persistent: false });
   });
 
   router.post('/reader/extract', ctx.readerLimiter, async (req, res) => {
@@ -283,6 +313,61 @@ export function createReaderRouter(ctx: RouteContext) {
     res.json(card);
   });
 
+  // Explicitly append a verified quote from one saved card to another card's existing memo.
+  // The source text is never refetched and the target's saved article text is left byte-for-byte intact.
+  router.post('/reader/quotes/transfer', async (req, res) => {
+    const body = parseBody(quoteTransferSchema, req, res);
+    if (!body) return;
+    if (body.targetCardId === body.sourceCardId) {
+      sendError(req, res, 400, '別の記事のメモを選んでください', undefined, 'reader_quote_conflict');
+      return;
+    }
+    const sourceCard = ctx.getCard(body.sourceCardId);
+    const targetCard = ctx.getCard(body.targetCardId);
+    if (!sourceCard || !targetCard) { sendError(req, res, 404, '保存カードが見つかりません', undefined, 'card_not_found'); return; }
+    const sourceParsed = parseReaderCardBody(sourceCard.body ?? '');
+    const sourceParagraphs = getReaderText(sourceCard.id) ?? sourceParsed.paragraphs;
+    if (!sourceParagraphs.length) { sendError(req, res, 409, '引用元の保存本文がありません', undefined, 'reader_text_missing'); return; }
+    const anchor = locateUniqueReaderQuote(body.quote, sourceParagraphs, body.paragraphIndex);
+    if (anchor.status !== 'matched' || anchor.paragraphIndex === null) {
+      sendError(req, res, 409, anchor.status === 'ambiguous' ? '引用文が本文内で重複しているため、位置を特定できません' : '引用文と保存本文が一致しません', undefined, 'reader_quote_conflict');
+      return;
+    }
+    const sourceHash = readerToolsSourceHash(sourceParagraphs);
+    const safeSourceTitle = (sourceParsed.source.title ?? sourceCard.title).replace(/[\r\n]/g, ' ').slice(0, 200);
+    const safeSourceUrl = sourceParsed.source.url ?? sourceCard.url ?? '';
+    const linkToken = `[元記事へ戻る](#my-search-source:${encodeURIComponent(sourceCard.id)}:${sourceHash}:${anchor.paragraphIndex + 1})`;
+    const quotedLines = body.quote.replace(/\r\n?/g, '\n').split('\n').map(line => `> ${line}`).join('\n');
+    const citationBlock = `${quotedLines}\n>\n> 出典: ${safeSourceTitle}${safeSourceUrl ? ` (${safeSourceUrl})` : ''} · 保存カード ${sourceCard.id} · ¶${anchor.paragraphIndex + 1}\n> ${linkToken}`;
+    const targetParsed = parseReaderCardBody(targetCard.body ?? '');
+    const existingMemo = targetParsed.isReaderFormat ? targetParsed.memo : String(targetCard.body ?? '');
+    if (existingMemo.includes(linkToken)) {
+      res.json({ targetCardId: targetCard.id, sourceCardId: sourceCard.id, sourceHash, paragraphIndex: anchor.paragraphIndex, added: false, duplicate: true });
+      return;
+    }
+    let updatedBody: string;
+    if (targetParsed.isReaderFormat) {
+      const sourceAt = (targetCard.body ?? '').indexOf('\n\n## 出典\n\n');
+      if (sourceAt < 0) { sendError(req, res, 409, '保存メモの形式を確認できません。既存データは変更していません', undefined, 'reader_card_invalid'); return; }
+      const memo = targetParsed.memo.trim() ? `${targetParsed.memo.trimEnd()}\n\n${citationBlock}` : citationBlock;
+      updatedBody = `## メモ\n\n${memo}${(targetCard.body ?? '').slice(sourceAt)}`;
+    } else {
+      const existing = String(targetCard.body ?? '');
+      updatedBody = `${existing.trimEnd()}${existing.trim() ? '\n\n' : ''}${citationBlock}`;
+    }
+    if (updatedBody.length > 1_000_000) { sendError(req, res, 413, 'メモが大きいため追加できません。既存データは変更していません', undefined, 'reader_memo_too_large'); return; }
+    const updated = await ctx.updateCard(targetCard.id, { body: updatedBody }, undefined, targetCard.body ?? '', [
+      { id: sourceCard.id, body: sourceCard.body ?? '' },
+    ]);
+    if (!updated) {
+      const current = ctx.getCard(targetCard.id);
+      if (!current) { sendError(req, res, 404, '保存先カードが見つかりません', undefined, 'card_not_found'); return; }
+      sendError(req, res, 409, '引用元の記事または保存先メモが同時に更新されたため、引用を追加していません。最新の内容を開いてもう一度お試しください', undefined, 'reader_memo_conflict');
+      return;
+    }
+    res.json({ targetCardId: updated.id, sourceCardId: sourceCard.id, sourceHash, paragraphIndex: anchor.paragraphIndex, added: true });
+  });
+
   function loadEvidenceSources(body: { article?: { title: string; url?: string | null; paragraphs: string[] }; cardIds?: string[] }, req: express.Request, res: express.Response): EvidenceSource[] | null {
     if (body.article) return [{ id: 'article', title: body.article.title, url: body.article.url ?? null, paragraphs: body.article.paragraphs }];
     const sources: EvidenceSource[] = [];
@@ -321,15 +406,24 @@ export function createReaderRouter(ctx: RouteContext) {
       sendError(req, res, 503, `${keyName} が設定されていません`, undefined, 'ai_provider_unavailable');
       return;
     }
+    const providerAbort = new AbortController();
+    const abortProvider = () => providerAbort.abort();
+    const abortWhenResponseCloses = () => { if (!res.writableEnded) providerAbort.abort(); };
+    req.once('aborted', abortProvider);
+    res.once('close', abortWhenResponseCloses);
     try {
-      const result = await buildEvidenceTable(body.purpose, sources, completeWithProvider, IS_MOCK_AI);
-      res.json({ ...result, sources: sources.map(source => ({ id: source.id, title: source.title, url: source.url ?? null })) });
+      const result = await buildEvidenceTable(body.purpose, sources, (prompt, maxTokens, signal) => completeWithProvider(prompt, maxTokens, signal), IS_MOCK_AI, providerAbort.signal);
+      res.json({ ...result, method: IS_MOCK_AI ? 'mock' : 'configured-server', sources: sources.map(source => ({ id: source.id, title: source.title, url: source.url ?? null })) });
     } catch (error) {
+      if (providerAbort.signal.aborted || (error instanceof Error && error.name === 'AbortError')) return;
       if (ctx.isAiSummaryError(error)) {
         sendError(req, res, error.status >= 500 ? 502 : error.status, `AIの呼び出しに失敗しました: ${error.message}`, undefined, 'ai_provider_unavailable');
         return;
       }
       throw error;
+    } finally {
+      req.off('aborted', abortProvider);
+      res.off('close', abortWhenResponseCloses);
     }
   });
 

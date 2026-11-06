@@ -419,8 +419,11 @@ export function isAiSummaryError(error: unknown): error is AiSummaryError {
  * Plain text completion with the configured provider (used by features that
  * build their own prompt and parse the answer themselves, e.g. the evidence table).
  */
-export async function completeWithProvider(prompt: string, maxTokens: number): Promise<string> {
+export async function completeWithProvider(prompt: string, maxTokens: number, parentSignal?: AbortSignal): Promise<string> {
   const controller = new AbortController();
+  const abortFromParent = () => controller.abort();
+  if (parentSignal?.aborted) controller.abort();
+  else parentSignal?.addEventListener('abort', abortFromParent, { once: true });
   const timeoutId = setTimeout(() => controller.abort(), 60000);
   try {
     if (AI_PROVIDER === 'gemini') {
@@ -464,6 +467,7 @@ export async function completeWithProvider(prompt: string, maxTokens: number): P
     throw new AiSummaryError(500, 'api_error', 'AI request failed', String(error));
   } finally {
     clearTimeout(timeoutId);
+    parentSignal?.removeEventListener('abort', abortFromParent);
   }
 }
 

@@ -361,6 +361,9 @@ async function runCardSearch() {
     none.className = 'reader-note';
     none.textContent = '合うカードはありませんでした。';
     host.append(none);
+    const contextual = typeof ContextualAutomation === 'undefined'
+      || ContextualAutomation.resolve('f2', { eligible: true, contextKey: document.getElementById('search-terms').value.trim() }) === 'eligible';
+    if (contextual) renderSavedCardNoResultHelp(host, result);
     await renderRefindStudyReview();
     return;
   }
@@ -371,6 +374,16 @@ async function runCardSearch() {
     card.innerHTML = `<div class="score-card-header"><span class="score-badge">#${index + 1} ${Number(item.score).toFixed(2)} · 保存済み</span><div class="score-title">${highlightSearchText(article.title, lastSearchTerms)}</div></div><p>${highlightSearchText(item.snippet || article.summary || '', [...lastSearchTerms, ...(item.matchedKeywords || [])])}</p>`;
     const actions = document.createElement('div');
     actions.className = 'score-actions';
+    const contextual = typeof ContextualAutomation === 'undefined' ? true : ContextualAutomation.resolve('f1', { eligible: Boolean(item.snippet), contextKey: article.id }) === 'eligible';
+    if (contextual && item.snippet) {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f1', event: 'shown', trigger: 'snippet_match' });
+      actions.append(resultButton('本文の該当箇所を見る', () => openSavedCardSearchItemAtSnippet(item)));
+    }
+    const contextualRelated = typeof ContextualAutomation === 'undefined' ? true : ContextualAutomation.resolve('f6', { eligible: document.getElementById('search-terms').value.trim().length >= 2, contextKey: article.id }) === 'eligible';
+    if (contextualRelated) {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f6', event: 'shown', trigger: 'search_result' });
+      actions.append(resultButton('検索目的に近い箇所を見る', () => openSavedCardForRelatedPassage(item)));
+    }
     actions.append(resultButton('メモを読む', () => {
       if (activeRefindStudy) recordRefindInteraction({ action: 'opened', cardId: article.id }).catch(() => {});
       searchReaderIndex = -1; openReaderForCard(article.id);
@@ -381,8 +394,117 @@ async function runCardSearch() {
   await renderRefindStudyReview();
 }
 
+function renderSavedCardNoResultHelp(host, result) {
+  const box = document.createElement('div');
+  box.className = 'no-result-box';
+  box.setAttribute('role', 'status');
+  const scope = result.scope || {};
+  const heading = document.createElement('p');
+  heading.className = 'no-result-title';
+  heading.textContent = Number(scope.totalCount) === 0 ? '保存済みカードがまだありません' : `保存済みカード${scope.totalCount}件では見つかりませんでした`;
+  box.append(heading);
+  const note = document.createElement('p');
+  note.textContent = '検索文と条件はそのままです。検索語を変えるか、収集記事・Webなど別の検索先を選んで試せます。検索先の取得エラーがあった場合は、記事が存在しないとは判断できません。';
+  box.append(note);
+  const actions = document.createElement('div');
+  actions.className = 'evidence-actions';
+  actions.append(resultButton('検索語を見直す', () => { const input = document.getElementById('search-terms'); input.focus(); input.select(); }));
+  actions.append(resultButton('検索先を見直す', () => { document.getElementById('search-targets')?.scrollIntoView({ block: 'center' }); }));
+  actions.append(resultButton('同じ語でWeb検索', () => openExternalSearch()));
+  actions.append(resultButton('この案内を閉じる', () => {
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'ignored', trigger: 'user_action', outcome: 'ignored' });
+    if (typeof ContextualAutomation !== 'undefined') {
+      ContextualAutomation.suppress('f2', document.getElementById('search-terms').value.trim());
+    }
+    box.remove();
+  }));
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'shown', trigger: 'search_no_results' });
+  box.append(actions);
+  host.append(box);
+}
+
+function renderSavedCardSearchFailureHelp(host) {
+  const box = document.createElement('div');
+  box.className = 'no-result-box';
+  box.setAttribute('role', 'status');
+  const note = document.createElement('p');
+  note.textContent = '保存カードの検索APIでエラーが発生しました。カードに該当記事がないとは判断できません。検索語と条件は保持しています。';
+  box.append(note);
+  const actions = document.createElement('div');
+  actions.className = 'evidence-actions';
+  actions.append(resultButton('同じ条件で再試行', () => {
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'started', trigger: 'user_action', mode: 'manual', outcome: 'retry' });
+    box.remove(); runSearchScreen();
+  }));
+  actions.append(resultButton('検索条件を確認', () => { document.getElementById('search-details').open = true; document.getElementById('search-details').scrollIntoView({ block: 'nearest' }); }));
+  actions.append(resultButton('この案内を閉じる', () => {
+    if (typeof ContextualAutomation !== 'undefined') ContextualAutomation.suppress('f2', document.getElementById('search-terms').value.trim());
+    box.remove();
+  }));
+  box.append(actions);
+  host.append(box);
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'failed', trigger: 'search_api_error', outcome: 'error' });
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'shown', trigger: 'search_api_error' });
+}
+
+function renderCollectedSearchFailureHelp(host) {
+  host.querySelector('#collected-search-failure')?.remove();
+  const box = document.createElement('div');
+  box.id = 'collected-search-failure';
+  box.className = 'no-result-box';
+  box.setAttribute('role', 'status');
+  const title = document.createElement('p');
+  title.className = 'no-result-title';
+  title.textContent = '今回の収集記事検索を完了できませんでした';
+  const note = document.createElement('p');
+  note.textContent = '記事が存在しないとは判断できません。検索語・条件は保持しています。下に前回の結果が表示されている場合は、今回の検索結果ではありません。';
+  box.append(title, note);
+  const actions = document.createElement('div');
+  actions.className = 'evidence-actions';
+  actions.append(resultButton('同じ条件で再試行', () => {
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'started', trigger: 'user_action', mode: 'manual', outcome: 'retry' });
+    box.remove(); runBM25();
+  }));
+  actions.append(resultButton('検索先・条件を確認', () => {
+    const details = document.getElementById('search-details');
+    if (details) { details.open = true; details.scrollIntoView({ block: 'nearest' }); }
+  }));
+  actions.append(resultButton('この案内を閉じる', () => {
+    if (typeof ContextualAutomation !== 'undefined') ContextualAutomation.suppress('f2', 'collected-search-api-error');
+    box.remove();
+  }));
+  box.append(actions);
+  host.prepend(box);
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'failed', trigger: 'search_api_error', outcome: 'error' });
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'shown', trigger: 'search_api_error' });
+}
+
+async function openSavedCardSearchItemAtSnippet(item) {
+  if (typeof isContextualFeatureEnabled === 'function' && !isContextualFeatureEnabled('f1')) return;
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f1', event: 'started', trigger: 'user_action', mode: 'manual' });
+  if (!await openReaderForCard(item.article.id)) {
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f1', event: 'failed', trigger: 'user_action', outcome: 'error' });
+    return;
+  }
+  presentSearchSnippetTarget(item.snippet);
+  const choice = document.getElementById('reader-search-passage-choice');
+  const ambiguous = Boolean(choice?.querySelector('button'));
+  const matched = choice?.textContent.includes('一意な一致を確認') === true;
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f1', event: matched ? 'completed' : ambiguous ? 'completed' : 'failed', trigger: 'user_action', outcome: matched ? 'ok' : ambiguous ? 'ambiguous' : 'unmatched' });
+}
+
+async function openSavedCardForRelatedPassage(item) {
+  if (typeof isContextualFeatureEnabled === 'function' && !isContextualFeatureEnabled('f6')) return;
+  const purpose = document.getElementById('search-terms').value.trim();
+  if (purpose.length < 2 || !await openReaderForCard(item.article.id)) return;
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f6', event: 'started', trigger: 'user_action', mode: 'manual', processor: 'rules' });
+  document.getElementById('evidence-purpose').value = purpose;
+  await runEvidence({ forceWords: true });
+}
+
 /** The 検索 button / Enter. webOnly: re-run just the web part (after editing the web queries). */
 async function runSearchScreen(options = {}) {
+  if (typeof cancelKeywordExpansion === 'function') cancelKeywordExpansion();
   const input = document.getElementById('search-terms');
   const text = input.value.trim();
   if (!text) { toast('調べたいことを入れてください', 'warn'); input.focus(); return; }
@@ -411,7 +533,15 @@ async function runSearchScreen(options = {}) {
         document.getElementById('search-collected').textContent = '';
       }
       if (targets.includes('cards')) tasks.push(runCardSearch().catch(async error => {
-        document.getElementById('search-cards').textContent = `カードを検索できませんでした: ${formatApiError(error)}`;
+        const host = document.getElementById('search-cards');
+        host.replaceChildren();
+        const failure = document.createElement('p');
+        failure.className = 'reader-note';
+        failure.textContent = `カードを検索できませんでした: ${formatApiError(error)}`;
+        host.append(failure);
+        const contextual = typeof ContextualAutomation === 'undefined'
+          || ContextualAutomation.resolve('f2', { eligible: true, contextKey: document.getElementById('search-terms').value.trim() }) === 'eligible';
+        if (contextual) renderSavedCardSearchFailureHelp(host, error);
         await renderRefindStudyReview();
       }));
       else { cardSearchResult = null; document.getElementById('search-cards').textContent = ''; }

@@ -1,6 +1,7 @@
 // What this instance offers (GET /api/features): hide the AI box without an AI key,
 // and show a notice with the sample documents on the public demo.
 let appFeatures = { demo: false, ai: false, pdfMaxMb: 30, samples: [] };
+window.getMySearchContextualFeatures = () => appFeatures;
 
 async function loadAppFeatures() {
   try { appFeatures = await api.get('/api/features'); } catch { return; }

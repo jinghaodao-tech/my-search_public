@@ -6,6 +6,7 @@ async function loadBM25Modes() {
   if (ids.length) selectBM25Mode(ids[0]);
 }
 function selectBM25Mode(modeId) {
+  if (typeof cancelKeywordExpansion === 'function') cancelKeywordExpansion();
   bm25ActiveMode = modeId;
   document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.toggle('active', tab.id === `mtab-${modeId}`));
   const mode = bm25Modes[modeId];
@@ -27,10 +28,10 @@ function renderKeywords() {
   if (simple) simple.value = bm25Keywords.map(keyword => keyword.term).filter(Boolean).join(' ');
   // the box now shows exactly these keywords: searching it again keeps their weights
   if (simple && typeof searchKeywordsText !== 'undefined') searchKeywordsText = simple.value.trim();
-  list.innerHTML = bm25Keywords.map((keyword, index) => `<div class="kw-row"><input class="kw-term" value="${esc(keyword.term)}" oninput="bm25Keywords[${index}].term=this.value; syncSimpleTerms()"><input class="kw-weight" type="number" value="${keyword.weight}" oninput="bm25Keywords[${index}].weight=parseFloat(this.value)||1"><input class="kw-syn" value="${esc(keyword.synonyms || '')}" oninput="bm25Keywords[${index}].synonyms=this.value"><button type="button" onclick="removeKeyword(${index})">Remove</button></div>`).join('');
+  list.innerHTML = bm25Keywords.map((keyword, index) => `<div class="kw-row"><input class="kw-term" value="${esc(keyword.term)}" oninput="bm25Keywords[${index}].term=this.value; cancelKeywordExpansion(); syncSimpleTerms()"><input class="kw-weight" type="number" value="${keyword.weight}" oninput="bm25Keywords[${index}].weight=parseFloat(this.value)||1"><input class="kw-syn" value="${esc(keyword.synonyms || '')}" oninput="bm25Keywords[${index}].synonyms=this.value"><button type="button" onclick="removeKeyword(${index})">Remove</button></div>`).join('');
 }
-function addKeyword() { bm25Keywords.push({ term: '', weight: 1, synonyms: '' }); renderKeywords(); }
-function removeKeyword(index) { bm25Keywords.splice(index, 1); renderKeywords(); }
+function addKeyword() { if (typeof cancelKeywordExpansion === 'function') cancelKeywordExpansion(); bm25Keywords.push({ term: '', weight: 1, synonyms: '' }); renderKeywords(); }
+function removeKeyword(index) { if (typeof cancelKeywordExpansion === 'function') cancelKeywordExpansion(); bm25Keywords.splice(index, 1); renderKeywords(); }
 function updateBM25SourceInfo() { const output = document.getElementById('bm25-source-info'); if (!output) return; const source = document.querySelector('input[name="bm25src"]:checked')?.value || 'articles'; output.textContent = source === 'cards' ? `Saved cards: ${allCards.length}` : 'Collected articles'; }
 async function updateArticleAutoStatus() { const output = document.getElementById('article-auto-status'); if (!output) return; try { const status = await api.get('/api/scheduler/status'); output.textContent = `${status.articleCount || 0} articles`; } catch { output.textContent = 'Status unavailable'; } }
 async function refreshInputArticlesNow() { try { await api.post('/api/articles/refresh', { background: true }); await updateArticleAutoStatus(); } catch (error) { toast(error.message, 'warn'); } }

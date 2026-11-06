@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import request from 'supertest';
-import { app } from './helpers.js';
+import { app, database } from './helpers.js';
 import { saveArticlesToDb } from '../repositories/articles_repository.js';
 import {
   CARD_BODY_LIMIT,
@@ -10,6 +10,7 @@ import {
   decodeHtml,
   extractReadable,
   fetchReadable,
+  locateUniqueReaderQuote,
   parseReaderCardBody,
 } from '../services/reader_service.js';
 
@@ -126,6 +127,84 @@ describe('reader: API', () => {
       url: `https://blog.example.com/${id}`, title: 'Reader candidate', fetchedAt: '2026-10-15T12:00:00.000Z', paragraphs: ['x'], candidateId: id,
     });
     expect(again.status).toBe(409);
+  });
+
+  it('transfers a uniquely verified cross-card quote without changing either saved reader text', async () => {
+    const source = await request(app).post('/api/reader/save').send({
+      url: 'https://blog.example.com/quote-source', title: '引用元', fetchedAt: '2026-10-15T12:00:00.000Z',
+      paragraphs: ['前置きです。', '保存した本文にある正確な一節です。', '末尾です。'], memo: '引用元メモ',
+    });
+    const target = await request(app).post('/api/reader/save').send({
+      url: 'https://blog.example.com/quote-target', title: '比較メモ', fetchedAt: '2026-10-15T12:00:00.000Z',
+      paragraphs: ['保存先の本文です。'], memo: '| 観点 | メモ |\n| --- | --- |\n| 比較 | 既存の記録 |',
+    });
+    const sourceId = source.body.card.id;
+    const targetId = target.body.card.id;
+    const beforeSource = await request(app).get(`/api/reader/cards/${sourceId}`);
+    const beforeTarget = await request(app).get(`/api/reader/cards/${targetId}`);
+    const moved = await request(app).post('/api/reader/quotes/transfer').send({
+      sourceCardId: sourceId, targetCardId: targetId, paragraphIndex: 1, quote: '正確な一節です',
+    });
+    expect(moved.status).toBe(200);
+    expect(moved.body).toMatchObject({ added: true, sourceCardId: sourceId, targetCardId: targetId, paragraphIndex: 1 });
+    const afterSource = await request(app).get(`/api/reader/cards/${sourceId}`);
+    const afterTarget = await request(app).get(`/api/reader/cards/${targetId}`);
+    expect(afterSource.body.paragraphs).toEqual(beforeSource.body.paragraphs);
+    expect(afterTarget.body.paragraphs).toEqual(beforeTarget.body.paragraphs);
+    expect(afterTarget.body.memo).toContain('既存の記録');
+    expect(afterTarget.body.memo).toContain('正確な一節です');
+    expect(afterTarget.body.memo).toContain(`[元記事へ戻る](#my-search-source:${encodeURIComponent(sourceId)}:${moved.body.sourceHash}:2)`);
+    const duplicate = await request(app).post('/api/reader/quotes/transfer').send({
+      sourceCardId: sourceId, targetCardId: targetId, paragraphIndex: 1, quote: '正確な一節です',
+    });
+    expect(duplicate.status).toBe(200);
+    expect(duplicate.body).toMatchObject({ added: false, duplicate: true });
+    expect((await request(app).get(`/api/reader/cards/${targetId}`)).body.memo.match(/正確な一節です/g)).toHaveLength(1);
+  });
+
+  it('does not transfer an ambiguous quote or change the target memo', async () => {
+    const source = await request(app).post('/api/reader/save').send({
+      url: 'https://blog.example.com/quote-ambiguous', title: '重複引用', fetchedAt: '2026-10-15T12:00:00.000Z',
+      paragraphs: ['同じ引用文です。', '同じ引用文です。'],
+    });
+    const target = await request(app).post('/api/reader/save').send({
+      url: 'https://blog.example.com/quote-ambiguous-target', title: '保存先', fetchedAt: '2026-10-15T12:00:00.000Z',
+      paragraphs: ['保存先本文'], memo: '変更しないメモ',
+    });
+    const targetId = target.body.card.id;
+    const before = await request(app).get(`/api/reader/cards/${targetId}`);
+    const rejected = await request(app).post('/api/reader/quotes/transfer').send({
+      sourceCardId: source.body.card.id, targetCardId: targetId, paragraphIndex: 0, quote: '同じ引用文です。',
+    });
+    expect(rejected.status).toBe(409);
+    expect((await request(app).get(`/api/reader/cards/${targetId}`)).body.memo).toBe(before.body.memo);
+  });
+
+  it('validates an ephemeral tool proposal without creating cards or saved tool state', async () => {
+    const sourceParagraph = '数量は10〜20個（初期値15個）、合計額は数量に単価30円を掛けた額です。';
+    const proposal = {
+      title: '合計額の試算', expression: 'quantity * 30', resultUnit: '円',
+      sourceQuote: sourceParagraph,
+      variables: [{ key: 'quantity', label: '数量', unit: '個', min: 10, max: 20, initial: 15, quote: '数量は10〜20個（初期値15個）' }],
+    };
+    const cardCount = (database.db.prepare('SELECT COUNT(*) as count FROM cards').get() as { count: number }).count;
+    const stateCount = (database.db.prepare('SELECT COUNT(*) as count FROM reader_tool_state').get() as { count: number }).count;
+    const valid = await request(app).post('/api/reader/tools/validate-proposal').send({ sourceIndex: 0, sourceParagraph, proposal });
+    expect(valid.status).toBe(200);
+    expect(valid.body).toMatchObject({ persistent: false, verification: 'source_and_syntax_checked_semantics_unverified', tool: { kind: 'calculator', sourceIndices: [0] } });
+    const invalid = await request(app).post('/api/reader/tools/validate-proposal').send({ sourceIndex: 0, sourceParagraph, proposal: { ...proposal, expression: 'quantity * fetch(30)' } });
+    expect(invalid.status).toBe(422);
+    expect((database.db.prepare('SELECT COUNT(*) as count FROM cards').get() as { count: number }).count).toBe(cardCount);
+    expect((database.db.prepare('SELECT COUNT(*) as count FROM reader_tool_state').get() as { count: number }).count).toBe(stateCount);
+  });
+});
+
+describe('reader quote location verification', () => {
+  it('matches only an exact normalized quote in the expected paragraph and refuses repeats', () => {
+    expect(locateUniqueReaderQuote(' 引用\n本文 ', ['前段落', '引用 本文'], 1)).toEqual({ status: 'matched', paragraphIndex: 1 });
+    expect(locateUniqueReaderQuote('引用 本文', ['引用 本文', '引用 本文'], 0)).toEqual({ status: 'ambiguous', paragraphIndex: null });
+    expect(locateUniqueReaderQuote('別の言葉', ['引用 本文'], 0)).toEqual({ status: 'missing', paragraphIndex: null });
+    expect(locateUniqueReaderQuote('引用 本文', ['引用 本文'], 1)).toEqual({ status: 'missing', paragraphIndex: null });
   });
 });
 

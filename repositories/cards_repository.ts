@@ -785,14 +785,25 @@ export async function createCardWithTransaction(
     return card;
   })();
 }
-export async function updateCard(id: string, updates: Partial<Card>, finalize?: (card: Card) => void): Promise<Card | null> {
+export async function updateCard(
+  id: string,
+  updates: Partial<Card>,
+  finalize?: (card: Card) => void,
+  expectedBody?: string,
+  expectedRelatedBodies: Array<{ id: string; body: string }> = [],
+): Promise<Card | null> {
   const existing = getCard(id);
   if (!existing) return null;
   const updated: Card = { ...existing, ...updates, id, updatedAt: new Date().toISOString() };
   const stored = await buildStoredTokenSet(`${updated.title} ${updated.body} ${(updated.tags ?? []).join(" ")}`);
   Object.assign(updated, { tokens: stored.ngramTokens, docLength: stored.ngramDocLength, ...stored });
   return db.transaction(() => {
-    if (!getCard(id)) return null;
+    const current = getCard(id);
+    if (!current || (expectedBody !== undefined && current.body !== expectedBody)) return null;
+    for (const expected of expectedRelatedBodies) {
+      const related = getCard(expected.id);
+      if (!related || related.body !== expected.body) return null;
+    }
     updateStoredCard(updated); finalize?.(updated); return updated;
   })();
 }

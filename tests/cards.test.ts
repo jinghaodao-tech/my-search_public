@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import path from 'node:path';
 import request from "supertest";
 import { app, cardsEngine, database, resetCards, testDir } from "./helpers.js";
-import { backfillCardTokens, rebuildSavedCardTokenFts, savedCardTokenFtsStatus } from "../repositories/cards_repository.js";
+import { backfillCardTokens, rebuildSavedCardTokenFts, savedCardTokenFtsStatus, updateCard } from "../repositories/cards_repository.js";
 
 const db = database.db;
 
@@ -31,6 +31,29 @@ describe("card workflows", () => {
 
     expect(cardsEngine.deleteCard(created.id)).toBe(true);
     expect(cardsEngine.getCard(created.id)).toBeNull();
+  });
+
+  it("does not overwrite a memo when an append was prepared from an older card body", async () => {
+    const card = await cardsEngine.createCard({ title: "Concurrent memo", body: "original" });
+    await cardsEngine.updateCard(card.id, { body: "newer memo edit" });
+
+    const staleAppend = await updateCard(card.id, { body: "original plus citation" }, undefined, "original");
+
+    expect(staleAppend).toBeNull();
+    expect(cardsEngine.getCard(card.id)?.body).toBe("newer memo edit");
+  });
+
+  it("does not append a quote if its source body changed during preparation", async () => {
+    const source = await cardsEngine.createCard({ title: "Quote source", body: "original source text" });
+    const target = await cardsEngine.createCard({ title: "Quote target", body: "existing target memo" });
+    await cardsEngine.updateCard(source.id, { body: "edited source text" });
+
+    const staleAppend = await updateCard(target.id, { body: "existing target memo plus quote" }, undefined, "existing target memo", [
+      { id: source.id, body: "original source text" },
+    ]);
+
+    expect(staleAppend).toBeNull();
+    expect(cardsEngine.getCard(target.id)?.body).toBe("existing target memo");
   });
 
   it("persists both token signals and their document lengths", async () => {

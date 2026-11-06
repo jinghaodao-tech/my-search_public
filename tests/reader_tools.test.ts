@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { app, database } from './helpers.js';
-import { assessReaderTools, evaluateReaderFormula, normalizeReaderToolsPayload, prepareReaderTools, readerToolsSourceHash } from '../services/reader_tools_service.js';
+import { assessReaderTools, evaluateReaderFormula, normalizeReaderToolsPayload, prepareReaderTools, readerToolsSourceHash, validateReaderCalculatorProposal } from '../services/reader_tools_service.js';
 
 const calculator = [
   '電気料金の簡易計算',
@@ -18,6 +18,23 @@ const comparison = [
 ];
 
 describe('reader tools: strict local preparation and calculation', () => {
+  it('validates AI calculator proposals as source-grounded, arithmetic-only, and bounded tools', () => {
+    const paragraph = '数量は10〜20個（初期値15個）、合計額は数量に単価30円を掛けた額です。';
+    const proposal = {
+      title: '合計額の試算', expression: 'quantity * 30', resultUnit: '円',
+      sourceQuote: paragraph,
+      variables: [{ key: 'quantity', label: '数量', unit: '個', min: 10, max: 20, initial: 15, quote: '数量は10〜20個（初期値15個）' }],
+    };
+    const tool = validateReaderCalculatorProposal(proposal, paragraph, 0);
+    expect(tool?.kind).toBe('calculator');
+    if (tool?.kind !== 'calculator') throw new Error('proposal was not validated');
+    expect(evaluateReaderFormula(tool.rpn, { quantity: 15 })).toBe(450);
+    expect(validateReaderCalculatorProposal({ ...proposal, expression: 'quantity * fetch(30)' }, paragraph, 0)).toBeNull();
+    expect(validateReaderCalculatorProposal({ ...proposal, sourceQuote: 'AI invented this' }, paragraph, 0)).toBeNull();
+    expect(validateReaderCalculatorProposal({ ...proposal, variables: [{ ...proposal.variables[0], min: 0 }] }, paragraph, 0)).toBeNull();
+    expect(validateReaderCalculatorProposal({ ...proposal, variables: [{ ...proposal.variables[0], unit: 'kg' }] }, paragraph, 0)).toBeNull();
+  });
+
   it('distinguishes supported, unsupported and uncertain applicability without confidence scores', () => {
     expect(assessReaderTools(calculator).status).toBe('supported');
     expect(assessReaderTools(['ordinary article']).status).toBe('unsupported');

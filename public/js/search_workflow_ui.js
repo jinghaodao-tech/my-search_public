@@ -8,12 +8,20 @@ let searchActionBusy = false;
 let lastSearchTerms = [];
 let completedSearchAt = null;
 let completedSearchId = '';
+let keywordExpansionController = null;
+
+function cancelKeywordExpansion() {
+  if (!keywordExpansionController) return;
+  keywordExpansionController.abort();
+  keywordExpansionController = null;
+}
 
 function syncSimpleTerms() {
   document.getElementById('search-terms').value = bm25Keywords.map(keyword => keyword.term).filter(Boolean).join(' ');
   if (typeof searchKeywordsText !== 'undefined') searchKeywordsText = document.getElementById('search-terms').value.trim();
 }
 function setSimpleSearchTerms(value) {
+  cancelKeywordExpansion();
   const previous = new Map(bm25Keywords.map(keyword => [keyword.term, keyword]));
   bm25Keywords = value.trim().split(/\s+/).filter(Boolean).map(term => previous.get(term) || { term, weight: 1, synonyms: '' });
   // Keep typing focus and whitespace while refreshing the advanced fields.
@@ -25,30 +33,63 @@ function keywordInputKeydown(event) {
   if (event.key !== 'Enter') return;
   event.preventDefault();
   const term = event.target.value.trim();
-  if (term) { bm25Keywords.push({ term, weight: 1, synonyms: '' }); renderKeywords(); event.target.value = ''; }
+  if (term) { cancelKeywordExpansion(); bm25Keywords.push({ term, weight: 1, synonyms: '' }); renderKeywords(); event.target.value = ''; }
 }
 // Synonyms by Chrome's on-device AI (nothing is sent anywhere); the server's AI only when the
 // browser has none and an AI key is configured.
 async function expandKeywordsWithAI() {
+  cancelKeywordExpansion();
   const keywords = bm25Keywords.map(keyword => keyword.term).filter(Boolean);
   if (!keywords.length) { toast('先に検索語を入れてください', 'warn'); return; }
+  const controller = new AbortController();
+  keywordExpansionController = controller;
+  const studyStartedAt = performance.now();
+  let processor = 'none';
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'started', trigger: 'user_action', mode: 'manual' });
   try {
-    let expanded;
-    if (typeof localAi !== 'undefined' && (await localAi.availability('prompt')) !== 'unavailable') {
-      toast('端末のAIが類義語を考えています…');
-      expanded = await localAi.expandKeywords(keywords);
-    } else if (typeof appFeatures !== 'undefined' && appFeatures.ai) {
-      expanded = (await api.post('/api/search/expand-keywords', { keywords })).expandedKeywords;
-    } else {
-      toast('このブラウザでは内蔵AIが使えないため、類義語を出せません', 'warn');
+    if (typeof contextualAi === 'undefined') throw new Error('AI機能の初期化に失敗しました');
+    toast('利用できるAIで類義語候補を作っています…（検索条件にはまだ追加しません）');
+    const response = await contextualAi.queryTerms(keywords, controller.signal);
+    processor = response.processor;
+    const currentKeywords = bm25Keywords.map(keyword => keyword.term).filter(Boolean);
+    if (controller.signal.aborted || keywordExpansionController !== controller
+      || currentKeywords.length !== keywords.length || currentKeywords.some((keyword, index) => keyword !== keywords[index])) {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'cancelled', trigger: 'user_action', outcome: 'cancelled', processor, latencyMs: performance.now() - studyStartedAt });
       return;
+    }
+    if (response.status === 'cancelled') {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'cancelled', trigger: 'user_action', outcome: 'cancelled', processor, latencyMs: performance.now() - studyStartedAt });
+      return;
+    }
+    if (response.status !== 'ok') {
+      if (response.status === 'unavailable') {
+        if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'completed', trigger: 'user_action', outcome: 'unavailable', processor, latencyMs: performance.now() - studyStartedAt });
+        toast('端末内AI・設定済みAIを利用できません', 'warn');
+        return;
+      }
+      throw new Error(response.failureReason || '候補生成に失敗しました');
+    }
+    const expanded = response.output?.suggestions || [];
+    if (!expanded.length) {
+      toast('このブラウザでは内蔵AIが使えないため、類義語を出せません', 'warn');
     }
     const existing = new Set(bm25Keywords.map(keyword => keyword.term.toLowerCase()));
     const added = expanded.filter(term => !existing.has(term.toLowerCase()));
     bm25Keywords.push(...added.map(term => ({ term, weight: 1, synonyms: '' })));
     renderKeywords();
+    if (added.length && typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'shown', trigger: 'user_action', processor });
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'completed', trigger: 'user_action', outcome: 'ok', processor, latencyMs: performance.now() - studyStartedAt });
     toast(added.length ? `${added.length}語を追加しました（不要なものは消してください）` : '追加できる類義語がありませんでした', added.length ? 'success' : 'warn');
-  } catch (error) { showApiError(error, '類義語を出せませんでした'); }
+  } catch (error) {
+    if (controller.signal.aborted) {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'cancelled', trigger: 'user_action', outcome: 'cancelled', processor, latencyMs: performance.now() - studyStartedAt });
+    } else {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f2', event: 'failed', trigger: 'user_action', outcome: 'error', processor, latencyMs: performance.now() - studyStartedAt });
+      showApiError(error, '類義語を出せませんでした');
+    }
+  } finally {
+    if (keywordExpansionController === controller) keywordExpansionController = null;
+  }
 }
 function setSearchOrder(value) {
   if (value === 'custom') return;
@@ -104,6 +145,7 @@ function restoreSavedSearch(id) {
   currentSearchId = id;
   const saved = savedSearches.find(search => search.id === id);
   if (!saved) return;
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f4', event: 'started', trigger: 'saved_search', mode: 'manual' });
   document.getElementById('saved-search-name').value = saved.name;
   bm25Modes.saved = saved.config; selectBM25Mode('saved');
   for (const [key, value] of Object.entries({ dedup: saved.options.dedupThreshold ?? 1, arch: saved.options.archiveScoreThreshold ?? 0.5, limit: saved.options.resultLimit ?? 50 })) {
@@ -119,6 +161,7 @@ function restoreSavedSearch(id) {
   document.getElementById('search-status').disabled = saved.source === 'cards';
   document.getElementById('search-sources').disabled = saved.source === 'cards';
   updateBM25SourceInfo();
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f4', event: 'completed', trigger: 'saved_search', mode: 'manual', outcome: 'ok' });
   toast('条件を復元しました。「実行」で最新の候補を確認できます');
 }
 async function runBM25() {
@@ -146,7 +189,14 @@ async function runBM25() {
     showArchived = false;
     renderSearchSources(result.scope.availableSources, settings.filters.sources);
     renderBM25Result();
-  } catch (error) { showApiError(error); }
+  } catch (error) {
+    showApiError(error);
+    const host = document.getElementById('search-collected') || document.getElementById('bm25-result-body');
+    if (host && (typeof ContextualAutomation === 'undefined'
+      || ContextualAutomation.resolve('f2', { eligible: true, contextKey: 'collected-search-api-error' }) === 'eligible')) {
+      renderCollectedSearchFailureHelp(host);
+    }
+  }
   finally { button.disabled = false; button.textContent = '検索'; }
 }
 function searchResultItems() { return showArchived ? bm25Result?.archived || [] : bm25Result?.active || []; }
@@ -162,6 +212,48 @@ function highlightSearchText(text, terms) {
 }
 function resultButton(label, action) {
   const button = document.createElement('button'); button.className = 'btn btn-secondary btn-sm'; button.textContent = label; button.onclick = action; return button;
+}
+function contextualFeatureEligible(id, eligible, key) {
+  return typeof ContextualAutomation === 'undefined'
+    ? Boolean(eligible)
+    : ContextualAutomation.resolve(id, { eligible: Boolean(eligible), contextKey: key }) === 'eligible';
+}
+async function openSearchItemAtSnippet(item) {
+  if (!contextualFeatureEligible('f1', Boolean(item?.snippet), item?.article?.id)) return;
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f1', event: 'started', trigger: 'user_action', mode: 'manual' });
+  const savedCardId = item.candidate?.savedCardId || item.article.id;
+  if (searchResultSource === 'cards' || item.candidate?.status === 'saved_as_card') {
+    if (!await openReaderForCard(savedCardId)) {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f1', event: 'failed', trigger: 'user_action', outcome: 'error' });
+      return;
+    }
+  } else {
+    searchReaderQueue = searchResultItems().map(row => row.article.id);
+    searchReaderIndex = searchReaderQueue.indexOf(item.article.id);
+    if (searchReaderIndex < 0 || !await openSearchReaderItem()) {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f1', event: 'failed', trigger: 'user_action', outcome: 'error' });
+      return;
+    }
+  }
+  presentSearchSnippetTarget(item.snippet);
+  const choice = document.getElementById('reader-search-passage-choice');
+  const ambiguous = Boolean(choice?.querySelector('button'));
+  const matched = choice?.textContent.includes('一意な一致を確認') === true;
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f1', event: matched ? 'completed' : ambiguous ? 'completed' : 'failed', trigger: 'user_action', outcome: matched ? 'ok' : ambiguous ? 'ambiguous' : 'unmatched' });
+}
+async function openSearchItemForRelatedPassage(item) {
+  const purpose = document.getElementById('search-terms').value.trim();
+  if (!contextualFeatureEligible('f6', purpose.length >= 2, item?.article?.id)) return;
+  const savedCardId = item.candidate?.savedCardId || item.article.id;
+  if (searchResultSource === 'cards' || item.candidate?.status === 'saved_as_card') {
+    if (!await openReaderForCard(savedCardId)) return;
+  } else {
+    searchReaderQueue = searchResultItems().map(row => row.article.id);
+    searchReaderIndex = searchReaderQueue.indexOf(item.article.id);
+    if (searchReaderIndex < 0 || !await openSearchReaderItem()) return;
+  }
+  document.getElementById('evidence-purpose').value = purpose;
+  await runEvidence({ forceWords: true });
 }
 function renderBM25Result() {
   if (!bm25Result) return;
@@ -198,6 +290,14 @@ function renderBM25Result() {
       if (note.textContent) card.append(note);
     }
     const actions = document.createElement('div'); actions.className = 'score-actions';
+    if (item.snippet && contextualFeatureEligible('f1', true, article.id)) {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f1', event: 'shown', trigger: 'snippet_match' });
+      actions.append(resultButton('本文の該当箇所を見る', () => openSearchItemAtSnippet(item)));
+    }
+    if (contextualFeatureEligible('f6', document.getElementById('search-terms').value.trim().length >= 2, article.id)) {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f6', event: 'shown', trigger: 'search_result' });
+      actions.append(resultButton('検索目的に近い箇所を見る', () => openSearchItemForRelatedPassage(item)));
+    }
     if (searchResultSource === 'cards' || status === 'saved_as_card') {
       actions.append(resultButton('保存済みメモを読む', () => { searchReaderIndex = -1; openReaderForCard(item.candidate?.savedCardId || article.id); }));
     } else if (status !== 'expired') {
@@ -261,8 +361,9 @@ function openSearchArticle(id) {
 function openSearchReaderItem() {
   const item = findSearchItem(searchReaderQueue[searchReaderIndex]);
   if (!item) return;
-  openReader(item.article.url || '', item.article.id, true);
+  const pending = openReader(item.article.url || '', item.article.id, true);
   document.getElementById('reader-search-position').textContent = `${searchReaderIndex + 1} / ${searchReaderQueue.length}`;
+  return pending;
 }
 function nextSearchArticle(skipDraftCheck = false) {
   if (typeof syncMemoTable === 'function') syncMemoTable();

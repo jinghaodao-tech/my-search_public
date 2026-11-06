@@ -279,3 +279,30 @@ export function parseReaderCardBody(body: string): ParsedReaderCard {
     paragraphs: textPart(body.slice(textAt + TEXT_HEAD.length)).split(/\n\n/).filter(Boolean),
   };
 }
+
+export type ReaderQuoteAnchor = { status: 'matched' | 'missing' | 'ambiguous'; paragraphIndex: number | null };
+
+function normalizeReaderQuoteText(value: string): string {
+  return value.normalize('NFKC').replace(/\s+/g, ' ').trim();
+}
+
+/** Locate an exact, normalized quote without guessing when it appears more than once. */
+export function locateUniqueReaderQuote(quote: string, paragraphs: string[], expectedParagraphIndex?: number): ReaderQuoteAnchor {
+  const normalizedQuote = normalizeReaderQuoteText(quote);
+  if (!normalizedQuote) return { status: 'missing', paragraphIndex: null };
+  const matches: number[] = [];
+  for (let index = 0; index < paragraphs.length; index++) {
+    const paragraph = normalizeReaderQuoteText(paragraphs[index] ?? '');
+    let at = 0;
+    while (at <= paragraph.length - normalizedQuote.length) {
+      const found = paragraph.indexOf(normalizedQuote, at);
+      if (found < 0) break;
+      matches.push(index);
+      if (matches.length > 1) return { status: 'ambiguous', paragraphIndex: null };
+      at = found + Math.max(1, normalizedQuote.length);
+    }
+  }
+  if (matches.length !== 1) return { status: 'missing', paragraphIndex: null };
+  if (Number.isInteger(expectedParagraphIndex) && matches[0] !== expectedParagraphIndex) return { status: 'missing', paragraphIndex: null };
+  return { status: 'matched', paragraphIndex: matches[0]! };
+}

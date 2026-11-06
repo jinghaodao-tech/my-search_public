@@ -128,7 +128,20 @@ function memoQuoteTextAtMarker(memo, paragraphIndex) {
 }
 
 function normalizeQuoteAnchorText(text) {
-  return String(text ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+  return String(text ?? '').normalize('NFKC')
+    .replace(/([\u3040-\u30ff\u3400-\u9fff])\s+(?=[\u3040-\u30ff\u3400-\u9fff])/g, '$1')
+    .replace(/\s+/g, ' ').trim();
+}
+
+/** Reader paragraph indices containing an exact normalized search excerpt. */
+function exactSnippetParagraphIndices(snippet, paragraphs) {
+  const needle = normalizeQuoteAnchorText(snippet);
+  if (!needle || !Array.isArray(paragraphs)) return [];
+  const indices = [];
+  paragraphs.forEach((paragraph, index) => {
+    if (normalizeQuoteAnchorText(paragraph).includes(needle)) indices.push(index);
+  });
+  return indices;
 }
 
 function memoQuoteAnchorStatus(memo, paragraphIndex, paragraphs) {
@@ -180,7 +193,41 @@ function escapeMemoHtml(value) {
 }
 
 function inlineMemoHtml(text) {
-  return escapeMemoHtml(text).replace(/\[¶(\d+)(?:\|([^\]]+))?\]/g, (_, n, where) => `<span class="quote-marker">¶${n}${where ? ` · ${where}` : ''}</span>`);
+  return escapeMemoHtml(text)
+    .replace(/\[元記事へ戻る\]\(#my-search-source:([A-Za-z0-9%._~-]{1,600}):([a-f0-9]{64}):(\d{1,6})\)/g,
+      (_, sourceId, sourceHash, paragraph) => `<button type="button" class="memo-source-link" data-source-id="${sourceId}" data-source-hash="${sourceHash}" data-source-paragraph="${paragraph}" aria-label="保存した引用元の段落${paragraph}へ移動">元記事 ¶${paragraph} へ</button>`)
+    .replace(/\[¶(\d+)(?:\|([^\]]+))?\]/g, (_, n, where) => `<span class="quote-marker">¶${n}${where ? ` · ${where}` : ''}</span>`);
+}
+
+/** Parse a local source link whose card ID, saved-text hash and 1-based paragraph are present. */
+function parseCrossSourceLink(value) {
+  const match = /\[元記事へ戻る\]\(#my-search-source:([A-Za-z0-9%._~-]{1,600}):([a-f0-9]{64}):(\d{1,6})\)/.exec(String(value ?? ''));
+  if (!match) return null;
+  let cardId;
+  try { cardId = decodeURIComponent(match[1]); } catch { return null; }
+  const paragraphIndex = Number(match[3]) - 1;
+  if (!cardId || !Number.isInteger(paragraphIndex) || paragraphIndex < 0 || paragraphIndex >= 50_000) return null;
+  return { cardId, sourceHash: match[2], paragraphIndex };
+}
+
+function findCrossSourceLinkAt(text, caret) {
+  const source = String(text ?? '').replace(/\r\n/g, '\n');
+  const lines = source.split('\n');
+  let offset = 0;
+  let at = 0;
+  for (let index = 0; index < lines.length; index++) {
+    if (caret <= offset + lines[index].length) { at = index; break; }
+    offset += lines[index].length + 1;
+    at = index;
+  }
+  const direct = parseCrossSourceLink(lines[at]);
+  if (direct) return direct;
+  if (!lines[at].trimStart().startsWith('>')) return null;
+  for (let index = at + 1; index < lines.length && lines[index].startsWith('>'); index++) {
+    const found = parseCrossSourceLink(lines[index]);
+    if (found) return found;
+  }
+  return null;
 }
 
 /**

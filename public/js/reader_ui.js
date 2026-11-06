@@ -4,6 +4,8 @@
 let readerArticle = null;
 let readerCandidateId = null;
 let readerCardId = null; // set when an existing card is opened for editing
+let readerInitialMemo = '';
+let readerCrossQuote = null;
 const READER_IMAGE_LINE = /^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/;
 
 let readerRequestVersion = 0;
@@ -12,12 +14,26 @@ let readerToolValues = {};
 let readerToolPanel = null;
 let readerToolStateStale = false;
 let readerToolInvalidInputs = new Set();
+let ephemeralReaderToolIds = new Set();
+let readerToolProposalToken = 0;
+let readerToolProposalController = null;
+let evidenceRequestToken = 0;
+let evidenceRequestController = null;
 // Set by 目的から探す before opening: fill the purpose, and optionally find evidence once the text is in.
 let readerPendingPurpose = null;
 const LAST_READER_SESSION_KEY = 'mySearch:lastReaderSession:v1';
 const READER_SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 let readerSessionRestorePending = false;
 let readerSessionScrollTimer = null;
+
+function invalidateContextualRequests() {
+  readerToolProposalToken++;
+  readerToolProposalController?.abort();
+  readerToolProposalController = null;
+  evidenceRequestToken++;
+  evidenceRequestController?.abort();
+  evidenceRequestController = null;
+}
 
 function clearLastReaderSession() {
   clearTimeout(readerSessionScrollTimer);
@@ -125,9 +141,9 @@ function showReaderResumeStatus(message) {
 }
 
 function restoreLastReaderPosition(session) {
-  if (!readerArticle?.paragraphs?.length || !session.paragraphFingerprint) return;
+  if (!readerArticle?.paragraphs?.length || !session.paragraphFingerprint) return true;
   const container = document.querySelector('.reader-left');
-  if (!container) return;
+  if (!container) return false;
   const sourceElements = [...container.querySelectorAll('#reader-article [data-index]:not(.reader-translation)')];
   const expected = sourceElements.find(element => Number(element.dataset.index) === session.paragraphIndex
     && readerArticle.paragraphs[Number(element.dataset.index)] !== undefined
@@ -141,26 +157,34 @@ function restoreLastReaderPosition(session) {
   if (target) {
     target.scrollIntoView({ block: 'center' });
     if (!expected) showReaderResumeStatus('本文内で同じ段落を確認し、閲覧位置を合わせました。');
-    return;
+    return true;
   }
   container.scrollTop = 0;
   showReaderResumeStatus('本文が保存時から変わったため、閲覧位置は復元せず先頭を表示しています。保存済みのメモと道具の値は保持されています。');
+  return false;
 }
 
 async function restoreLastReaderSession() {
+  if (typeof isContextualFeatureEnabled === 'function' && !isContextualFeatureEnabled('f4')) return;
   const session = readLastReaderSession();
   if (!session) return;
+  const studyStartedAt = performance.now();
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f4', event: 'started', trigger: 'reader_session', mode: 'safe_auto' });
   readerSessionRestorePending = true;
   try {
+    let opened = true;
     if (session.cardId) {
-      const opened = await openReaderForCard(session.cardId);
-      if (!opened) { clearLastReaderSession(); return; }
+      opened = await openReaderForCard(session.cardId);
+      if (!opened) { clearLastReaderSession(); }
     } else {
       await openReader(session.url, session.candidateId, false);
+      opened = Boolean(readerArticle);
     }
-    restoreLastReaderPosition(session);
+    const positionRestored = opened ? restoreLastReaderPosition(session) : false;
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f4', event: opened && positionRestored ? 'completed' : 'failed', trigger: 'reader_session', mode: 'safe_auto', outcome: opened && positionRestored ? 'ok' : 'error', latencyMs: performance.now() - studyStartedAt });
   } catch {
     clearLastReaderSession();
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f4', event: 'failed', trigger: 'reader_session', mode: 'safe_auto', outcome: 'error', latencyMs: performance.now() - studyStartedAt });
   } finally {
     readerSessionRestorePending = false;
     if (document.getElementById('modal-reader')?.classList.contains('active')) persistLastReaderSession();
@@ -168,14 +192,19 @@ async function restoreLastReaderSession() {
 }
 
 function openReader(url = '', candidateId = null, fromSearch = false) {
+  invalidateContextualRequests();
+  resetEvidence();
   readerRequestVersion++;
   if (!fromSearch) searchReaderIndex = -1;
   document.getElementById('reader-search-actions').hidden = !fromSearch;
   readerArticle = null;
+  ephemeralReaderToolIds = new Set();
   readerToolValues = {};
   readerToolPanel = null;
   readerCandidateId = candidateId;
   readerCardId = null;
+  readerInitialMemo = '';
+  readerCrossQuote = null;
   if (typeof resetReaderTranslation === 'function') resetReaderTranslation();
   if (readerPendingPurpose?.purpose) document.getElementById('evidence-purpose').value = readerPendingPurpose.purpose;
   document.getElementById('reader-fallback-title').value = (typeof findSearchItem === 'function' ? findSearchItem(candidateId)?.article.title : '') || '';
@@ -186,6 +215,8 @@ function openReader(url = '', candidateId = null, fromSearch = false) {
   document.getElementById('reader-tags').value = '';
   setReaderBiblio({});
   if (typeof resetMemoMode === 'function') resetMemoMode();
+  cancelQuoteTransfer();
+  updateQuoteTransferAvailability();
   renderReaderArticle();
   openModal('modal-reader');
   persistLastReaderSession();
@@ -200,17 +231,21 @@ function openReader(url = '', candidateId = null, fromSearch = false) {
 
 // Open an existing card: left = the saved copy (refetched only if none was saved), right = its memo.
 async function openReaderForCard(id) {
+  invalidateContextualRequests();
+  resetEvidence();
   searchReaderIndex = -1;
   document.getElementById('reader-search-actions').hidden = true;
-  readerRequestVersion++;
+  const requestVersion = ++readerRequestVersion;
   try {
     const data = await api.get(`/api/reader/cards/${encodeURIComponent(id)}`);
+    if (requestVersion !== readerRequestVersion) return false;
     readerCandidateId = null;
     readerCardId = id;
     if (typeof resetReaderTranslation === 'function') resetReaderTranslation(data.translation);
     setReaderSaveLabel();
     document.getElementById('reader-url').value = data.url || '';
     document.getElementById('reader-memo').value = data.memo || '';
+    readerInitialMemo = data.memo || '';
     // the title field must show this card, not the article opened before
     document.getElementById('reader-fallback-title').value = data.title || '';
     document.getElementById('reader-manual-text').value = '';
@@ -223,6 +258,7 @@ async function openReaderForCard(id) {
       : null;
     initializeReaderToolValues(readerArticle);
     renderReaderArticle();
+    updateQuoteTransferAvailability();
     openModal('modal-reader');
     persistLastReaderSession();
     offerReaderDraft();
@@ -234,6 +270,92 @@ async function openReaderForCard(id) {
   }
 }
 
+function updateQuoteTransferAvailability() {
+  const button = document.getElementById('reader-cross-quote-open');
+  if (button) button.hidden = !(readerCardId && (typeof isContextualFeatureEnabled !== 'function' || isContextualFeatureEnabled('f3')));
+}
+
+async function prepareQuoteTransfer() {
+  if (!readerCardId) { toast('引用元を先に保存してください', 'warn'); return; }
+  if (typeof isContextualFeatureEnabled === 'function' && !isContextualFeatureEnabled('f3')) { toast('この補助機能は設定で停止中です', 'warn'); return; }
+  const quote = selectedReaderText();
+  const paragraphIndex = selectionParagraphIndex();
+  if (!quote || !Number.isInteger(paragraphIndex)) { toast('引用したい文を本文から選択してください', 'warn'); return; }
+  readerCrossQuote = { quote, paragraphIndex };
+  const panel = document.getElementById('reader-cross-quote');
+  const select = document.getElementById('reader-cross-quote-target');
+  select.replaceChildren(new Option('保存先を選択', ''));
+  panel.hidden = false;
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f3', event: 'shown', trigger: 'quote_selected' });
+  try {
+    const cards = await api.get('/api/cards');
+    if (!readerCrossQuote || !panel.isConnected) return;
+    const available = (Array.isArray(cards) ? cards : []).filter(card => card.id !== readerCardId && !card.archived);
+    for (const card of available) select.add(new Option(String(card.title || '無題').slice(0, 180), card.id));
+    if (!available.length) {
+      panel.hidden = true;
+      toast('引用を追加できる保存メモがありません', 'warn');
+      readerCrossQuote = null;
+      return;
+    }
+    select.focus();
+  } catch (error) {
+    panel.hidden = true;
+    readerCrossQuote = null;
+    showApiError(error, '保存メモを読み込めませんでした');
+  }
+}
+
+function cancelQuoteTransfer(completed = false) {
+  if (!completed && readerCrossQuote && typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f3', event: 'cancelled', trigger: 'user_action', outcome: 'cancelled' });
+  readerCrossQuote = null;
+  const panel = document.getElementById('reader-cross-quote');
+  if (panel) panel.hidden = true;
+}
+
+async function transferReaderQuote() {
+  const targetCardId = document.getElementById('reader-cross-quote-target').value;
+  if (!readerCrossQuote || !readerCardId || !targetCardId) { toast('引用元と保存先を確認してください', 'warn'); return; }
+  const button = document.getElementById('reader-cross-quote-save');
+  button.disabled = true;
+  const studyStartedAt = performance.now();
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f3', event: 'started', trigger: 'user_action', mode: 'manual' });
+  try {
+    const response = await api.post('/api/reader/quotes/transfer', {
+      targetCardId,
+      sourceCardId: readerCardId,
+      paragraphIndex: readerCrossQuote.paragraphIndex,
+      quote: readerCrossQuote.quote,
+    });
+    cancelQuoteTransfer(true);
+    toast(response.duplicate ? '同じ引用元・本文位置の引用は追加済みです' : '引用と出典を保存メモへ追加しました');
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f3', event: 'completed', trigger: 'user_action', outcome: 'ok', latencyMs: performance.now() - studyStartedAt });
+    if (typeof loadCards === 'function') await loadCards();
+  } catch (error) {
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f3', event: 'failed', trigger: 'user_action', outcome: 'error', latencyMs: performance.now() - studyStartedAt });
+    showApiError(error, '引用を追加できませんでした');
+  } finally { button.disabled = false; }
+}
+
+async function jumpToCrossCardSource(sourceCardId, expectedHash, paragraphIndex) {
+  if (typeof isContextualFeatureEnabled === 'function' && !isContextualFeatureEnabled('f3')) { toast('引用元への移動は設定で停止中です', 'warn'); return false; }
+  const readerOpen = document.getElementById('modal-reader')?.classList.contains('active');
+  if (readerOpen && readerCardId !== sourceCardId) {
+    if (currentReaderMemo() !== readerInitialMemo && !confirm('編集中のメモを保存せずに引用元へ移動しますか？')) return false;
+  }
+  const opened = readerOpen && readerCardId === sourceCardId && readerArticle ? true : await openReaderForCard(sourceCardId);
+  if (!opened || !readerArticle?.paragraphs || typeof crypto === 'undefined' || !crypto.subtle) { toast('引用元本文を確認できません。引用とメモは保持されています', 'warn'); return false; }
+  const sourceArticle = readerArticle;
+  const bytes = new TextEncoder().encode(JSON.stringify(sourceArticle.paragraphs));
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(value => value.toString(16).padStart(2, '0')).join('');
+  if (readerCardId !== sourceCardId || readerArticle !== sourceArticle || hash !== expectedHash || !sourceArticle.paragraphs[paragraphIndex]) {
+    showReaderResumeStatus('引用元本文が保存時から変わったため、位置へ移動しませんでした。引用とメモは保持されています。');
+    return false;
+  }
+  jumpToParagraph(paragraphIndex);
+  return true;
+}
+
 function setReaderSaveLabel() {
   const button = document.getElementById('reader-save-btn');
   if (button) button.textContent = readerCardId ? 'カードを更新' : 'メモと本文を保存';
@@ -242,6 +364,7 @@ function setReaderSaveLabel() {
 async function loadReaderArticle() {
   const url = document.getElementById('reader-url').value.trim();
   if (!url) { toast('URLを入力してください', 'warn'); return; }
+  invalidateContextualRequests();
   const requestVersion = ++readerRequestVersion;
   const pane = document.getElementById('reader-article');
   readerArticle = null;
@@ -338,6 +461,7 @@ function renderReaderArticle() {
 function initializeReaderToolValues(article) {
   readerToolValues = {};
   readerToolInvalidInputs = new Set();
+  ephemeralReaderToolIds = new Set();
   readerToolStateStale = false;
   if (!article || !Array.isArray(article.tools)) return;
   const saved = article.toolState;
@@ -378,7 +502,10 @@ function renderReaderMemoSourceWarning(meta = document.getElementById('reader-me
 
 function readerToolStatePayload() {
   if (readerToolStateStale || !readerArticle?.tools?.length || !readerArticle.toolsSourceHash) return undefined;
-  return { version: 1, sourceHash: readerArticle.toolsSourceHash, values: readerToolValues };
+  const persistentIds = new Set(readerArticle.tools.filter(tool => !ephemeralReaderToolIds.has(tool.id)).map(tool => tool.id));
+  if (!persistentIds.size) return undefined;
+  const values = Object.fromEntries(Object.entries(readerToolValues).filter(([id]) => persistentIds.has(id)));
+  return { version: 1, sourceHash: readerArticle.toolsSourceHash, values };
 }
 
 function bindReaderToolTargets(pane, index) {
@@ -464,6 +591,16 @@ function openReaderToolPanel(tool, target) {
   const close = document.createElement('button'); close.type = 'button'; close.className = 'btn-icon'; close.textContent = '閉じる'; close.setAttribute('aria-label', '操作パネルを閉じる');
   close.onclick = () => closeReaderToolPanel();
   headingRow.append(heading, close); panel.appendChild(headingRow);
+  if (ephemeralReaderToolIds.has(tool.id)) {
+    const warning = document.createElement('p');
+    warning.className = 'reader-note reader-tool-state-stale';
+    warning.textContent = 'ローカルAIの実験提案です。式の意味・単位の整合性は未検証です。本文と照らして確認してください。この計算案と入力値は保存されません。';
+    panel.appendChild(warning);
+    const discard = document.createElement('button');
+    discard.type = 'button'; discard.className = 'btn btn-secondary btn-sm'; discard.textContent = 'この提案を破棄';
+    discard.onclick = () => discardEphemeralReaderTool(tool.id, target);
+    panel.appendChild(discard);
+  }
   if (tool.kind === 'calculator') renderReaderCalculator(tool, panel);
   else renderReaderComparison(tool, panel);
   if (tool.kind === 'calculator') {
@@ -474,6 +611,105 @@ function openReaderToolPanel(tool, target) {
   target.insertAdjacentElement('afterend', panel);
   readerToolPanel = panel;
   close.focus();
+}
+
+function discardEphemeralReaderTool(toolId, target) {
+  if (!ephemeralReaderToolIds.has(toolId) || !readerArticle) return;
+  closeReaderToolPanel(false);
+  ephemeralReaderToolIds.delete(toolId);
+  readerArticle.tools = (readerArticle.tools || []).filter(tool => tool.id !== toolId);
+  delete readerToolValues[toolId];
+  target?.focus?.();
+}
+
+function updateReaderToolProposalAction() {
+  const button = document.getElementById('reader-ai-tool-propose');
+  if (!button) return;
+  const selection = window.getSelection?.();
+  const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+  const start = range ? blockIndexOf(range.startContainer) : null;
+  const end = range ? blockIndexOf(range.endContainer) : null;
+  const paragraph = Number.isInteger(start) && start === end ? readerArticle?.paragraphs?.[start] : '';
+  const eligible = Boolean(readerArticle && paragraph && !selection?.isCollapsed && String(selection).trim()
+    && !/^\[\[page:/.test(paragraph) && !selectionInTranslation() && /\d/.test(paragraph));
+  const featureEnabled = typeof isContextualFeatureEnabled !== 'function' || isContextualFeatureEnabled('f5');
+  const wasHidden = button.hidden;
+  button.hidden = !(featureEnabled && eligible);
+  if (wasHidden && !button.hidden && typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f5', event: 'shown', trigger: 'numeric_selection' });
+}
+
+async function proposeReaderToolForSelection() {
+  if (typeof isContextualFeatureEnabled === 'function' && !isContextualFeatureEnabled('f5')) { toast('F5の実験機能は設定で停止中です', 'warn'); return; }
+  const selection = window.getSelection?.();
+  const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+  const paragraphIndex = range ? blockIndexOf(range.startContainer) : null;
+  if (!readerArticle || !Number.isInteger(paragraphIndex) || paragraphIndex !== blockIndexOf(range.endContainer) || selectionInTranslation()) {
+    toast('本文の同じ段落内を選択してください', 'warn'); return;
+  }
+  const sourceArticle = readerArticle;
+  const sourceParagraph = readerArticle.paragraphs[paragraphIndex];
+  if (!sourceParagraph || sourceParagraph.length > 12000 || !/\d/.test(sourceParagraph)) { toast('数値を含む短い本文段落を選択してください', 'warn'); return; }
+  if (typeof contextualAi === 'undefined') { toast('AI機能を利用できません。通常のReader操作は続けられます', 'warn'); return; }
+  const token = ++readerToolProposalToken;
+  const controller = new AbortController();
+  readerToolProposalController = controller;
+  const button = document.getElementById('reader-ai-tool-propose');
+  const status = document.getElementById('reader-ai-tool-status');
+  const cancel = document.getElementById('reader-ai-tool-cancel');
+  if (button) button.disabled = true;
+  if (status) { status.textContent = '端末内AIで提案を作成中…'; status.hidden = false; }
+  if (cancel) cancel.hidden = false;
+  const studyStartedAt = performance.now();
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f5', event: 'started', trigger: 'user_action', mode: 'manual', processor: 'chrome_local' });
+  try {
+    const generated = await contextualAi.proposeTool(sourceParagraph, paragraphIndex, sourceArticle, controller.signal);
+    if (token !== readerToolProposalToken || readerArticle !== sourceArticle || readerArticle.paragraphs[paragraphIndex] !== sourceParagraph
+      || (typeof isContextualFeatureEnabled === 'function' && !isContextualFeatureEnabled('f5'))) return;
+    if (generated.status !== 'ok') throw new Error(generated.failureReason || '端末内AIを利用できません');
+    const proposal = generated.output?.proposal;
+    if (!proposal?.supported) {
+      if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f5', event: 'completed', trigger: 'user_action', outcome: 'unavailable', processor: 'chrome_local', latencyMs: performance.now() - studyStartedAt });
+      toast('この段落から安全に検証できる計算案は見つかりませんでした'); return;
+    }
+    const validated = await api.post('/api/reader/tools/validate-proposal', { sourceIndex: paragraphIndex, sourceParagraph, proposal: {
+      title: proposal.title, expression: proposal.expression, resultUnit: proposal.resultUnit, sourceQuote: proposal.sourceQuote, variables: proposal.variables,
+    } }, { signal: controller.signal });
+    if (token !== readerToolProposalToken || readerArticle !== sourceArticle || readerArticle.paragraphs[paragraphIndex] !== sourceParagraph
+      || (typeof isContextualFeatureEnabled === 'function' && !isContextualFeatureEnabled('f5'))) return;
+    const tool = validated.tool;
+    if (!tool || validated.persistent !== false || validated.verification !== 'source_and_syntax_checked_semantics_unverified') throw new Error('検証応答を確認できません');
+    readerArticle.tools = [...(readerArticle.tools || []).filter(item => item.id !== tool.id), tool];
+    ephemeralReaderToolIds.add(tool.id);
+    readerToolValues[tool.id] = Object.fromEntries(tool.variables.map(variable => [variable.key, variable.initial]));
+    const target = document.querySelector(`#reader-article [data-index="${paragraphIndex}"]`);
+    if (!target) { discardEphemeralReaderTool(tool.id, null); throw new Error('選択した本文が表示中に変わりました'); }
+    openReaderToolPanel(tool, target);
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f5', event: 'completed', trigger: 'user_action', outcome: 'ok', processor: generated.processor === 'chrome_local' ? 'chrome_local' : 'none', latencyMs: performance.now() - studyStartedAt });
+  } catch (error) {
+    if (!controller.signal.aborted && typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f5', event: 'failed', trigger: 'user_action', outcome: 'error', processor: 'chrome_local', latencyMs: performance.now() - studyStartedAt });
+    if (token === readerToolProposalToken) showApiError(error, '計算案を作れませんでした。本文と保存データは変更していません');
+  } finally {
+    if (token === readerToolProposalToken) {
+      if (button) button.disabled = false;
+      if (status) { status.hidden = true; status.textContent = ''; }
+      if (cancel) cancel.hidden = true;
+      if (readerToolProposalController === controller) readerToolProposalController = null;
+      updateReaderToolProposalAction();
+    }
+  }
+}
+
+function cancelReaderToolProposal() {
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f5', event: 'cancelled', trigger: 'user_action', outcome: 'cancelled', processor: 'chrome_local' });
+  readerToolProposalToken++;
+  readerToolProposalController?.abort();
+  readerToolProposalController = null;
+  const button = document.getElementById('reader-ai-tool-propose');
+  const status = document.getElementById('reader-ai-tool-status');
+  const cancel = document.getElementById('reader-ai-tool-cancel');
+  if (button) button.disabled = false;
+  if (status) { status.hidden = true; status.textContent = ''; }
+  if (cancel) cancel.hidden = true;
 }
 
 function renderReaderCalculator(tool, panel) {
@@ -731,7 +967,13 @@ function jumpToQuoteSource() {
   } else {
     const memo = document.getElementById('reader-memo');
     memoText = memo.value;
+    const crossSource = findCrossSourceLinkAt(memo.value, memo.selectionStart);
+    if (crossSource) { void jumpToCrossCardSource(crossSource.cardId, crossSource.sourceHash, crossSource.paragraphIndex); return; }
     index = findQuoteMarkerAt(memo.value, memo.selectionStart);
+  }
+  if (typeof memoTableRows !== 'undefined' && memoTableRows && memoText) {
+    const crossSource = parseCrossSourceLink(memoText);
+    if (crossSource) { void jumpToCrossCardSource(crossSource.cardId, crossSource.sourceHash, crossSource.paragraphIndex); return; }
   }
   if (index === null) { toast('引用（[¶番号] 付き）の上にカーソルを置いてから押してください', 'warn'); return; }
   if (readerArticle?.paragraphs) {
@@ -757,6 +999,39 @@ function jumpToParagraph(index) {
   document.querySelectorAll('#reader-article .quote-flash').forEach(el => el.classList.remove('quote-flash'));
   void target.offsetWidth; // restart the highlight animation
   target.classList.add('quote-flash');
+}
+
+function presentSearchSnippetTarget(snippet) {
+  const host = document.getElementById('reader-meta');
+  if (!host || !readerArticle?.paragraphs) return false;
+  host.querySelector('#reader-search-passage-choice')?.remove();
+  const indices = exactSnippetParagraphIndices(snippet, readerArticle.paragraphs);
+  const notice = document.createElement('div');
+  notice.id = 'reader-search-passage-choice';
+  notice.className = 'reader-note reader-passage-choice';
+  notice.setAttribute('role', 'status');
+  if (indices.length === 1) {
+    notice.textContent = '検索結果の抜粋と保存本文の一意な一致を確認しました。該当段落を表示しています。';
+    host.append(notice);
+    jumpToParagraph(indices[0]);
+    return true;
+  }
+  if (indices.length > 1) {
+    const label = document.createElement('p');
+    label.textContent = `抜粋が保存本文の${indices.length}箇所に一致します。移動先を選んでください。`;
+    notice.append(label);
+    indices.forEach(index => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'btn btn-secondary btn-sm'; button.textContent = `段落 ${index + 1} を表示`;
+      button.onclick = () => jumpToParagraph(index);
+      notice.append(button);
+    });
+    host.append(notice);
+    return true;
+  }
+  notice.textContent = '検索結果の抜粋を保存本文内で一意に確認できません。本文は開いたままなので、Reader内で探してください。';
+  host.append(notice);
+  return false;
 }
 
 // ── Drafts: memo is kept in this browser until it is saved ──
@@ -789,6 +1064,7 @@ function clearReaderDraft() {
 function offerReaderDraft() {
   const banner = document.getElementById('reader-draft');
   banner.style.display = 'none';
+  if (typeof isContextualFeatureEnabled === 'function' && !isContextualFeatureEnabled('f4')) return;
   const key = readerDraftKey();
   let draft = null;
   try { draft = key ? JSON.parse(localStorage.getItem(key) || 'null') : null; } catch { draft = null; }
@@ -798,18 +1074,26 @@ function offerReaderDraft() {
   if (memoMatches && tagsMatch) return;
   document.getElementById('reader-draft-time').textContent = new Date(draft.savedAt).toLocaleString('ja-JP');
   banner.style.display = '';
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f4', event: 'shown', trigger: 'draft_available' });
   banner.dataset.memo = draft.memo;
   banner.dataset.tags = draft.tags ?? '';
-  if (readerSessionRestorePending) restoreReaderDraft();
+  if (readerSessionRestorePending) restoreReaderDraft({ automatic: true });
 }
-function restoreReaderDraft() {
+function restoreReaderDraft(options = {}) {
   const banner = document.getElementById('reader-draft');
   if (typeof setMemoMode === 'function') setMemoMode('text');
   document.getElementById('reader-memo').value = banner.dataset.memo || '';
   if (banner.dataset.tags) document.getElementById('reader-tags').value = banner.dataset.tags;
   banner.style.display = 'none';
+  const mode = options.automatic ? 'safe_auto' : 'manual';
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f4', event: 'started', trigger: 'user_action', mode });
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f4', event: 'completed', trigger: 'user_action', outcome: 'ok', mode });
 }
-function discardReaderDraft() { clearReaderDraft(); }
+function discardReaderDraft() {
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f4', event: 'started', trigger: 'user_action', mode: 'manual' });
+  clearReaderDraft();
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f4', event: 'completed', trigger: 'user_action', outcome: 'discarded' });
+}
 
 async function saveReaderCard() {
   if (readerSaving) return;
@@ -942,11 +1226,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('reader-tags')?.addEventListener('input', readerDraftChanged);
 });
 
+let readerSelectionActionTimer = null;
+document.addEventListener('selectionchange', () => {
+  clearTimeout(readerSelectionActionTimer);
+  readerSelectionActionTimer = setTimeout(updateReaderToolProposalAction, 100);
+});
+
 // ── AI evidence: the AI proposes claim ↔ quote rows for a purpose, the server
 // checks each quote against the text (no AI), and only found quotes can be added.
 let evidenceResult = null;
 
 function resetEvidence() {
+  evidenceRequestToken++;
   evidenceResult = null;
   const host = document.getElementById('evidence-results');
   if (host) host.textContent = '';
@@ -956,12 +1247,14 @@ function resetEvidence() {
 // when this instance has a key, else the words of the purpose (no AI). Quotes are always checked.
 async function evidenceEngine() {
   if (typeof localAi !== 'undefined' && await localAi.isReady('prompt')) return 'local-ai';
+  if (typeof appFeatures !== 'undefined' && appFeatures.aiMode === 'mock') return 'mock';
   if (typeof appFeatures !== 'undefined' && appFeatures.ai) return 'server-ai';
   return 'words';
 }
 const EVIDENCE_ENGINE_TEXT = {
   'local-ai': '端末のAI（Chrome内蔵）が一節を選び、アプリが本文と一字一句照合します。',
-  'server-ai': 'AIが一節を選び、アプリが本文と一字一句照合します。',
+  'server-ai': '実行ボタンを押すと、記事本文と検索目的を設定済みの外部AIへ送信します。返った引用はアプリが本文と一字一句照合します。',
+  mock: 'テスト用のAIモックが応答します。実際のAIによる生成ではありません。引用は本文と一字一句照合します。',
   words: '目的の語を多く含む文を選びます（AIなし）。端末のAIを準備すると、意味で選べます。',
 };
 async function renderEvidenceEngine() {
@@ -976,7 +1269,7 @@ async function renderEvidenceEngine() {
   }
 }
 
-async function runEvidence() {
+async function runEvidence(options = {}) {
   if (!readerArticle) { toast('先に本文を読み込んでください', 'warn'); return; }
   const details = document.getElementById('reader-evidence-details');
   if (details) details.open = true;
@@ -984,28 +1277,57 @@ async function runEvidence() {
   if (purpose.length < 2) { toast('何のために読むのかを1行で書いてください', 'warn'); document.getElementById('evidence-purpose').focus(); return; }
   const host = document.getElementById('evidence-results');
   const button = document.getElementById('evidence-run');
+  const cancel = document.getElementById('evidence-cancel');
+  const sourceArticle = readerArticle;
   const article = { title: readerArticle.title.slice(0, 200), url: readerArticle.url || null, paragraphs: readerArticle.paragraphs };
-  const engine = await evidenceEngine();
-  host.textContent = engine === 'words' ? '目的の語を含む文を探しています…' : 'AIが本文を読んでいます…（引用は本文と照合してから表示します）';
+  const requestToken = ++evidenceRequestToken;
+  const controller = new AbortController();
+  evidenceRequestController = controller;
+  const engine = options.forceWords ? 'words' : await evidenceEngine();
+  const studyStartedAt = performance.now();
+  const studyProcessor = engine === 'words' ? 'rules' : engine === 'local-ai' ? 'chrome_local' : engine === 'mock' ? 'mock' : 'configured_server';
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f6', event: 'started', trigger: 'user_action', mode: 'manual', processor: studyProcessor });
+  host.textContent = engine === 'words' ? '目的の語を含む文を探しています…' : engine === 'local-ai' ? '端末内AIが本文を読んでいます…（引用を照合します）' : engine === 'mock' ? '試験用モックを実行しています…' : '設定済み外部AIへ本文を送信しています…（引用を照合します）';
   button.disabled = true;
+  if (cancel) cancel.hidden = false;
   try {
-    if (engine === 'local-ai') {
-      const proposed = await localAi.proposePassages(purpose, readerArticle.paragraphs, {
-        onChunk: (done, total) => { host.textContent = `端末のAIが本文を読んでいます… ${done}/${total}`; },
-      });
-      evidenceResult = await api.post('/api/reader/passages', { purpose, article, proposed: proposed.rows.map(row => ({ ...row, source: 'S1' })) });
-    } else if (engine === 'server-ai') {
-      evidenceResult = await api.post('/api/reader/evidence', { purpose, article });
-    } else {
-      evidenceResult = await api.post('/api/reader/passages', { purpose, article });
-    }
+    const response = await contextualAi.articleSummary(engine, purpose, article, controller.signal);
+    if (requestToken !== evidenceRequestToken || readerArticle !== sourceArticle) return;
+    if (response.status !== 'ok' || !response.output) throw new Error(response.failureReason || '根拠候補を取得できませんでした');
+    evidenceResult = {
+      ...response.output,
+      method: response.processor,
+      modelVersion: response.modelVersion,
+      source: response.source,
+      verification: response.verification,
+    };
     renderEvidence();
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f6', event: 'completed', trigger: 'user_action', outcome: 'ok', processor: studyProcessor, latencyMs: performance.now() - studyStartedAt });
   } catch (error) {
+    if (requestToken !== evidenceRequestToken || readerArticle !== sourceArticle) return;
     evidenceResult = null;
     host.textContent = `根拠を探せませんでした: ${formatApiError(error)}`;
+    if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f6', event: controller.signal.aborted ? 'cancelled' : 'failed', trigger: 'user_action', outcome: controller.signal.aborted ? 'cancelled' : 'error', processor: studyProcessor, latencyMs: performance.now() - studyStartedAt });
   } finally {
-    button.disabled = false;
+    if (requestToken === evidenceRequestToken) {
+      button.disabled = false;
+      if (cancel) cancel.hidden = true;
+      if (evidenceRequestController === controller) evidenceRequestController = null;
+    }
   }
+}
+
+function cancelEvidenceRequest() {
+  if (typeof ContextualStudy !== 'undefined') ContextualStudy.record({ feature: 'f6', event: 'cancelled', trigger: 'user_action', outcome: 'cancelled' });
+  evidenceRequestToken++;
+  evidenceRequestController?.abort();
+  evidenceRequestController = null;
+  const button = document.getElementById('evidence-run');
+  const cancel = document.getElementById('evidence-cancel');
+  if (button) button.disabled = false;
+  if (cancel) cancel.hidden = true;
+  const host = document.getElementById('evidence-results');
+  if (host) host.textContent = '結果を破棄しました。完了前のローカルモデル処理自体はブラウザ側で続く場合がありますが、保存・表示には反映しません。';
 }
 
 function evidenceButton(label, title, onClick) {
@@ -1023,6 +1345,28 @@ function renderEvidence() {
   host.textContent = '';
   if (!evidenceResult) return;
   const { rows, rejected } = evidenceResult;
+  if (evidenceResult.summary) {
+    const summary = document.createElement('div');
+    summary.className = 'reader-note contextual-summary';
+    const label = document.createElement('strong');
+    label.textContent = '検索目的に沿った要点候補';
+    const body = document.createElement('p');
+    body.textContent = evidenceResult.summary;
+    const note = document.createElement('small');
+    note.textContent = '各要点は下の本文一致済み引用に対応します。要点は生成文であり、記事の直接引用ではありません。';
+    summary.append(label, body, note);
+    host.appendChild(summary);
+  }
+  const provenance = document.createElement('p');
+  provenance.className = 'reader-note';
+  provenance.textContent = evidenceResult.method === 'chrome_local'
+    ? '要点候補は端末内AIの生成です。表示した引用は本文と完全一致することを検証しています。'
+    : evidenceResult.method === 'mock'
+      ? '試験用モックの要点候補です。実際のAI生成結果ではありません。表示した引用は本文と一致することを検証しています。'
+    : evidenceResult.method === 'configured_server'
+      ? '要点候補は設定済み外部AIの生成です。表示した引用は本文と完全一致することを検証しています。'
+      : '要点候補は検索目的の語をもとにしたルール処理です。表示した引用は本文から抽出しています。';
+  host.appendChild(provenance);
   const head = document.createElement('div');
   head.className = 'evidence-head';
   const count = document.createElement('span');
@@ -1096,6 +1440,7 @@ function addEvidence(rows) {
 async function applyManualReaderText() {
   const text = document.getElementById('reader-manual-text').value.trim();
   if (!text) return;
+  invalidateContextualRequests();
   readerRequestVersion++;
   readerArticle = { ...(readerArticle || {}), url: document.getElementById('reader-url').value.trim(), title: readerArticle?.title || document.getElementById('reader-fallback-title').value.trim() || 'Untitled', byline: readerArticle?.byline || null, siteName: readerArticle?.siteName || null, fetchedAt: new Date().toISOString(), paragraphs: text.split(/\n\s*\n/).filter(Boolean) };
   try {

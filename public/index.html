@@ -33,8 +33,36 @@
     <div class="topbar-more-menu topbar-admin-menu">
       <button class="btn btn-secondary btn-sm" onclick="openSourceModal();this.closest('details').open=false">ソース管理</button>
       <button class="btn btn-secondary btn-sm" onclick="openCSVModal();this.closest('details').open=false">データ取り込み</button>
+      <button class="btn btn-secondary btn-sm" onclick="openContextualSettings();this.closest('details').open=false">状況別の補助機能</button>
     </div>
   </details>
+</div>
+
+<div class="modal-overlay" id="modal-contextual-settings">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="contextual-settings-title">
+    <div class="modal-header">
+      <h2 id="contextual-settings-title">状況別の補助機能</h2>
+      <button class="btn-icon" onclick="closeModal('modal-contextual-settings')" aria-label="閉じる">×</button>
+    </div>
+    <p class="reader-note">必要な場面で補助操作を表示します。記事・検索語・メモをこの設定に記録しません。AI候補生成は初期状態でOFFです。AI処理は利用者が実行したときだけ始まります。</p>
+    <div class="contextual-feature-settings">
+      <label><input type="checkbox" data-context-feature="f1" onchange="setContextualFeature('f1',this.checked)"> F1 検索結果から本文の該当箇所へ移動</label>
+      <label><input type="checkbox" data-context-feature="f2" onchange="setContextualFeature('f2',this.checked)"> F2 検索失敗時の状況別案内</label>
+      <label><input type="checkbox" data-context-feature="f3" onchange="setContextualFeature('f3',this.checked)"> F3 引用を別の保存メモへ引き継ぐ</label>
+      <label><input type="checkbox" data-context-feature="f4" onchange="setContextualFeature('f4',this.checked)"> F4 Readerの作業再開支援</label>
+      <label><input type="checkbox" data-context-feature="f5" onchange="setContextualFeature('f5',this.checked)"> F5 一般記事からAI道具案を試す（実験）</label>
+      <label><input type="checkbox" data-context-feature="f6" onchange="setContextualFeature('f6',this.checked)"> F6 検索目的に関連する本文箇所を表示</label>
+    </div>
+    <hr>
+    <p class="reader-note">比較研究用の任意記録です。初期状態は停止中です。有効にすると機能の表示・操作・結果・AI方式・待ち時間と機能設定だけをこのブラウザーに保存します。記事本文、検索語、URL、メモ、記事IDは記録しません。外部送信は行いません。</p>
+    <label><input id="contextual-study-consent" type="checkbox" onchange="setContextualStudyConsent(this.checked)"> 状況別補助機能の利用記録をこの端末に保存する</label>
+    <p id="contextual-study-count" class="reader-note" aria-live="polite">記録は停止中です</p>
+    <div class="evidence-actions">
+      <button id="contextual-study-export" class="btn btn-secondary btn-sm" onclick="exportContextualStudyEvents()" disabled>記録をエクスポート</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearContextualStudyEvents()">記録を削除</button>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-contextual-settings')">閉じる</button></div>
+  </div>
 </div>
 
 <!-- メイン -->
@@ -147,7 +175,7 @@
               <div class="search-main">
                 <label class="search-main-label" for="search-terms">何を調べる？（検索語でも文章でも）</label>
                 <div class="search-main-row">
-                  <input id="search-terms" placeholder="例: SQLiteの同時書き込み" autocomplete="off" onkeydown="if(event.key==='Enter'&&!event.isComposing)runSearchScreen()">
+                  <input id="search-terms" placeholder="例: SQLiteの同時書き込み" autocomplete="off" oninput="cancelKeywordExpansion()" onkeydown="if(event.key==='Enter'&&!event.isComposing)runSearchScreen()">
                   <button class="btn btn-primary" onclick="runSearchScreen()" id="bm25-run-btn">検索</button>
                 </div>
                 <div class="search-targets-label">検索先 <button class="link-btn" type="button" onclick="openSourceModal()">＋ サイトを追加</button></div>
@@ -349,7 +377,8 @@
           <div class="evidence-box">
             <div class="evidence-input">
               <input type="text" id="evidence-purpose" maxlength="300" placeholder="何のために読む？（例: BM25がAI検索より有利な点を知りたい）" onkeydown="if(event.key==='Enter'&&!event.isComposing)runEvidence()">
-              <button class="btn btn-secondary btn-sm" id="evidence-run" onclick="runEvidence()" title="目的に関係する一節を本文から選び、本文に一字一句あるかを照合します">根拠を探す</button>
+              <button class="btn btn-secondary btn-sm" id="evidence-run" onclick="runEvidence()" title="目的に関係する要点候補と引用を抽出し、引用を本文と一字一句照合します">要点と根拠を探す</button>
+              <button class="btn btn-secondary btn-sm" id="evidence-cancel" onclick="cancelEvidenceRequest()" hidden>結果を破棄</button>
             </div>
             <div id="evidence-engine" class="reader-note"></div>
             <div id="evidence-results" class="evidence-results"></div>
@@ -365,6 +394,12 @@
           <p class="reader-note">Enter で下のセルへ（最後の行なら行を追加）。最後のセルで Tab でも行を追加。</p>
         </div>
         <textarea id="reader-memo" placeholder="読みながら書く。左で文を選んで「選択を引用」（Alt+Q）またはドラッグで引用。引用の上で Alt+J で元の段落へ。"></textarea>
+        <div id="reader-cross-quote" class="reader-cross-quote" hidden>
+          <label for="reader-cross-quote-target">引用を追加する保存メモ</label>
+          <select id="reader-cross-quote-target"><option value="">保存先を選択</option></select>
+          <button class="btn btn-secondary btn-sm" id="reader-cross-quote-save" onclick="transferReaderQuote()">出典付きで追加</button>
+          <button class="btn btn-secondary btn-sm" onclick="cancelQuoteTransfer()">キャンセル</button>
+        </div>
         <div class="reader-biblio" title="引用の出典表記に使います">
           <input type="text" id="reader-author" maxlength="300" placeholder="著者（例: 水本・竹内）">
           <input type="text" id="reader-year" maxlength="20" placeholder="発行年">
@@ -372,8 +407,12 @@
         </div>
         <input type="text" id="reader-tags" placeholder="タグ（スペース区切り）">
         <div class="reader-actions">
+          <button class="btn btn-secondary btn-sm" id="reader-ai-tool-propose" onclick="proposeReaderToolForSelection()" title="選択段落からローカルAIが計算案を作り、安全性と本文の根拠を検証して一時プレビューします" hidden>選択箇所から計算案</button>
+          <span id="reader-ai-tool-status" class="reader-note" role="status" aria-live="polite" hidden></span>
+          <button class="btn btn-secondary btn-sm" id="reader-ai-tool-cancel" onclick="cancelReaderToolProposal()" hidden>結果を破棄</button>
           <button class="btn btn-secondary btn-sm" onclick="jumpToQuoteSource()" title="カーソルのある引用の元の段落へ（Alt+J）">引用元へ</button>
           <button class="btn btn-secondary btn-sm" onclick="quoteReaderSelection()" title="左で選んだ文を引用（Alt+Q／ドラッグでも可）">選択を引用</button>
+          <button class="btn btn-secondary btn-sm" id="reader-cross-quote-open" onclick="prepareQuoteTransfer()" title="選択した引用を、指定した別の保存メモへ追加" hidden>別メモへ引用</button>
           <button class="btn btn-secondary btn-sm" onclick="copyCitedSelection()" title="左で選んだ文を「引用」（著者，年，ページ）の形でコピー">出典つきでコピー</button>
           <button class="btn btn-primary btn-sm" id="reader-save-btn" onclick="saveReaderCard()">メモと本文を保存</button>
         </div>
@@ -591,6 +630,8 @@
 </div>
 
 <script src="app.js"></script>
+<script src="js/contextual_automation.js"></script>
+<script src="js/contextual_study.js"></script>
 <script src="js/views.js"></script>
 <script src="js/memo_render.js"></script>
 <script src="js/cards_ui.js"></script>
@@ -608,6 +649,7 @@
 <script src="js/candidate_ui.js"></script>
 <script src="js/memo_table.js"></script>
 <script src="js/local_ai.js"></script>
+<script src="js/contextual_ai_provider.js"></script>
 <script src="js/reader_ui.js"></script>
 <script src="js/reader_translation_ui.js"></script>
 <script src="js/discover_ui.js"></script>

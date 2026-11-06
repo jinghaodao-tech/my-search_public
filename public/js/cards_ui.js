@@ -363,3 +363,14 @@ async function confirmDelete() {
 }
 
 // ════════════════════════════════════════
+document.addEventListener('click', event => {
+  const link = event.target?.closest?.('.memo-source-link');
+  if (!link) return;
+  event.preventDefault();
+  let sourceCardId;
+  try { sourceCardId = decodeURIComponent(link.dataset.sourceId || ''); } catch { return; }
+  const sourceHash = link.dataset.sourceHash || '';
+  const paragraphIndex = Number(link.dataset.sourceParagraph) - 1;
+  if (!sourceCardId || !/^[a-f0-9]{64}$/.test(sourceHash) || !Number.isInteger(paragraphIndex) || paragraphIndex < 0) return;
+  void jumpToCrossCardSource(sourceCardId, sourceHash, paragraphIndex);
+});

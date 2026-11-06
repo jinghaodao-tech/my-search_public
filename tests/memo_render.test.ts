@@ -17,6 +17,9 @@ const memoQuoteAnchorStatus = sandbox.memoQuoteAnchorStatus as (memo: string, in
 const renderMemoHtml = sandbox.renderMemoHtml as (memo: string) => string;
 const memoPreviewText = sandbox.memoPreviewText as (body: string) => string | null;
 const splitReaderBody = sandbox.splitReaderBody as (body: string) => { memo: string; sourceLines: string[] } | null;
+const parseCrossSourceLink = sandbox.parseCrossSourceLink as (text: string) => { cardId: string; sourceHash: string; paragraphIndex: number } | null;
+const findCrossSourceLinkAt = sandbox.findCrossSourceLinkAt as (text: string, caret: number) => { cardId: string; sourceHash: string; paragraphIndex: number } | null;
+const exactSnippetParagraphIndices = sandbox.exactSnippetParagraphIndices as (snippet: string, paragraphs: string[]) => number[];
 
 describe('quote markers', () => {
   it('formats text and cell quotes with a 1-based paragraph marker', () => {
@@ -76,6 +79,26 @@ describe('memo rendering for the card detail panel', () => {
     const body = '## メモ\n\nメモ本文\n\n## 出典\n\n- タイトル: T\n- URL: https://e.com\n\n## 本文（取得時点のコピー・私的利用）\n\n本文';
     expect(splitReaderBody(body)).toEqual({ memo: 'メモ本文', sourceLines: ['- タイトル: T', '- URL: https://e.com'] });
     expect(splitReaderBody('普通のメモ')).toBeNull();
+  });
+
+  it('renders and parses a local cross-card source link without admitting markup', () => {
+    const hash = 'a'.repeat(64);
+    const memo = `> 引用\n> [元記事へ戻る](#my-search-source:card%3Aone:${hash}:3)`;
+    expect(parseCrossSourceLink(memo)).toEqual({ cardId: 'card:one', sourceHash: hash, paragraphIndex: 2 });
+    expect(findCrossSourceLinkAt(memo, memo.indexOf('引用'))).toEqual({ cardId: 'card:one', sourceHash: hash, paragraphIndex: 2 });
+    const html = renderMemoHtml(memo);
+    expect(html).toContain('class="memo-source-link"');
+    expect(html).toContain('data-source-id="card%3Aone"');
+    expect(html).not.toContain('<script');
+    expect(parseCrossSourceLink(`[元記事へ戻る](javascript:alert(1))`)).toBeNull();
+  });
+});
+
+describe('search excerpt location', () => {
+  it('returns only exact normalized paragraph matches for safe result-to-reader jumps', () => {
+    expect(exactSnippetParagraphIndices('本文の抜粋。', ['前段落', '本文の 抜粋。', '後段落'])).toEqual([1]);
+    expect(exactSnippetParagraphIndices('重複', ['重複する文章', '重複する文章'])).toEqual([0, 1]);
+    expect(exactSnippetParagraphIndices('省略…された断片', ['省略前の文と、途中が違う断片'])).toEqual([]);
   });
 });
 

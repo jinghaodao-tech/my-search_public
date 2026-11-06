@@ -51,6 +51,14 @@ export type ReaderToolAssessment = {
   tools: ReaderTool[];
 };
 
+export type ReaderCalculatorProposal = {
+  title: string;
+  expression: string;
+  resultUnit: string;
+  variables: Array<{ key: string; label: string; unit: string; min: number; max: number; initial: number; quote: string }>;
+  sourceQuote: string;
+};
+
 const MAX_PARAGRAPHS = 50_000;
 const MAX_TOOL_BLOCK_PARAGRAPHS = 40;
 const MAX_ABS_INPUT = 1e12;
@@ -225,6 +233,43 @@ export function prepareReaderTools(paragraphs: string[]): ReaderTool[] {
     }
   }
   return tools;
+}
+
+/** Convert an untrusted model proposal into the existing arithmetic-only Reader tool shape. */
+export function validateReaderCalculatorProposal(input: unknown, sourceParagraph: string, sourceIndex: number): ReaderCalculatorTool | null {
+  if (!input || typeof input !== 'object' || Array.isArray(input) || !Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= MAX_PARAGRAPHS) return null;
+  const proposal = input as Partial<ReaderCalculatorProposal>;
+  const clean = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : '';
+  const title = clean(proposal.title, 100);
+  const expression = clean(proposal.expression, 200);
+  const resultUnit = clean(proposal.resultUnit, 30);
+  const sourceQuote = clean(proposal.sourceQuote, 3000).normalize('NFKC').replace(/\s+/g, ' ').trim();
+  const paragraph = sourceParagraph.normalize('NFKC').replace(/\s+/g, ' ').trim();
+    if (!title || !resultUnit || !sourceQuote || !paragraph.includes(sourceQuote) || !sourceQuote.includes(resultUnit)) return null;
+  if (!Array.isArray(proposal.variables) || proposal.variables.length < 1 || proposal.variables.length > 8) return null;
+  const variables: ReaderToolVariable[] = [];
+  for (const raw of proposal.variables) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const item = raw as Partial<ReaderCalculatorProposal['variables'][number]>;
+    const key = clean(item.key, 40);
+    const label = clean(item.label, 60);
+    const unit = clean(item.unit, 30);
+    const quote = clean(item.quote, 1000).normalize('NFKC').replace(/\s+/g, ' ').trim();
+    const min = item.min, max = item.max, initial = item.initial;
+    if (!IDENTIFIER.test(key) || variables.some(variable => variable.key === key) || !label || !unit || !quote || !paragraph.includes(quote) || !quote.includes(unit)) return null;
+    if (![min, max, initial].every(value => typeof value === 'number' && Number.isFinite(value))) return null;
+    const minValue = min as number, maxValue = max as number, initialValue = initial as number;
+    if (Math.abs(minValue) > MAX_ABS_INPUT || Math.abs(maxValue) > MAX_ABS_INPUT || Math.abs(initialValue) > MAX_ABS_INPUT || minValue >= maxValue || initialValue < minValue || initialValue > maxValue) return null;
+    const quoteNumbers = quote.match(/-?(?:\d+(?:\.\d*)?|\.\d+)/g) ?? [];
+    if (![minValue, maxValue, initialValue].every(value => quoteNumbers.some(number => Number(number) === value))) return null;
+    variables.push({ key, label, unit, min: minValue, max: maxValue, initial: initialValue, sourceIndex });
+  }
+  const rpn = parseExpression(expression, new Set(variables.map(variable => variable.key)));
+  if (!rpn) return null;
+  const sourceNumbers = sourceQuote.match(/-?(?:\d+(?:\.\d*)?|\.\d+)/g) ?? [];
+  if (rpn.some(token => typeof token === 'number' && !sourceNumbers.some(number => Number(number) === token))) return null;
+  const id = `ai-calc-${stableId(`${sourceIndex}\n${title}\n${expression}\n${sourceQuote}`)}`;
+  return { id, kind: 'calculator', title, expression, resultUnit, rpn, variables, sourceIndices: [sourceIndex] };
 }
 
 export function assessReaderTools(paragraphs: string[], enabled = true): ReaderToolAssessment {
