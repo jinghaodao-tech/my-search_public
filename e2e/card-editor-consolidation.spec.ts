@@ -152,7 +152,7 @@ test('article and PDF use the same responsive editor and retain original source/
   }
 });
 
-test('the card-list pencil remains a shortcut to the shared editor for every card type', async ({ page, request }) => {
+test('desktop list pencil and mobile detail edit open the shared editor for every card type', async ({ page, request }) => {
   test.setTimeout(90_000);
   await mkdir(screenshotDir, { recursive: true });
   const memoTitle = `Quick memo ${stamp()}`;
