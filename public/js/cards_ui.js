@@ -274,7 +274,7 @@ function renderDetailPanel(card) {
     ${safeLinkUrl(card.url)?`<div class="detail-section detail-url"><h4>リンク</h4><a href="${esc(safeLinkUrl(card.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(card.url)}</a></div>`:''}
     <div class="detail-section">
       <h4>AI要約${card.summary?'':'<span style="color:var(--text-dim);font-weight:400"> (未生成)</span>'}</h4>
-      ${card.summary?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="deleteSummary(${jsArg(card.id)})">Delete</button></div><div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm needs-ai" onclick="summarizeOne(${jsArg(card.id)})">⚡ AI要約を生成</button>`}
+      ${card.summary?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="deleteSummary(${jsArg(card.id)})">要約を削除</button></div><div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm needs-ai" onclick="summarizeOne(${jsArg(card.id)})">⚡ AI要約を生成</button>`}
     </div>
     ${renderDetailBody(card)}
     <div class="detail-section">

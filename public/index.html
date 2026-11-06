@@ -31,7 +31,7 @@
   <details class="topbar-more topbar-admin">
     <summary>管理</summary>
     <div class="topbar-more-menu topbar-admin-menu">
-      <button class="btn btn-secondary btn-sm" onclick="openSourceModal();this.closest('details').open=false">ソース管理</button>
+      <button class="btn btn-secondary btn-sm" onclick="openSourceModal();this.closest('details').open=false">情報源を管理</button>
       <button class="btn btn-secondary btn-sm" onclick="openCSVModal();this.closest('details').open=false">データ取り込み</button>
       <button class="btn btn-secondary btn-sm" onclick="openContextualSettings();this.closest('details').open=false">状況別の補助機能</button>
     </div>
@@ -70,7 +70,7 @@
 
   <!-- サイドバー（カード一覧時のみ表示） -->
   <div id="sidebar">
-    <button id="sidebar-toggle" class="btn btn-secondary btn-sm" onclick="toggleCardSidebar()" title="Toggle sidebar">=</button>
+    <button id="sidebar-toggle" class="btn btn-secondary btn-sm" onclick="toggleCardSidebar()" title="検索条件の表示を切り替え" aria-label="検索条件の表示を切り替え">=</button>
     <div id="sidebar-body">
       <div class="sidebar-section">
         <details class="sidebar-options needs-ai">
@@ -121,11 +121,11 @@
           <button class="type-btn" id="layout-table" onclick="setCardLayout('table')">表</button>
         </div>
         <input type="text" id="search-input" placeholder="保存済みカードを検索" oninput="onSearch(this.value)">
-        <button class="btn btn-primary btn-sm" onclick="openNewCardModal()">メモ作成</button>
+        <button class="btn btn-primary btn-sm" onclick="openNewCardModal()">メモを作成</button>
         <button id="multi-select-btn" class="btn btn-secondary btn-sm" onclick="toggleMultiSelect()">選択</button>
         <button id="bulk-archive-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="archiveSelected()">一括アーカイブ</button>
         <button id="bulk-restore-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="restoreSelected()">一括復元</button>
-        <button id="bulk-export-md-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="exportSelectedMarkdown()">MD Export</button>
+        <button id="bulk-export-md-btn" class="btn btn-secondary btn-sm" style="display:none" onclick="exportSelectedMarkdown()">Markdown出力</button>
         <button id="bulk-delete-btn" class="btn btn-danger btn-sm" style="display:none" onclick="deleteSelected()">一括削除</button>
         <button class="btn btn-secondary btn-sm needs-ai" onclick="summarizeBulk()">一括要約</button>
       </div>
@@ -178,7 +178,7 @@
                   <input id="search-terms" placeholder="例: SQLiteの同時書き込み" autocomplete="off" oninput="cancelKeywordExpansion()" onkeydown="if(event.key==='Enter'&&!event.isComposing)runSearchScreen()">
                   <button class="btn btn-primary" onclick="runSearchScreen()" id="bm25-run-btn">検索</button>
                 </div>
-                <div class="search-targets-label">検索先 <button class="link-btn" type="button" onclick="openSourceModal()">＋ サイトを追加</button></div>
+                <div class="search-targets-label">検索先 <button class="link-btn" type="button" onclick="openSourceModal()">情報源を管理</button></div>
                 <div id="search-targets" class="search-targets"></div>
                 <div class="refind-study-control">
                   <label><input type="checkbox" id="refind-study-consent" class="refind-study-consent"> 自然に保存記事を探す検索をローカル評価へ記録する</label>
@@ -294,7 +294,7 @@
               <div id="bm25-stats" aria-live="polite"></div>
               <button class="btn btn-secondary btn-sm" onclick="openExternalSearch()">同じ検索語でWeb検索</button>
               <button class="btn btn-secondary btn-sm" onclick="openReader()">URLを取り込む</button>
-              <button class="btn btn-secondary btn-sm" onclick="openSourceModal()">情報源を追加</button>
+              <button class="btn btn-secondary btn-sm" onclick="openSourceModal()">情報源を管理</button>
               <div class="spacer"></div>
               <div id="bm25-result-actions" style="display:none;gap:6px">
                 <button class="btn btn-success btn-sm" onclick="saveTopAsCards()">カードに保存</button>
@@ -323,7 +323,7 @@
   <div id="detail-panel" class="hidden">
     <div id="detail-header">
       <h3 id="detail-title">カード詳細</h3>
-      <button class="btn-icon" onclick="exportMarkdown(currentCardId)" title="Export Markdown">MD</button>
+      <button class="btn-icon" onclick="exportMarkdown(currentCardId)" title="Markdown出力" aria-label="Markdown出力">MD</button>
       <button class="btn-icon" id="reader-edit-btn" onclick="openEditModal(currentCardId)" title="タイトル・本文・メモ・出典を編集">編集</button>
       <button class="btn-icon" onclick="closeDetail()" title="閉じる">×</button>
     </div>
@@ -488,12 +488,12 @@
 <div id="fab">
   <div id="fab-menu">
     <div class="fab-row">
-      <span class="fab-label">CSV読み込み</span>
-      <button class="fab-btn secondary" onclick="openCSVModal();toggleFab()">CSV</button>
+      <span class="fab-label">データ取り込み</span>
+      <button class="fab-btn secondary" onclick="openCSVModal();toggleFab()" aria-label="データ取り込み">CSV</button>
     </div>
     <div class="fab-row">
-      <span class="fab-label">新しいメモ</span>
-      <button class="fab-btn secondary" onclick="openNewCardModal();toggleFab()">メモ</button>
+      <span class="fab-label">メモを作成</span>
+      <button class="fab-btn secondary" onclick="openNewCardModal();toggleFab()" aria-label="メモを作成">メモ</button>
     </div>
   </div>
   <button class="fab-btn" id="fab-main" onclick="toggleFab()">＋</button>
@@ -520,7 +520,7 @@
 <!-- ソースURL管理モーダル -->
 <div class="modal-overlay" id="source-modal">
   <div class="modal" style="max-width:640px">
-    <h2>情報源を追加・管理</h2>
+    <h2>情報源を管理</h2>
     <div class="modal-tabs">
       <div class="modal-tab active" onclick="switchSourceTab('site',this)">Webサイト</div>
       <div class="modal-tab" onclick="switchSourceTab('rss',this)">RSSフィード</div>
