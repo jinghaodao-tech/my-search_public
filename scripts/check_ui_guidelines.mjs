@@ -9,6 +9,7 @@ const modes = read('public/js/bm25_modes_ui.js');
 const ai = read('public/js/ai_ui.js');
 const keywords = read('public/js/bm25_ui.js');
 const audit = read('docs/ui-operation-audit.md');
+const operationInventory = audit.split('## 画面別の操作一覧（全画面）')[1] ?? '';
 const fail = message => { console.error(`UI guideline check failed: ${message}`); process.exitCode = 1; };
 const requireText = (source, text, message) => { if (!source.includes(text)) fail(message); };
 const forbidText = (source, text, message) => { if (source.includes(text)) fail(message); };
@@ -19,9 +20,14 @@ for (const obsolete of ['id="modal-edit"', 'id="modal-new"', 'id="mobile-edit-pa
 }
 for (const match of html.matchAll(/class="modal-overlay" id="([^"]+)"/g)) {
   if (!audit.includes(`#${match[1]}`)) fail(`modal is missing from docs/ui-operation-audit.md: #${match[1]}`);
+  if (!operationInventory.includes(`#${match[1]}`)) fail(`modal has no operation mapping in the screen inventory: #${match[1]}`);
 }
 for (const viewId of ['card-grid', 'candidate-view', 'kj-board', 'zettel-view', 'bm25-view']) {
   if (!audit.includes(`#${viewId}`)) fail(`primary view is missing from docs/ui-operation-audit.md: #${viewId}`);
+  if (!operationInventory.includes(`#${viewId}`)) fail(`primary view has no operation mapping in the screen inventory: #${viewId}`);
+}
+for (const operation of ['#detail-panel', 'switchView()', 'loadCandidates()', 'runSearchScreen()', 'saveReaderCard()', 'openSourceModal()', 'openCSVModal()']) {
+  if (!operationInventory.includes(operation)) fail(`screen/action inventory does not map ${operation} to its purpose and result.`);
 }
 for (const obsolete of ['submitEdit(', 'confirmDelete(', 'mepSave(', 'mepDelete(']) {
   forbidText(cards + reader, obsolete, `separate card-edit handler remains: ${obsolete}`);
