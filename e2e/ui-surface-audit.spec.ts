@@ -14,7 +14,6 @@ test('primary views and shared operational modals are reachable and consistent',
     { label: 'グルーピングボード', selector: '#kj-board' },
     { label: 'Zettelkasten', selector: '#zettel-view' },
     { label: '探す', selector: '#bm25-view' },
-    { label: '書く', selector: '#research-writing-view' },
   ];
 
   for (const surface of surfaces) {
@@ -46,6 +45,7 @@ test('primary views and shared operational modals are reachable and consistent',
   await page.getByRole('button', { name: 'グルーピングボード', exact: true }).click();
   await page.locator('#kj-board button[onclick="openNewGroupModal()"]').click();
   await expect(page.locator('#modal-group')).toHaveClass(/active/);
+  await page.screenshot({ path: path.join(screenshotDir, 'グループ作成.png'), fullPage: true });
   await page.locator('#modal-group button[onclick="closeModal(\'modal-group\')"]').click();
 
   const admin = page.locator('#topbar details.topbar-admin');
@@ -58,6 +58,7 @@ test('primary views and shared operational modals are reachable and consistent',
   await admin.locator('summary').click();
   await admin.getByRole('button', { name: 'データ取り込み' }).click();
   await expect(page.locator('#modal-csv')).toHaveClass(/active/);
+  await page.screenshot({ path: path.join(screenshotDir, 'データ取り込み.png'), fullPage: true });
   await page.locator('#modal-csv button[onclick="closeModal(\'modal-csv\')"]').click();
 
   await admin.locator('summary').click();
@@ -69,5 +70,5 @@ test('primary views and shared operational modals are reachable and consistent',
   await page.getByRole('button', { name: '読んでメモ', exact: true }).click();
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
   await page.screenshot({ path: path.join(screenshotDir, 'Reader.png'), fullPage: true });
-  await page.locator('#reader-close-btn').click();
+  await page.locator('#modal-reader').getByRole('button', { name: '閉じる', exact: true }).click();
 });

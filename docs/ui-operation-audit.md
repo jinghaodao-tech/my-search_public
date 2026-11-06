@@ -28,7 +28,20 @@
 | 通常カードの作成フォーム | PCモーダル・スマホパネルの2 | 1 |
 | 主な保存関数 | `submitEdit`・Reader更新・`mepSave`・タグ個別更新に分散 | `saveReaderCard` 1つ（内部でデータ形式別にAPIを選択） |
 | 編集の主要画面 | 汎用モーダル・Reader・スマホパネルの3 | 1 |
-| カード一覧・詳細の入口 | 鉛筆・編集・読んで編集・本文と一緒に開く | 一覧の鉛筆ショートカット＋詳細の「編集」 |
+| 詳細画面の編集入口 | 「編集」「読んで編集」「本文と一緒に開く」の3 | 「編集」の1 |
+| 一覧を含む編集入口 | 詳細の3入口＋一覧の鉛筆の計4 | 詳細の「編集」＋一覧の鉛筆ショートカットの計2 |
+
+## 主要シナリオの操作数
+
+操作数は画面上の明示的なクリック数で数え、画面遷移数は編集UIを開くまでの表示面切替として数える。これはコードとPlaywrightの操作経路から数えたもので、利用者の迷い・所要時間の実測値ではない。
+
+| シナリオ | 変更前 | 変更後 | 一貫性・判断 |
+|---|---:|---:|---|
+| 一覧から編集 | 鉛筆1クリック、編集モーダル1画面 | 鉛筆1クリック、共有Editor1画面 | クリック数・画面数を増やさず、詳細編集と同じ保存処理へ統合。 |
+| 詳細から編集 | カード選択＋「編集」2クリック、汎用編集画面 | カード選択＋「編集」2クリック、共有Editor | 操作数は同じ。タイトル・タグ・メモ・出典が一つの編集画面に集約。 |
+| 詳細から原文を見ながら編集 | カード選択＋「読んで編集」または「本文と一緒に開く」2クリック、Reader | カード選択＋「編集」2クリック、原文を表示する共有Editor | 詳細内の同目的ボタン3つを1つに整理。記事・PDFの原文は閲覧専用。 |
+
+いずれもクリック数の短縮は主張しない。改善点は編集画面と保存処理の分裂、詳細画面の選択肢の重複を解消したこと。利用者が実際に迷わなくなったかは未測定。
 
 カード検索、Readerを開く、検索候補の確認、引用をコピー・メモへ挿入・別メモへ移す、保存検索の作成・復元・削除、CSV/JSON取込、情報源種別ごとの登録、要約、アーカイブ、削除、Markdown出力、カード間リンクは、目的や対象・副作用が異なるため一括統合の対象にしない。本文とメモのテキスト／表表示は同じメモを編集する同一画面内の表現選択であり、別の保存経路ではない。
 
@@ -40,7 +53,6 @@
 | 候補レビュー | 見つかった候補を確認、保留、見送り、保存する | 候補からカードを読む・保存する | 状態遷移とカード編集は異なる操作。Readerで読む経路は共有Editorを開き、候補状態ボタンは維持。 |
 | Reader・PDF | Web記事/PDFを開き、原文を照合する | URL取得、PDF選択、手動本文貼付 | 入力元・抽出方法が異なるため同じReader上の選択肢として維持。編集後の原文・引用位置は保護。 |
 | 引用 | 本文の引用をコピー、現在のメモへ追加、別メモへ移す | 引用関連の複数ボタン | クリップボード、同一カードメモ、別カードへの書込みで対象と副作用が異なる。原文照合・位置移動も別目的。 |
-| 調査原稿 | 引用を出典と共に集め、原稿を編集する | 引用候補の確認、原稿への挿入、AI支援案 | 出典確認、明示挿入、提案生成は異なる責任と保存先を持つため維持。AI案は自動適用しない。 |
 | 保存カード | 記事・PDF・メモを編集、リンク、分類する | 色・タグ・リンク・アーカイブ・削除 | 内容編集は共有Editorへ統合。リンク変更、分類、アーカイブ、削除は関係や状態が変わる別操作として維持。 |
 | 情報源・データ取込 | RSS、Web、arXiv、GitHub、CSV、JSONを登録する | 追加・取込の複数経路 | 形式と登録されるデータ構造が異なる。タブや取込形式は一つの管理モーダル内に維持。 |
 | 要約・AI支援 | 保存記事の要約、Readerの根拠候補、検索補助を得る | AI関連ボタン | 入力、出力、外部送信条件が異なる。通常の保存や明示的引用と統合しない。 |
@@ -61,7 +73,7 @@
 
 | 画面・コントロール | 表示名／目的 | 呼び出し先・保存先 | 重複／判断 |
 |---|---|---|---|
-| 上部タブ | カード一覧・候補レビュー・グルーピングボード・Zettelkasten・探す・書く | `switchView` (`public/js/views.js`)、候補は `/api/candidates`、KJは `/api/kj/groups`、Zettelkastenは `/api/zettelkasten/graph`、検索は `/api/search/targets` | 画面対象が異なるので分離。グルーピングとZettelkastenは「整理」へまとめる。 |
+| 上部タブ | カード一覧 `#card-grid`・候補レビュー `#candidate-view`・グルーピングボード `#kj-board`・Zettelkasten `#zettel-view`・探す `#bm25-view` | `switchView` (`public/js/views.js`)、候補は `/api/candidates`、KJは `/api/kj/groups`、Zettelkastenは `/api/zettelkasten/graph`、検索は `/api/search/targets` | 画面対象が異なるので分離。グルーピングとZettelkastenは「整理」へまとめる。 |
 | カード一覧検索・表示 | 保存済みカードを検索、カード／表表示、通常／アーカイブ、種類・タグで絞る | `onSearch`、`setCardLayout`、`filterArchived`、`filterType`、`filterTag` | 同じ一覧内の表示・絞り込み状態。検索画面の検索先選択とは分離。 |
 | カード一覧の鉛筆 | 選択カードを編集するショートカット | `openEditModal` → `openReaderForCard` → `saveReaderCard` | 詳細を先に開く手間を省くため残し、詳細の「編集」と同じEditorを使用。 |
 | 詳細の編集 | タイトル・本文・メモ・出典を編集 | `openEditModal` → `openReaderForCard` → `saveReaderCard` | 詳細画面内の主要入口。旧「読んで編集」「本文と一緒に開く」は同一Editorを開くため統合。 |
@@ -69,16 +81,15 @@
 | 一括操作 | 選択カードのアーカイブ・復元・Markdown出力・削除・要約 | `toggleMultiSelect`、`archiveSelected`、`restoreSelected`、`exportSelectedMarkdown`、`deleteSelected`、`summarizeBulk` | 対象件数・副作用が異なる。単カード編集へ統合しない。 |
 | タグ整理 | 表記揺れを確認し、選択後に統合 | `toggleTagTidy`、`POST /api/tags/merge` dry-run後に確定 | Editorでタグを個別編集する操作とは対象が異なるため維持。 |
 | 候補レビュー | 状態を絞る、レビュー済み、読んでメモ、カードに保存、見送る | `loadCandidates`、`reviewCandidate`、`openReader`、`saveCandidateAsCard`、`expireOneCandidate` | 候補の状態更新とカード編集は異なる。Readerは候補URL・IDを引き継ぐ。 |
-| グルーピングボード | グループ作成・名前変更・削除、カードのグループ移動 | `openNewGroupModal`、`submitGroup`、`editGroup`、`deleteGroup`、`kjDrop` | グループ・所属関係の編集。カード本文のEditorとは別責務。 |
+| グルーピングボード・グループ作成 `#modal-group` | グループ作成・名前変更・削除、カードのグループ移動 | `openNewGroupModal`、`submitGroup`、`editGroup`、`deleteGroup`、`kjDrop` | グループ・所属関係の編集。カード本文のEditorとは別責務。 |
 | Zettelkasten | 関連カードのネットワーク表示、カード詳細へ移動 | `loadZettelkasten`、ノード選択時 `selectCard` → `switchView('cards')` | 関係の閲覧・移動であり、カード本文編集とは別操作。 |
 | 記事検索 | 検索先選択・セット、条件保存／復元／削除、検索実行、候補の閲覧・保存 | `loadSearchTargets`、`runSearchScreen` (`POST /api/run` またはカード検索API)、`saveCurrentSearch`、`restoreSavedSearch`、`deleteSavedSearch` | 保存済みカード検索・新着記事検索・検索条件保存は対象が異なる。 |
-| Reader上部 | Web URL読込、PDF選択、手動本文、ソース登録 | `loadReaderArticle`、`chooseReaderPdf`、`applyManualReaderText`、`registerReaderSite` | 入力元ごとの選択肢だが、読取・メモは同じReader画面を使う。 |
+| Reader `#modal-reader` | Web URL読込、PDF選択、手動本文、ソース登録 | `loadReaderArticle`、`chooseReaderPdf`、`applyManualReaderText`、`registerReaderSite` | 入力元ごとの選択肢だが、読取・メモは同じReader画面を使う。 |
 | Readerメモ・引用 | テキスト／表表示、要点と根拠、引用・元へ移動・別メモへ転送、保存 | `setMemoMode`、`runEvidence`、`quoteReaderSelection`、`jumpToQuoteSource`、`prepareQuoteTransfer`、`saveReaderCard` | 表／テキストは同じメモの表示形式。コピー、同一カードへの挿入、別カードへの書込みは副作用が違うため分ける。 |
-| 情報源管理 | Webサイト・RSS・arXiv・GitHub設定、既存サイト同期 | `openSourceModal`、`switchSourceTab`、`saveSourceConfig`、サイト一覧の同期処理 | 上部管理と検索画面の「情報源を追加」は同じ管理画面へのショートカットとして維持。 |
-| BM25モード | モード追加・選択・状態／説明管理 | 「＋」は `addBM25Mode` → `openModeManagerModal`、作成は `confirmAddMode`、モード実行条件は `selectBM25Mode` | 旧「＋」のprompt作成と管理画面フォームは別処理だった。現在は同じ管理フォームを使う。 |
-| CSV／JSON取込 | ファイルまたは貼付文字列をプレビューし、カードとして取り込む | `openCSVModal`、`switchImportTab`、`submitImport` → `/api/cards/import-csv` または `/api/cards/import-json` | 形式は異なるが1つの取込モーダルにまとめる。 |
-| 調査原稿 | 原稿作成・検索・保存・削除・資料追加・引用確認・AI案 | `public/js/documents_ui.js`、`/api/documents/*`、明示操作のAI補助 | 原稿保存とカード保存は保存先が異なる。引用確認・適用・AI提案も責務を分ける。 |
-| 状況別の補助機能 | 機能状態・ローカル記録の確認・出力・削除 | `openContextualSettings`、`exportContextualStudyEvents`、`clearContextualStudyEvents` | 機能設定と個別利用操作は責務が異なるため「管理」内に維持。 |
+| 情報源管理 `#source-modal` | Webサイト・RSS・arXiv・GitHub設定、既存サイト同期 | `openSourceModal`、`switchSourceTab`、`saveSourceConfig`、サイト一覧の同期処理 | 上部管理と検索画面の「情報源を追加」は同じ管理画面へのショートカットとして維持。 |
+| BM25モード管理 `#mode-manager-modal` | モード追加・選択・状態／説明管理 | 「＋」は `addBM25Mode` → `openModeManagerModal`、作成は `confirmAddMode`、モード実行条件は `selectBM25Mode` | 旧「＋」のprompt作成と管理画面フォームは別処理だった。現在は同じ管理フォームを使う。 |
+| CSV／JSON取込 `#modal-csv` | ファイルまたは貼付文字列をプレビューし、カードとして取り込む | `openCSVModal`、`switchImportTab`、`submitImport` → `/api/cards/import-csv` または `/api/cards/import-json` | 形式は異なるが1つの取込モーダルにまとめる。 |
+| 状況別の補助機能 `#modal-contextual-settings` | 機能状態・ローカル記録の確認・出力・削除 | `openContextualSettings`、`exportContextualStudyEvents`、`clearContextualStudyEvents` | 機能設定と個別利用操作は責務が異なるため「管理」内に維持。 |
 
 ## 再監査で見つけた名称・導線の修正
 

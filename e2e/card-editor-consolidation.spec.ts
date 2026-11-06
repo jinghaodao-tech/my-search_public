@@ -13,6 +13,9 @@ async function openApp(page: Page) {
 async function openCardEditor(page: Page, title: string) {
   if (await page.locator('#detail-panel').isVisible()) await page.locator('#detail-header button[title="閉じる"]').click();
   await page.locator('.card', { has: page.getByText(title, { exact: true }) }).click();
+  await expect(page.locator('#detail-header button[title="タイトル・本文・メモ・出典を編集"]')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: '読んで編集', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '本文と一緒に開く', exact: true })).toHaveCount(0);
   await page.locator('#detail-header button[title="タイトル・本文・メモ・出典を編集"]').click();
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
 }
@@ -81,7 +84,7 @@ test('memo creation and edit use the same editor on desktop and mobile', async (
     await expect(page.locator('#reader-edit-title')).toHaveValue(`${title} updated`);
     await expect(page.locator('#reader-memo')).toHaveValue('更新後のメモ本文。');
     await expect(page.locator('#reader-tags')).toHaveValue('更新タグ');
-    await page.locator('#reader-close-btn').click();
+    await page.locator('#modal-reader').getByRole('button', { name: '閉じる', exact: true }).click();
   }
 });
 
@@ -144,7 +147,7 @@ test('article and PDF use the same responsive editor and retain original source/
       await openCardEditor(page, `${item.title} updated ${viewport.name}`);
       await expect(page.locator('#reader-memo')).toHaveValue(/編集したメモ/);
       await expect(page.locator('#reader-article')).toContainText(item.kind === 'pdf' ? 'PDF原文とページ出典' : '保存された記事の原文');
-      await page.locator('#reader-close-btn').click();
+      await page.locator('#modal-reader').getByRole('button', { name: '閉じる', exact: true }).click();
     }
   }
 });
@@ -188,7 +191,7 @@ test('the card-list pencil remains a shortcut to the shared editor for every car
       await expect(page.locator('#reader-edit-title')).toHaveValue(card.title);
       if (card.kind !== 'memo') await expect(page.locator('#reader-article')).toContainText(card.kind === 'pdf' ? 'カード一覧から開くPDF原文' : 'カード一覧から開く記事');
       await page.screenshot({ path: path.join(screenshotDir, `${viewport.name}-list-pencil-${card.kind}.png`), fullPage: true });
-      await page.locator('#reader-close-btn').click();
+      await page.locator('#modal-reader').getByRole('button', { name: '閉じる', exact: true }).click();
     }
   }
 });

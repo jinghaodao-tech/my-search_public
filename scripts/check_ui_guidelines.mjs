@@ -6,6 +6,7 @@ const cards = read('public/js/cards_ui.js');
 const reader = read('public/js/reader_ui.js');
 const styles = read('public/styles.css');
 const modes = read('public/js/bm25_modes_ui.js');
+const audit = read('docs/ui-operation-audit.md');
 const fail = message => { console.error(`UI guideline check failed: ${message}`); process.exitCode = 1; };
 const requireText = (source, text, message) => { if (!source.includes(text)) fail(message); };
 const forbidText = (source, text, message) => { if (source.includes(text)) fail(message); };
@@ -14,10 +15,21 @@ if ((html.match(/id="modal-reader"/g) ?? []).length !== 1) fail('Reader Editor m
 for (const obsolete of ['id="modal-edit"', 'id="modal-new"', 'id="mobile-edit-panel"', 'js/mobile_edit.js']) {
   forbidText(html, obsolete, `obsolete editor remains in HTML: ${obsolete}`);
 }
+for (const match of html.matchAll(/class="modal-overlay" id="([^"]+)"/g)) {
+  if (!audit.includes(`#${match[1]}`)) fail(`modal is missing from docs/ui-operation-audit.md: #${match[1]}`);
+}
+for (const viewId of ['card-grid', 'candidate-view', 'kj-board', 'zettel-view', 'bm25-view']) {
+  if (!audit.includes(`#${viewId}`)) fail(`primary view is missing from docs/ui-operation-audit.md: #${viewId}`);
+}
 for (const obsolete of ['submitEdit(', 'confirmDelete(', 'mepSave(', 'mepDelete(']) {
   forbidText(cards + reader, obsolete, `separate card-edit handler remains: ${obsolete}`);
 }
 requireText(cards, 'function openEditModal(id) { return openReaderForCard(id); }', 'card edit entry must open the shared editor.');
+requireText(cards, 'openEditModal(${jsArg(card.id)})', 'the card-list pencil must remain a shortcut to the shared editor.');
+requireText(html, 'id="reader-edit-btn" onclick="openEditModal(currentCardId)"', 'the detail editor must use the same entry function as the card-list pencil.');
+for (const obsolete of ['読んで編集', '本文と一緒に開く']) {
+  forbidText(html + cards, obsolete, `duplicate detail editor entry remains: ${obsolete}`);
+}
 requireText(cards, 'function openNewCardModal() {\n  openPlainCardEditor();', 'new memo creation must use the shared editor.');
 requireText(reader, 'async function saveReaderCardOnce()', 'shared save handler is missing.');
 requireText(reader, 'if (readerPlainCardMode)', 'plain cards need an explicit format-aware save adapter.');
@@ -34,4 +46,4 @@ requireText(modes, 'function addBM25Mode(){\n  openModeManagerModal();', 'the qu
 requireText(modes, 'function confirmAddMode(){', 'mode creation must use the shared manager form.');
 forbidText(modes, "prompt('新しいモード名を入力してください')", 'mode creation must not retain a second prompt flow.');
 
-if (!process.exitCode) console.log('UI guidelines check passed: one responsive editor, one save entry, format-aware APIs, and source paragraph preservation.');
+if (!process.exitCode) console.log('UI guidelines check passed: shared edit entry, no duplicate detail edit controls, documented modal/view inventory, format-aware saves, and source preservation.');
