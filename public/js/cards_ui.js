@@ -29,6 +29,7 @@ function renderCardGrid() {
         <span class="card-type-badge ${typeCls}">${typeMap[card.type]??card.type}</span>
         <div class="card-actions">
           ${restoreButton}
+          <button class="btn-icon btn-sm" onclick="event.stopPropagation();openEditModal(${jsArg(card.id)})" title="編集">✏️</button>
           <button class="btn-icon btn-sm needs-ai" onclick="event.stopPropagation();summarizeOne(${jsArg(card.id)})" title="AI要約">⚡</button>
         </div>
       </div>

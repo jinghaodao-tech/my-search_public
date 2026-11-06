@@ -5,6 +5,7 @@ const html = read('public/index.html');
 const cards = read('public/js/cards_ui.js');
 const reader = read('public/js/reader_ui.js');
 const styles = read('public/styles.css');
+const modes = read('public/js/bm25_modes_ui.js');
 const fail = message => { console.error(`UI guideline check failed: ${message}`); process.exitCode = 1; };
 const requireText = (source, text, message) => { if (!source.includes(text)) fail(message); };
 const forbidText = (source, text, message) => { if (source.includes(text)) fail(message); };
@@ -29,5 +30,8 @@ requireText(html, 'id="reader-card-color-strip"', 'the shared editor needs the e
 requireText(reader, 'readerEditorColorTouched', 'the shared editor must distinguish an untouched color from an explicit clear.');
 requireText(styles, '.reader-plain-mode .reader-split', 'plain-card layout must be a conditional layout of the shared editor.');
 requireText(styles, '@media (max-width:768px)', 'the shared editor must retain responsive layout rules.');
+requireText(modes, 'function addBM25Mode(){\n  openModeManagerModal();', 'the quick-add mode shortcut must open the shared mode manager.');
+requireText(modes, 'function confirmAddMode(){', 'mode creation must use the shared manager form.');
+forbidText(modes, "prompt('新しいモード名を入力してください')", 'mode creation must not retain a second prompt flow.');
 
 if (!process.exitCode) console.log('UI guidelines check passed: one responsive editor, one save entry, format-aware APIs, and source paragraph preservation.');

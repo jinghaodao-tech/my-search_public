@@ -18,7 +18,8 @@
 - 通常カードはタイトル・URL・タグ・メモを表示し、既存のカード本文形式のまま `/api/cards` に保存する。
 - タグと色の変更も同じ画面・保存処理で行う。タグ個別更新は削除し、カード色を「色なし」に戻す更新をAPIで扱えるようにする。
 - Reader形式の記事・PDFは保存済み段落を閲覧専用で表示し、メモ・タイトル・URL・出典項目・タグを `/api/reader` に保存する。引用本文と段落標識は保存ペイロードで変更しない。
-- グリッドの鉛筆、旧編集モーダル、スマホ専用編集パネル、詳細中の別Reader起動ボタン、詳細タグの即時編集を取り除いた。カード詳細の「編集」が主要入口になる。
+- グリッドの鉛筆は便利なショートカットとして残し、詳細画面の「編集」と同じEditorへ接続した。詳細画面の「読んで編集」と本文欄の「本文と一緒に開く」は、詳細画面内で同じReader Editorを開く重複ボタンなので一本化した。
+- 旧編集モーダル、スマホ専用編集パネル、詳細タグの即時編集を取り除いた。タグと色は共有Editorで編集する。
 - 画面幅によって分岐するフォームや保存関数をなくし、Reader Editorのレイアウトだけをレスポンシブにする。
 
 | 観点 | 変更前 | 変更後 |
@@ -26,7 +27,8 @@
 | 保存カードの編集画面 | 汎用モーダル・Reader・スマホパネルの3 | 1 |
 | 通常カードの作成フォーム | PCモーダル・スマホパネルの2 | 1 |
 | 主な保存関数 | `submitEdit`・Reader更新・`mepSave`・タグ個別更新に分散 | `saveReaderCard` 1つ（内部でデータ形式別にAPIを選択） |
-| 詳細画面からの編集入口 | 編集・Reader・本文と一緒に開く | 編集1つ |
+| 編集の主要画面 | 汎用モーダル・Reader・スマホパネルの3 | 1 |
+| カード一覧・詳細の入口 | 鉛筆・編集・読んで編集・本文と一緒に開く | 一覧の鉛筆ショートカット＋詳細の「編集」 |
 
 カード検索、Readerを開く、検索候補の確認、引用をコピー・メモへ挿入・別メモへ移す、保存検索の作成・復元・削除、CSV/JSON取込、情報源種別ごとの登録、要約、アーカイブ、削除、Markdown出力、カード間リンクは、目的や対象・副作用が異なるため一括統合の対象にしない。本文とメモのテキスト／表表示は同じメモを編集する同一画面内の表現選択であり、別の保存経路ではない。
 
@@ -54,3 +56,31 @@
 - Playwrightによる通常メモ・記事・PDFの作成／編集／再表示と、Reader原文・ページ標識・出典メタデータの維持を確認する。
 - 実端末のVoiceOver/TalkBack、長文・大容量PDFの画面操作、キーボードのみの全画面操作は別途確認が必要。
 - Reader形式ではない旧形式の記事カードは通常カード形式を保持して編集する。Readerの原文・引用分離が保証されるのは、保存時点からReader形式として保存されているカードである。
+
+## 画面・操作・処理の対応
+
+| 画面・コントロール | 表示名／目的 | 呼び出し先・保存先 | 重複／判断 |
+|---|---|---|---|
+| 上部タブ | カード一覧・候補レビュー・グルーピングボード・Zettelkasten・探す・書く | `switchView` (`public/js/views.js`)、候補は `/api/candidates`、KJは `/api/kj/groups`、Zettelkastenは `/api/zettelkasten/graph`、検索は `/api/search/targets` | 画面対象が異なるので分離。グルーピングとZettelkastenは「整理」へまとめる。 |
+| カード一覧検索・表示 | 保存済みカードを検索、カード／表表示、通常／アーカイブ、種類・タグで絞る | `onSearch`、`setCardLayout`、`filterArchived`、`filterType`、`filterTag` | 同じ一覧内の表示・絞り込み状態。検索画面の検索先選択とは分離。 |
+| カード一覧の鉛筆 | 選択カードを編集するショートカット | `openEditModal` → `openReaderForCard` → `saveReaderCard` | 詳細を先に開く手間を省くため残し、詳細の「編集」と同じEditorを使用。 |
+| 詳細の編集 | タイトル・本文・メモ・出典を編集 | `openEditModal` → `openReaderForCard` → `saveReaderCard` | 詳細画面内の主要入口。旧「読んで編集」「本文と一緒に開く」は同一Editorを開くため統合。 |
+| メモ作成・FABのメモ | 通常メモを新規作成 | `openNewCardModal` → `openPlainCardEditor` → `saveReaderCard` → `/api/cards` | 上部とFABは同じ作成画面への便利な入口。ショートカットとして両方残す。 |
+| 一括操作 | 選択カードのアーカイブ・復元・Markdown出力・削除・要約 | `toggleMultiSelect`、`archiveSelected`、`restoreSelected`、`exportSelectedMarkdown`、`deleteSelected`、`summarizeBulk` | 対象件数・副作用が異なる。単カード編集へ統合しない。 |
+| タグ整理 | 表記揺れを確認し、選択後に統合 | `toggleTagTidy`、`POST /api/tags/merge` dry-run後に確定 | Editorでタグを個別編集する操作とは対象が異なるため維持。 |
+| 候補レビュー | 状態を絞る、レビュー済み、読んでメモ、カードに保存、見送る | `loadCandidates`、`reviewCandidate`、`openReader`、`saveCandidateAsCard`、`expireOneCandidate` | 候補の状態更新とカード編集は異なる。Readerは候補URL・IDを引き継ぐ。 |
+| グルーピングボード | グループ作成・名前変更・削除、カードのグループ移動 | `openNewGroupModal`、`submitGroup`、`editGroup`、`deleteGroup`、`kjDrop` | グループ・所属関係の編集。カード本文のEditorとは別責務。 |
+| Zettelkasten | 関連カードのネットワーク表示、カード詳細へ移動 | `loadZettelkasten`、ノード選択時 `selectCard` → `switchView('cards')` | 関係の閲覧・移動であり、カード本文編集とは別操作。 |
+| 記事検索 | 検索先選択・セット、条件保存／復元／削除、検索実行、候補の閲覧・保存 | `loadSearchTargets`、`runSearchScreen` (`POST /api/run` またはカード検索API)、`saveCurrentSearch`、`restoreSavedSearch`、`deleteSavedSearch` | 保存済みカード検索・新着記事検索・検索条件保存は対象が異なる。 |
+| Reader上部 | Web URL読込、PDF選択、手動本文、ソース登録 | `loadReaderArticle`、`chooseReaderPdf`、`applyManualReaderText`、`registerReaderSite` | 入力元ごとの選択肢だが、読取・メモは同じReader画面を使う。 |
+| Readerメモ・引用 | テキスト／表表示、要点と根拠、引用・元へ移動・別メモへ転送、保存 | `setMemoMode`、`runEvidence`、`quoteReaderSelection`、`jumpToQuoteSource`、`prepareQuoteTransfer`、`saveReaderCard` | 表／テキストは同じメモの表示形式。コピー、同一カードへの挿入、別カードへの書込みは副作用が違うため分ける。 |
+| 情報源管理 | Webサイト・RSS・arXiv・GitHub設定、既存サイト同期 | `openSourceModal`、`switchSourceTab`、`saveSourceConfig`、サイト一覧の同期処理 | 上部管理と検索画面の「情報源を追加」は同じ管理画面へのショートカットとして維持。 |
+| BM25モード | モード追加・選択・状態／説明管理 | 「＋」は `addBM25Mode` → `openModeManagerModal`、作成は `confirmAddMode`、モード実行条件は `selectBM25Mode` | 旧「＋」のprompt作成と管理画面フォームは別処理だった。現在は同じ管理フォームを使う。 |
+| CSV／JSON取込 | ファイルまたは貼付文字列をプレビューし、カードとして取り込む | `openCSVModal`、`switchImportTab`、`submitImport` → `/api/cards/import-csv` または `/api/cards/import-json` | 形式は異なるが1つの取込モーダルにまとめる。 |
+| 調査原稿 | 原稿作成・検索・保存・削除・資料追加・引用確認・AI案 | `public/js/documents_ui.js`、`/api/documents/*`、明示操作のAI補助 | 原稿保存とカード保存は保存先が異なる。引用確認・適用・AI提案も責務を分ける。 |
+| 状況別の補助機能 | 機能状態・ローカル記録の確認・出力・削除 | `openContextualSettings`、`exportContextualStudyEvents`、`clearContextualStudyEvents` | 機能設定と個別利用操作は責務が異なるため「管理」内に維持。 |
+
+## 再監査で見つけた名称・導線の修正
+
+- カード一覧の鉛筆を共有Editorへの直接入口として復元し、詳細画面へ移動するショートカットを維持した。
+- BM25モードの「＋」は以前promptを開き、管理画面の「追加」は別フォームを使っていた。両方を同じ管理モーダルと作成関数へ接続した。

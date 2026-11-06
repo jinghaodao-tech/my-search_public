@@ -17,6 +17,19 @@ async function openCardEditor(page: Page, title: string) {
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
 }
 
+async function openCardEditorFromList(page: Page, id: string) {
+  if (await page.locator('#detail-panel').isVisible()) await page.locator('#detail-header button[title="閉じる"]').click();
+  const card = page.locator(`#card-${id}`);
+  if ((await page.evaluate(() => window.innerWidth)) <= 768) {
+    await card.click();
+    await page.locator('#detail-header button[title="タイトル・本文・メモ・出典を編集"]').click();
+  } else {
+    await card.hover();
+    await card.locator('button[title="編集"]').click();
+  }
+  await expect(page.locator('#modal-reader')).toHaveClass(/active/);
+}
+
 async function readerCard(request: APIRequestContext, input: {
   kind?: string; title: string; url?: string; fileName?: string; paragraphs: string[]; memo: string;
 }) {
@@ -131,6 +144,50 @@ test('article and PDF use the same responsive editor and retain original source/
       await openCardEditor(page, `${item.title} updated ${viewport.name}`);
       await expect(page.locator('#reader-memo')).toHaveValue(/編集したメモ/);
       await expect(page.locator('#reader-article')).toContainText(item.kind === 'pdf' ? 'PDF原文とページ出典' : '保存された記事の原文');
+      await page.locator('#reader-close-btn').click();
+    }
+  }
+});
+
+test('the card-list pencil remains a shortcut to the shared editor for every card type', async ({ page, request }) => {
+  test.setTimeout(90_000);
+  await mkdir(screenshotDir, { recursive: true });
+  const memoTitle = `Quick memo ${stamp()}`;
+  const memoResponse = await request.post('/api/cards', { data: { title: memoTitle, body: 'メモ本文', tags: ['クイック編集'], type: 'memo' } });
+  expect(memoResponse.ok()).toBeTruthy();
+  const memo = await memoResponse.json() as { id: string };
+  const article = await readerCard(request, {
+    title: `Quick article ${stamp()}`,
+    url: `https://example.test/${stamp()}`,
+    paragraphs: ['カード一覧から開く記事の保存原文です。'],
+    memo: '記事メモ',
+  });
+  const pdf = await readerCard(request, {
+    title: `Quick PDF ${stamp()}`,
+    fileName: 'quick-edit.pdf',
+    paragraphs: ['[[page:1|1]]', 'カード一覧から開くPDF原文です。'],
+    memo: 'PDFメモ',
+  });
+
+  for (const viewport of [
+    { name: 'desktop', width: 1280, height: 900 },
+    { name: 'mobile', width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto('/');
+    for (const card of [
+      { id: memo.id, kind: 'memo', title: memoTitle, isPlain: true },
+      { id: article.id, kind: 'article', title: article.title, isPlain: false },
+      { id: pdf.id, kind: 'pdf', title: pdf.title, isPlain: false },
+    ]) {
+      await expect(page.locator(`#card-${card.id}`)).toBeVisible();
+      await openCardEditorFromList(page, card.id);
+      const editor = page.locator('#modal-reader .reader-modal');
+      if (card.isPlain) await expect(editor).toHaveClass(/reader-plain-mode/);
+      else await expect(editor).not.toHaveClass(/reader-plain-mode/);
+      await expect(page.locator('#reader-edit-title')).toHaveValue(card.title);
+      if (card.kind !== 'memo') await expect(page.locator('#reader-article')).toContainText(card.kind === 'pdf' ? 'カード一覧から開くPDF原文' : 'カード一覧から開く記事');
+      await page.screenshot({ path: path.join(screenshotDir, `${viewport.name}-list-pencil-${card.kind}.png`), fullPage: true });
       await page.locator('#reader-close-btn').click();
     }
   }
