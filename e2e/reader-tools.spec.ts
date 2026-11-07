@@ -464,7 +464,9 @@ test('article fetch failure falls back to manual reading and normal card saving'
     status: 502, contentType: 'application/json', body: JSON.stringify({ error: '試験用の取得失敗', code: 'reader_fetch_failed' }),
   }));
   await page.goto('/');
-  await page.getByRole('button', { name: '読んでメモ' }).click();
+  await page.locator('#topbar .topbar-library > summary').click();
+  await page.locator('#topbar .topbar-library').getByRole('button', { name: '読んでメモ', exact: true }).click();
+  await expect(page.locator('#modal-reader .reader-modal')).not.toHaveClass(/reader-has-source/);
   await page.locator('#reader-url').fill('https://example.test/offline-article');
   await page.locator('#modal-reader .reader-bar button').first().click();
   await expect(page.locator('#reader-article .reader-error')).toContainText('reader_fetch_failed');
@@ -474,6 +476,8 @@ test('article fetch failure falls back to manual reading and normal card saving'
   await page.locator('#reader-manual-text').fill('ネットワーク取得に失敗した後の手動本文です。');
   await page.locator('.reader-manual-source button').click();
   await expect(page.locator('#reader-article')).toContainText('手動本文');
+  await expect(page.locator('#modal-reader .reader-modal')).toHaveClass(/reader-has-source/);
+  await expect(page.locator('.reader-right')).toBeVisible();
   await page.locator('#reader-memo').fill('通常のメモ保存へ戻れた');
   await page.locator('#reader-save-btn').click();
   await expect(page.locator('#modal-reader')).not.toHaveClass(/active/);
@@ -582,8 +586,10 @@ test('narrow viewport keeps primary navigation and Reader controls within the sc
   await page.getByRole('button', { name: '探す' }).click();
   await expect(page.locator('#search-terms')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'カード一覧' }).click();
-  await page.getByRole('button', { name: '読んでメモ' }).click();
+  await page.locator('#topbar .topbar-library > summary').click();
+  await page.locator('#topbar .topbar-library').getByRole('button', { name: '保存済み', exact: true }).click();
+  await page.locator('#topbar .topbar-library > summary').click();
+  await page.locator('#topbar .topbar-library').getByRole('button', { name: '読んでメモ', exact: true }).click();
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
   await expect(page.locator('#fab')).not.toBeVisible();
   const readerOverflow = await page.locator('#modal-reader .reader-modal').evaluate(element => ({
@@ -592,5 +598,6 @@ test('narrow viewport keeps primary navigation and Reader controls within the sc
       .slice(0, 10).map(child => ({ tag: child.tagName, id: child.id, className: String(child.className), right: Math.round(child.getBoundingClientRect().right), width: Math.round(child.getBoundingClientRect().width) })),
   }));
   expect(readerOverflow.scrollWidth <= readerOverflow.clientWidth, JSON.stringify(readerOverflow)).toBe(true);
-  await expect(page.locator('#reader-memo')).toBeVisible();
+  await expect(page.locator('.reader-left')).toBeVisible();
+  await expect(page.locator('.reader-right')).toBeHidden();
 });

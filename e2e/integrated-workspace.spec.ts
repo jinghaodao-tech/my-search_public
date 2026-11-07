@@ -2,6 +2,11 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 
 const stamp = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+async function openAllDocuments(page: import('@playwright/test').Page) {
+  await page.locator('button[data-view="investigations"]').click();
+  await page.getByRole('button', { name: 'すべての原稿', exact: true }).click();
+}
+
 async function saveSource(request: APIRequestContext, title: string, paragraph: string) {
   const response = await request.post('/api/reader/save', { data: {
     title, url: `https://example.test/${encodeURIComponent(title)}`, fetchedAt: new Date().toISOString(), paragraphs: [paragraph], memo: '', tags: [],
@@ -20,7 +25,7 @@ test('one workspace can compare three saved sources, insert a verified citation,
   ]);
 
   await page.goto('/');
-  await page.locator('button[onclick="switchView(\'writing\')"]').click();
+  await openAllDocuments(page);
   await page.getByRole('button', { name: '＋ 新しい原稿' }).click();
   const title = `統合調査 ${suffix}`;
   await page.locator('#document-title').fill(title);
@@ -81,7 +86,7 @@ test('one workspace can compare three saved sources, insert a verified citation,
   await expect(page.locator('#document-save-state')).toContainText('保存済み');
 
   await page.reload();
-  await page.locator('button[onclick="switchView(\'writing\')"]').click();
+  await openAllDocuments(page);
   await page.locator('#document-search').fill(title);
   const documentItem = page.locator('#document-list .document-list-item', { hasText: title });
   await expect(documentItem).toBeVisible();
@@ -98,7 +103,7 @@ test('one workspace can compare three saved sources, insert a verified citation,
 
   await editor.fill(`## 主張\n\n再起動後に復旧する下書き。 ${citationMarker}`);
   await page.reload();
-  await page.locator('button[onclick="switchView(\'writing\')"]').click();
+  await openAllDocuments(page);
   await page.locator('#document-search').fill(title);
   await page.locator('#document-list .document-list-item', { hasText: title }).click();
   await expect(page.locator('#document-draft')).toBeVisible();
@@ -125,7 +130,7 @@ test('one workspace can compare three saved sources, insert a verified citation,
 test('writing toolbar formats selected text and lines, updates preview, and restores the saved Markdown', async ({ page }) => {
   const title = `Markdown編集 ${stamp()}`;
   await page.goto('/');
-  await page.locator('button[onclick="switchView(\'writing\')"]').click();
+  await openAllDocuments(page);
   await page.getByRole('button', { name: '＋ 新しい原稿' }).click();
   await page.locator('#document-title').fill(title);
   const editor = page.locator('#document-markdown');
@@ -145,7 +150,7 @@ test('writing toolbar formats selected text and lines, updates preview, and rest
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.locator('#document-save-state')).toContainText('保存済み');
   await page.reload();
-  await page.locator('button[onclick="switchView(\'writing\')"]').click();
+  await openAllDocuments(page);
   await page.locator('#document-search').fill(title);
   await page.locator('#document-list .document-list-item', { hasText: title }).click();
   await expect(editor).toHaveValue('**主張**\n> 条件\n*範囲*');
@@ -153,9 +158,16 @@ test('writing toolbar formats selected text and lines, updates preview, and rest
 
 test('a user-selected local PDF can switch between extracted text and the original page', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '読んでメモ' }).click();
+  await page.locator('#topbar .topbar-library > summary').click();
+  await page.locator('#topbar .topbar-library').getByRole('button', { name: '読んでメモ', exact: true }).click();
+  const readerModal = page.locator('#modal-reader .reader-modal');
+  await expect(readerModal).not.toHaveClass(/reader-has-source/);
+  await expect(page.locator('.reader-right')).toBeHidden();
+  await expect(page.locator('.reader-left')).toBeVisible();
   await page.locator('#reader-pdf-file').setInputFiles('demo/sample-paper.pdf');
   await expect(page.locator('#reader-meta')).toContainText('全');
+  await expect(readerModal).toHaveClass(/reader-has-source/);
+  await expect(page.locator('.reader-right')).toBeVisible();
   await page.getByRole('button', { name: 'PDF原本を表示' }).click();
   await expect(page.locator('#reader-original-pdf-view')).toBeVisible();
   await expect.poll(() => page.locator('#reader-original-pdf-canvas').evaluate((canvas: HTMLCanvasElement) => canvas.width)).toBeGreaterThan(0);
