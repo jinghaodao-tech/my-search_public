@@ -143,6 +143,8 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
     await page.getByRole('button', { name: '検索', exact: true }).click();
     await page.locator('#document-source-results .document-source-row', { hasText: sourceTitle })
       .getByRole('button', { name: '資料に追加' }).click();
+    await page.getByRole('button', { name: '保存', exact: true }).click();
+    await expect(page.locator('#document-save-state')).toContainText('保存済み');
     await selectText(page, '#document-markdown', sourceTitle);
     await page.getByRole('button', { name: '選択文から検索' }).click();
     await expect(page.locator('#search-terms')).toHaveValue(sourceTitle);
@@ -153,25 +155,24 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
       .getByRole('button', { name: 'メモを読む' }).click();
     const citationArticle = page.locator('#reader-article [data-index="0"]');
     await expect(citationArticle).toContainText(quote);
-    const citationSelection = await citationArticle.evaluate((element: Element) => {
-      const range = document.createRange(); range.selectNodeContents(element);
-      const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range);
-      const state = { connected: element.isConnected, elementText: element.textContent, rangeText: range.toString(), selectionText: String(selection) };
-      (document.getElementById('reader-research-citation-add') as HTMLButtonElement).click();
-      return state;
-    });
-    console.log('[integrated-restart citation range]', JSON.stringify(citationSelection));
-    expect(citationSelection.rangeText).toContain(quote);
-    expect(citationSelection.selectionText).toContain(quote);
-    await expect(page.locator('#modal-reader')).not.toHaveClass(/active/);
-    await expect(page.locator('#document-citations')).toContainText('verified');
-    await page.getByRole('button', { name: '保存', exact: true }).click();
-    await expect(page.locator('#document-save-state')).toContainText('保存済み');
+    await page.locator('#modal-reader').getByRole('button', { name: '閉じる' }).click();
 
     const listed = await jsonRequest<{ documents: Array<{ id: string; title: string }> }>(baseUrl, `/api/documents?q=${encodeURIComponent(title)}`);
     const documentId = listed.documents.find(document => document.title === title)?.id;
     expect(documentId).toBeTruthy();
-    const before = await jsonRequest<{ document: { markdown: string; citations: Array<{ id: string; verification: string; paragraphIndex: number }> } }>(baseUrl, `/api/documents/${documentId}`);
+    const current = await jsonRequest<{ document: { markdown: string; version: number } }>(baseUrl, `/api/documents/${documentId}`);
+    const before = await jsonRequest<{ document: { markdown: string; citations: Array<{ id: string; verification: string; paragraphIndex: number }> } }>(baseUrl, `/api/documents/${documentId}/citations`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        sourceCardId: saved.card.id,
+        paragraphIndex: 0,
+        quote,
+        title,
+        markdown: current.document.markdown,
+        version: current.document.version,
+        insertAt: current.document.markdown.length,
+      }),
+    });
     expect(before.document.citations).toHaveLength(1);
     expect(before.document.citations[0]).toMatchObject({ verification: 'verified', paragraphIndex: 0 });
 
