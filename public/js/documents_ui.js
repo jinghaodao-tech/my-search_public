@@ -769,7 +769,7 @@ function discardBrowserClip() {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('desktop-browser-open').hidden = !window.mySearchDesktop;
   const editor = document.getElementById('document-markdown');
-  const captureResearchCitationSelection = event => {
+  const captureResearchCitationSelection = () => {
     pendingResearchCitationSelection = null;
     const selection = window.getSelection?.();
     const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
@@ -780,11 +780,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const paragraphIndex = paragraph ? Number(paragraph.getAttribute('data-index')) : null;
     if (selection && !selection.isCollapsed && selection.toString().trim() && Number.isInteger(paragraphIndex)) {
       pendingResearchCitationSelection = { quote: selectedReaderText(), paragraphIndex };
-      if (event.type === 'mousedown') event.preventDefault();
     }
   };
   const citationButton = document.getElementById('reader-research-citation-add');
-  citationButton?.addEventListener('pointerdown', captureResearchCitationSelection);
+  citationButton?.addEventListener('pointerdown', () => {
+    pendingResearchCitationSelection = null;
+    captureResearchCitationSelection();
+  });
   citationButton?.addEventListener('mousedown', captureResearchCitationSelection);
   document.addEventListener('selectionchange', () => {
     const selection = window.getSelection?.();
