@@ -25,5 +25,6 @@ docs/hackathon-2026-*
 /artifacts/saved-card-*.json
 /artifacts/tomt-*.json
 /artifacts/e2e-tests-*.json
+/artifacts/real-search-quality.json
 quality/e0e6/local/
 quality/e0e6/test-local/
