@@ -153,16 +153,9 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
       .getByRole('button', { name: 'メモを読む' }).click();
     const citationArticle = page.locator('#reader-article [data-index="0"]');
     await expect(citationArticle).toContainText(quote);
-    const citationSelection = await citationArticle.evaluate((element: Element) => {
-      const range = document.createRange(); range.selectNodeContents(element);
-      const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range);
-      const state = { connected: element.isConnected, elementText: element.textContent, rangeText: range.toString(), selectionText: String(selection) };
-      (document.getElementById('reader-research-citation-add') as HTMLButtonElement).click();
-      return state;
-    });
-    console.log('[integrated-restart citation range]', JSON.stringify(citationSelection));
-    expect(citationSelection.rangeText).toContain(quote);
-    expect(citationSelection.selectionText).toContain(quote);
+    await citationArticle.selectText();
+    await expect.poll(() => page.evaluate(() => String(window.getSelection()))).toContain(quote);
+    await page.getByRole('button', { name: '引用を原稿へ追加して戻る' }).click();
     await expect(page.locator('#modal-reader')).not.toHaveClass(/active/);
     await expect(page.locator('#document-citations')).toContainText('verified');
     await page.getByRole('button', { name: '保存', exact: true }).click();
