@@ -16,5 +16,13 @@ playwright-report/
 /quality/.python-temp/
 /quality/.vitest-temp/
 docs/hackathon-2026-*
+/artifacts/article-search-engine-comparison-*.json
+/artifacts/bm25-ablation-*.json
+/artifacts/jacwir-*.json
+/artifacts/jagov-*.json
+/artifacts/jqara-*.json
+/artifacts/miracl-*.json
+/artifacts/saved-card-*.json
+/artifacts/tomt-*.json
 quality/e0e6/local/
 quality/e0e6/test-local/

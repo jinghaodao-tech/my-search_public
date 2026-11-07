@@ -26,6 +26,9 @@ test('primary views and shared operational modals are reachable and consistent',
   }
 
   await page.getByRole('button', { name: '探す', exact: true }).click();
+  await page.locator('#bm25-config-body').getByRole('button', { name: '情報源を管理', exact: true }).click();
+  await expect(page.locator('#source-modal')).toHaveClass(/active/);
+  await page.locator('#source-modal').getByRole('button', { name: '閉じる', exact: true }).click();
   page.on('dialog', dialog => dialog.dismiss());
   await page.locator('#search-details > summary').evaluate(el => el.scrollIntoView({ block: 'center' }));
   await page.locator('#search-details > summary').click();
@@ -50,7 +53,7 @@ test('primary views and shared operational modals are reachable and consistent',
 
   const admin = page.locator('#topbar details.topbar-admin');
   await admin.locator('summary').click();
-  await admin.getByRole('button', { name: 'ソース管理' }).click();
+  await admin.getByRole('button', { name: '情報源を管理' }).click();
   await expect(page.locator('#source-modal')).toHaveClass(/active/);
   await page.screenshot({ path: path.join(screenshotDir, '情報源管理.png'), fullPage: true });
   await page.locator('#source-modal button[onclick="closeModal(\'source-modal\')"]').click();
@@ -66,6 +69,20 @@ test('primary views and shared operational modals are reachable and consistent',
   await expect(page.locator('#modal-contextual-settings')).toHaveClass(/active/);
   await page.screenshot({ path: path.join(screenshotDir, '状況別の補助機能.png'), fullPage: true });
   await page.locator('#modal-contextual-settings button[onclick="closeModal(\'modal-contextual-settings\')"]').last().click();
+
+  await page.getByRole('button', { name: 'カード一覧', exact: true }).click();
+  await page.getByRole('button', { name: 'メモを作成', exact: true }).first().click();
+  await expect(page.locator('#modal-reader')).toHaveClass(/active/);
+  await page.locator('#modal-reader').getByRole('button', { name: '閉じる', exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#fab-main').click();
+  await page.getByRole('button', { name: 'メモを作成', exact: true }).last().click();
+  await expect(page.locator('#modal-reader')).toHaveClass(/active/);
+  await page.locator('#modal-reader').getByRole('button', { name: '閉じる', exact: true }).click();
+  await page.locator('#fab-main').click();
+  await page.getByRole('button', { name: 'データ取り込み', exact: true }).last().click();
+  await expect(page.locator('#modal-csv')).toHaveClass(/active/);
+  await page.locator('#modal-csv').getByRole('button', { name: 'キャンセル', exact: true }).click();
 
   await page.getByRole('button', { name: '読んでメモ', exact: true }).click();
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
