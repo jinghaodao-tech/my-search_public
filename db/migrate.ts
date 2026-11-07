@@ -224,6 +224,32 @@ const migrations: Migration[] = [
       DELETE FROM reader_tool_state WHERE card_id = OLD.id;
     END;
   ` },
+  { id: '029_create_reader_text_fts', sql: `
+    CREATE VIRTUAL TABLE IF NOT EXISTS reader_text_fts USING fts5(card_id UNINDEXED, body, tokenize='trigram');
+    INSERT INTO reader_text_fts(card_id, body)
+      SELECT reader_texts.card_id,
+        CASE WHEN json_valid(reader_texts.paragraphs_json) AND json_type(reader_texts.paragraphs_json) = 'array'
+          THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(reader_texts.paragraphs_json) WHERE type = 'text'), '')
+          ELSE '' END
+      FROM reader_texts
+      WHERE NOT EXISTS (SELECT 1 FROM reader_text_fts WHERE reader_text_fts.card_id = reader_texts.card_id);
+    CREATE TRIGGER IF NOT EXISTS reader_text_fts_after_insert AFTER INSERT ON reader_texts BEGIN
+      INSERT INTO reader_text_fts(card_id, body)
+        VALUES(NEW.card_id, CASE WHEN json_valid(NEW.paragraphs_json) AND json_type(NEW.paragraphs_json) = 'array'
+          THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(NEW.paragraphs_json) WHERE type = 'text'), '')
+          ELSE '' END);
+    END;
+    CREATE TRIGGER IF NOT EXISTS reader_text_fts_after_update AFTER UPDATE OF paragraphs_json ON reader_texts BEGIN
+      DELETE FROM reader_text_fts WHERE card_id = OLD.card_id;
+      INSERT INTO reader_text_fts(card_id, body)
+        VALUES(NEW.card_id, CASE WHEN json_valid(NEW.paragraphs_json) AND json_type(NEW.paragraphs_json) = 'array'
+          THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(NEW.paragraphs_json) WHERE type = 'text'), '')
+          ELSE '' END);
+    END;
+    CREATE TRIGGER IF NOT EXISTS reader_text_fts_after_delete AFTER DELETE ON reader_texts BEGIN
+      DELETE FROM reader_text_fts WHERE card_id = OLD.card_id;
+    END;
+  ` },
 ];
 
 function columns(db: Database.Database, table: string): Set<string> {

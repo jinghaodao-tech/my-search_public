@@ -43,7 +43,7 @@ Query parameters:
 - `archived`: `true` or `false`
 - `tag`: tag filter backed by `card_tags`
 - `type`: `memo`, `article`, or `csv`
-- `q`: simple SQL `LIKE` filter over title, body, summary, and tags. This is not BM25 ranking.
+- `q`: filters title, body, summary, tags, and saved Reader article/PDF text. Reader text uses a SQLite FTS5 trigram index for substring search; queries shorter than three characters use a `LIKE` fallback. This is not BM25 ranking.
 - `kjGroupId`: KJ group filter
 - `limit`: enables paged response, default `20`, max `100`
 - `offset`: zero-based start position, default `0`
@@ -139,6 +139,6 @@ Candidate state is separate from saved-card archive state:
 - `PUT /api/candidates/:id/expire` expires a candidate without deleting the source article.
 - `POST /api/candidates/expire-reviewed` expires old `reviewed_not_saved` candidates. The default candidate retention is 14 days and is supplied as `candidateRetentionDays`.
 
-Saved-card search remains separate: `GET /api/cards?q=...` uses SQLite `LIKE` filtering over saved-card fields, while `POST /api/run` executes the BM25 collection pipeline.
+Saved-card search remains separate: `GET /api/cards?q=...` filters saved-card fields and full Reader text, while `POST /api/run` executes the BM25 collection pipeline.
 
 API errors include a stable code field such as validation_failed, card_not_found, candidate_not_found, candidate_already_saved, and candidate_expired; X-Request-Id is included for correlation.
