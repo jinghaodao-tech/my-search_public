@@ -780,7 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const paragraphIndex = paragraph ? Number(paragraph.getAttribute('data-index')) : null;
     if (selection && !selection.isCollapsed && selection.toString().trim() && Number.isInteger(paragraphIndex)) {
       pendingResearchCitationSelection = { quote: selectedReaderText(), paragraphIndex };
-      event.preventDefault();
+      if (event.type === 'mousedown') event.preventDefault();
     }
   };
   const citationButton = document.getElementById('reader-research-citation-add');
