@@ -88,7 +88,9 @@ async function startLocalServer() {
   serverProcess = spawn(process.env.MY_SEARCH_NODE || 'node', [tsxCli, 'server.ts'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   serverProcess.stdout.on('data', chunk => console.log(`[my-search] ${String(chunk).trimEnd()}`));
   serverProcess.stderr.on('data', chunk => console.error(`[my-search] ${String(chunk).trimEnd()}`));
-  await waitForServer(`http://localhost:${serverPort}/healthz`);
+  // The child server binds IPv4 loopback explicitly; use the same address here
+  // so Linux runners do not resolve localhost to ::1 first.
+  await waitForServer(`http://127.0.0.1:${serverPort}/healthz`);
 }
 
 function makeAppWindow() {
