@@ -26,6 +26,7 @@ import { createDiscoverRouter } from './routes/discover_routes.js';
 import { createSiteRouter } from './routes/site_routes.js';
 import { createRefindStudyRouter } from './routes/refind_study_routes.js';
 import { createResearchExperimentRouter, isTrustedLocalRequest } from './routes/research_experiment_routes.js';
+import { createDocumentsRouter } from './routes/documents_routes.js';
 import { assessSiteRun, startSiteScheduler, syncSite } from './services/site_collector.js';
 import { safeFetch } from './services/safe_fetch.js';
 import {
@@ -86,9 +87,24 @@ if (runtimeConfig.RESEARCH_EXPERIMENTS_ENABLED) {
 app.use(express.json({ limit: '10mb' }));
 app.use(requestLogger);
 app.use(metricsMiddleware);
+app.use('/api', (req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  const origin = req.header('origin');
+  if (!origin) return next(); // non-browser clients do not send Origin; API key policy still applies.
+  const hostOrigin = `${req.protocol}://${req.header('host') ?? ''}`;
+  const normalize = (value: string) => { try { return new URL(value).origin; } catch { return ''; } };
+  const allowed = new Set([normalize(hostOrigin), normalize(corsOrigin)].filter(Boolean));
+  if (allowed.has(normalize(origin))) return next();
+  res.status(403).json({ error: 'cross_origin_mutation_blocked' });
+});
 app.use('/api', apiKeyGuard);
 app.get('/metrics', (_req, res) => res.json({ ok: true, metrics: metricsSnapshot() }));
 const publicDir = path.join(__dirname, 'public');
+const pdfJsBrowserDir = path.join(__dirname, 'node_modules', 'pdfjs-dist', 'build');
+app.get('/vendor/pdfjs/pdf.mjs', (_req, res, next) => res.type('application/javascript').sendFile(path.join(pdfJsBrowserDir, 'pdf.mjs'), error => { if (error) next(error); }));
+app.get('/vendor/pdfjs/pdf.worker.mjs', (_req, res, next) => res.type('application/javascript').sendFile(path.join(pdfJsBrowserDir, 'pdf.worker.mjs'), error => { if (error) next(error); }));
+app.use('/vendor/pdfjs/cmaps', express.static(path.join(__dirname, 'node_modules', 'pdfjs-dist', 'cmaps'), { fallthrough: false, index: false }));
+app.use('/vendor/pdfjs/standard_fonts', express.static(path.join(__dirname, 'node_modules', 'pdfjs-dist', 'standard_fonts'), { fallthrough: false, index: false }));
 if (runtimeConfig.RESEARCH_EXPERIMENTS_ENABLED) {
   app.get('/research-lab', (req, res, next) => {
     if (!isTrustedLocalRequest({ remoteAddress: req.socket.remoteAddress ?? '', localAddress: req.socket.localAddress ?? '', host: req.header('host') ?? '', origin: req.header('origin') })) return res.status(403).json({ error: 'local_only' });
@@ -119,6 +135,7 @@ app.use('/api', createSavedSearchRouter());
 app.use('/api', createCandidateRouter(routeContext));
 app.use('/api', createJobsRouter(routeContext));
 app.use('/api', createCardsRouter(routeContext));
+app.use('/api', createDocumentsRouter());
 app.use('/api', createRefindStudyRouter({
   directory: path.join(__dirname, 'quality', 'e2e', 'local', 'personal-refind', 'study'),
   root: __dirname,

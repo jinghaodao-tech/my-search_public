@@ -6,6 +6,8 @@ const cards = read('public/js/cards_ui.js');
 const reader = read('public/js/reader_ui.js');
 const styles = read('public/styles.css');
 const modes = read('public/js/bm25_modes_ui.js');
+const ai = read('public/js/ai_ui.js');
+const keywords = read('public/js/bm25_ui.js');
 const audit = read('docs/ui-operation-audit.md');
 const fail = message => { console.error(`UI guideline check failed: ${message}`); process.exitCode = 1; };
 const requireText = (source, text, message) => { if (!source.includes(text)) fail(message); };
@@ -45,5 +47,19 @@ requireText(styles, '@media (max-width:768px)', 'the shared editor must retain r
 requireText(modes, 'function addBM25Mode(){\n  openModeManagerModal();', 'the quick-add mode shortcut must open the shared mode manager.');
 requireText(modes, 'function confirmAddMode(){', 'mode creation must use the shared manager form.');
 forbidText(modes, "prompt('新しいモード名を入力してください')", 'mode creation must not retain a second prompt flow.');
+requireText(html, 'openSourceModal();this.closest(\'details\').open=false">情報源を管理</button>', 'source-management entry must have a consistent purpose label.');
+requireText(html, 'onclick="openSourceModal()">情報源を管理</button>', 'search-screen source entry must use the shared source-management label.');
+requireText(html, 'aria-label="メモを作成"', 'compact memo shortcut must expose the shared accessible name.');
+requireText(html, 'aria-label="データ取り込み"', 'compact import shortcut must expose the shared accessible name.');
+requireText(html, '>Markdown出力</button>', 'bulk export must use the full Japanese format name.');
+requireText(html, 'title="Markdown出力" aria-label="Markdown出力"', 'detail export must have a Japanese accessible name.');
+requireText(cards, '>要約を削除</button>', 'summary removal action must be labeled in Japanese.');
+requireText(ai, "confirm('要約を削除しますか？')", 'summary removal confirmation must explain its effect in Japanese.');
+requireText(keywords, '>削除</button>', 'search-keyword removal action must be labeled in Japanese.');
+for (const obsolete of ['ソース管理', '＋ サイトを追加', '情報源を追加', 'MD Export', 'Export Markdown', 'Toggle sidebar']) {
+  forbidText(html, obsolete, `inconsistent or untranslated action label remains: ${obsolete}`);
+}
+forbidText(cards + ai + keywords, '>Delete</button>', 'English deletion action remains in card or search UI.');
+forbidText(keywords, '>Remove</button>', 'English removal action remains in search UI.');
 
-if (!process.exitCode) console.log('UI guidelines check passed: shared edit entry, no duplicate detail edit controls, documented modal/view inventory, format-aware saves, and source preservation.');
+if (!process.exitCode) console.log('UI guidelines check passed: shared edit entry, documented modal/view inventory, format-aware saves, source preservation, and consistent action labels.');

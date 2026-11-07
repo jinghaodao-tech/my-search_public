@@ -6,9 +6,9 @@ function toggleSummaryVisibility(checked){
   renderCardGrid();
 }
 async function deleteSummary(id){
-  if(!confirm('Delete summary?')) return;
+  if(!confirm('要約を削除しますか？')) return;
   await api.del(`/api/cards/${id}/summary`);
-  toast('Summary deleted');
+  toast('要約を削除しました');
   await loadCards();
   if(currentCardId===id) selectCard(id);
 }

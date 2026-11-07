@@ -11,6 +11,8 @@
     "build": "node scripts/build_server.mjs && node scripts/check_third_party_notices.mjs",
     "check:third-party-notices": "node scripts/check_third_party_notices.mjs",
     "start:prod": "node dist/server.js",
+    "desktop": "electron desktop/main.mjs",
+    "desktop:trial": "electron desktop/main.mjs --trial",
     "dev": "npx tsx --watch server.ts",
     "typecheck": "tsc --noEmit",
     "build:frontend": "tsc -p tsconfig.frontend.json",
@@ -93,6 +95,7 @@
     "@types/node": "^25.9.3",
     "@types/node-cron": "^3.0.11",
     "@types/supertest": "^7.2.0",
+    "electron": "^45.2.3",
     "supertest": "^7.2.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"

@@ -58,6 +58,49 @@ describe('local AI (browser script): prompts and parsing', () => {
     expect(calls[1]).toBe('destroyed');
   });
 
+  it('builds a local outline only from verified citations and keeps the model output as a draft', async () => {
+    let prompt = '';
+    const session = {
+      clone: async () => ({ prompt: async (text: string) => { prompt = text; return '## 主張案 [S1]'; }, destroy() {} }),
+    };
+    const fake = loadLocalAi({ LanguageModel: { availability: async () => 'available', create: async () => session } });
+    const outline = await fake.draftCitationOutline('調査', '条件を確認', [
+      { id: 'citation-1', sourceTitle: '確認済み資料', quote: '根拠となる引用文', verification: 'verified' },
+      { id: 'citation-2', sourceTitle: '未確認資料', quote: '使ってはいけない文', verification: 'source_changed' },
+    ]);
+    expect(outline).toContain('[S1]');
+    expect(prompt).toContain('根拠となる引用文');
+    expect(prompt).not.toContain('使ってはいけない文');
+    expect(prompt).toContain('確認できない主張を加えず');
+  });
+
+  it('builds comparison, claim-review, and rewrite prompts only from verified source material', async () => {
+    const prompts: string[] = [];
+    const answers = ['## 共通点 [S1]', '根拠不足 [C1]', '改善案です。'];
+    const session = { clone: async () => ({ prompt: async (text: string) => { prompts.push(text); return answers.shift(); }, destroy() {} }) };
+    const fake = loadLocalAi({ LanguageModel: { availability: async () => 'available', create: async () => session } });
+    const verified = { quote: '保存原文の引用。', verification: 'verified', sourceTitle: '資料A' };
+    const invalid = { quote: '改変済みの引用。', verification: 'source_changed', sourceTitle: '資料B' };
+    await expect(fake.compareVerifiedSources('条件を比べる', [
+      { title: '資料A', citations: [verified] },
+      { title: '資料B', citations: [verified, invalid] },
+    ])).resolves.toContain('[S1]');
+    await expect(fake.reviewClaimEvidence('効果がある', [verified, invalid])).resolves.toContain('[C1]');
+    await expect(fake.rewriteSelection('効果がある。', '慎重な表現', [verified])).resolves.toBe('改善案です。');
+    expect(prompts[0]).toContain('共通点・相違点・留保');
+    expect(prompts[0]).toContain('保存原文の引用。');
+    expect(prompts[0]).not.toContain('改変済みの引用。');
+    expect(prompts[1]).toContain('根拠不足');
+    expect(prompts[2]).toContain('意味、留保、数値、因果の強さを勝手に変えず');
+  });
+
+  it('requires selection and verified evidence for AI evidence review', async () => {
+    const fake = loadLocalAi();
+    await expect(fake.reviewClaimEvidence('', [])).rejects.toThrow('確認する主張を選択してください');
+    await expect(fake.reviewClaimEvidence('主張', [{ quote: '不一致', verification: 'source_changed' }])).rejects.toThrow('確認済み引用がありません');
+    await expect(fake.compareVerifiedSources('目的', [{ title: '資料', citations: [] }])).rejects.toThrow('2件以上');
+  });
+
   it('translates paragraph by paragraph, aligned, skipping markers, images and Japanese', async () => {
     const fake = loadLocalAi({ Translator: { availability: async () => 'available', create: async () => ({ translate: async (text: string) => `訳:${text}` }) } });
     const progress: number[] = [];

@@ -482,7 +482,7 @@ test('administration actions remain reachable from the compact top bar', async (
   await page.goto('/');
   const menu = page.locator('#topbar .topbar-admin');
   await menu.locator('summary').click();
-  await menu.getByRole('button', { name: 'ソース管理' }).click();
+  await menu.getByRole('button', { name: '情報源を管理' }).click();
   await expect(page.locator('#source-modal')).toHaveClass(/active/);
   await page.locator('#source-modal').getByRole('button', { name: '閉じる' }).click();
   await menu.locator('summary').click();

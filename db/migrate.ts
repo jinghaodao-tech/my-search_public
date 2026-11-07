@@ -224,6 +224,63 @@ const migrations: Migration[] = [
       DELETE FROM reader_tool_state WHERE card_id = OLD.id;
     END;
   ` },
+  { id: '027_create_research_documents', sql: `
+    CREATE TABLE IF NOT EXISTS documents (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      content_json TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_documents_updated ON documents(updated_at DESC);
+    CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(id UNINDEXED, title, body);
+    CREATE TRIGGER IF NOT EXISTS documents_fts_after_insert AFTER INSERT ON documents BEGIN
+      INSERT INTO documents_fts(id,title,body) VALUES(NEW.id,NEW.title,COALESCE(json_extract(NEW.content_json,'$.markdown'),''));
+    END;
+    CREATE TRIGGER IF NOT EXISTS documents_fts_after_update AFTER UPDATE OF title,content_json ON documents BEGIN
+      DELETE FROM documents_fts WHERE id=OLD.id;
+      INSERT INTO documents_fts(id,title,body) VALUES(NEW.id,NEW.title,COALESCE(json_extract(NEW.content_json,'$.markdown'),''));
+    END;
+    CREATE TRIGGER IF NOT EXISTS documents_fts_after_delete AFTER DELETE ON documents BEGIN
+      DELETE FROM documents_fts WHERE id=OLD.id;
+    END;
+    CREATE TABLE IF NOT EXISTS document_sources (
+      id TEXT PRIMARY KEY,
+      document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      source_card_id TEXT REFERENCES cards(id) ON DELETE SET NULL,
+      source_title TEXT NOT NULL,
+      source_url TEXT,
+      added_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_document_sources_unique_card ON document_sources(document_id,source_card_id) WHERE source_card_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_document_sources_source ON document_sources(source_card_id);
+    CREATE TABLE IF NOT EXISTS document_citations (
+      id TEXT PRIMARY KEY,
+      document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      source_card_id TEXT REFERENCES cards(id) ON DELETE SET NULL,
+      source_title TEXT NOT NULL,
+      source_url TEXT,
+      quote_text TEXT NOT NULL,
+      source_hash TEXT NOT NULL,
+      paragraph_index INTEGER NOT NULL CHECK(paragraph_index >= 0),
+      page_label TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_document_citations_document ON document_citations(document_id);
+    CREATE INDEX IF NOT EXISTS idx_document_citations_source ON document_citations(source_card_id);
+  ` },
+  { id: '028_create_document_clips', sql: `
+    CREATE TABLE IF NOT EXISTS document_clips (
+      id TEXT PRIMARY KEY,
+      document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      clip_text TEXT NOT NULL CHECK(length(clip_text) BETWEEN 1 AND 5000),
+      source_title TEXT NOT NULL,
+      source_url TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_document_clips_document ON document_clips(document_id);
+  ` },
   { id: '029_create_reader_text_fts', sql: `
     CREATE VIRTUAL TABLE IF NOT EXISTS reader_text_fts USING fts5(card_id UNINDEXED, body, tokenize='trigram');
     INSERT INTO reader_text_fts(card_id, body)

@@ -217,6 +217,7 @@ function renderDiscoverItem(item, rank, max, alreadySaved = false) {
   actions.className = 'evidence-actions';
   actions.appendChild(evidenceButton('読んでメモ', '本文を開いて、読みながらメモを書く', () => openDiscoverItem(item, false)));
   actions.appendChild(evidenceButton('根拠を探す', '本文を開いて、目的に関係する一節を探す', () => openDiscoverItem(item, true)));
+  if (window.mySearchDesktop && item.url) actions.appendChild(evidenceButton('内蔵ブラウザーで開く', '専用ブラウザーでページを開き、選択文を未検証クリップとして渡す', () => window.mySearchDesktop.openBrowser(item.url)));
   if (alreadySaved) meta.textContent += ' · 保存済み';
   const save = evidenceButton(alreadySaved ? '保存済み' : '保存', '本文ごとカードに保存（あとで読む）', async () => {
     save.disabled = true;

@@ -86,7 +86,7 @@
 | 記事検索 | 検索先選択・セット、条件保存／復元／削除、検索実行、候補の閲覧・保存 | `loadSearchTargets`、`runSearchScreen` (`POST /api/run` またはカード検索API)、`saveCurrentSearch`、`restoreSavedSearch`、`deleteSavedSearch` | 保存済みカード検索・新着記事検索・検索条件保存は対象が異なる。 |
 | Reader `#modal-reader` | Web URL読込、PDF選択、手動本文、ソース登録 | `loadReaderArticle`、`chooseReaderPdf`、`applyManualReaderText`、`registerReaderSite` | 入力元ごとの選択肢だが、読取・メモは同じReader画面を使う。 |
 | Readerメモ・引用 | テキスト／表表示、要点と根拠、引用・元へ移動・別メモへ転送、保存 | `setMemoMode`、`runEvidence`、`quoteReaderSelection`、`jumpToQuoteSource`、`prepareQuoteTransfer`、`saveReaderCard` | 表／テキストは同じメモの表示形式。コピー、同一カードへの挿入、別カードへの書込みは副作用が違うため分ける。 |
-| 情報源管理 `#source-modal` | Webサイト・RSS・arXiv・GitHub設定、既存サイト同期 | `openSourceModal`、`switchSourceTab`、`saveSourceConfig`、サイト一覧の同期処理 | 上部管理と検索画面の「情報源を追加」は同じ管理画面へのショートカットとして維持。 |
+| 情報源管理 `#source-modal` | Webサイト・RSS・arXiv・GitHub設定、既存サイト同期 | `openSourceModal`、`switchSourceTab`、`saveSourceConfig`、サイト一覧の同期処理 | 上部管理と検索画面の「情報源を管理」は同じ管理画面へのショートカットとして維持。 |
 | BM25モード管理 `#mode-manager-modal` | モード追加・選択・状態／説明管理 | 「＋」は `addBM25Mode` → `openModeManagerModal`、作成は `confirmAddMode`、モード実行条件は `selectBM25Mode` | 旧「＋」のprompt作成と管理画面フォームは別処理だった。現在は同じ管理フォームを使う。 |
 | CSV／JSON取込 `#modal-csv` | ファイルまたは貼付文字列をプレビューし、カードとして取り込む | `openCSVModal`、`switchImportTab`、`submitImport` → `/api/cards/import-csv` または `/api/cards/import-json` | 形式は異なるが1つの取込モーダルにまとめる。 |
 | 状況別の補助機能 `#modal-contextual-settings` | 機能状態・ローカル記録の確認・出力・削除 | `openContextualSettings`、`exportContextualStudyEvents`、`clearContextualStudyEvents` | 機能設定と個別利用操作は責務が異なるため「管理」内に維持。 |
@@ -95,3 +95,27 @@
 
 - カード一覧の鉛筆を共有Editorへの直接入口として復元し、詳細画面へ移動するショートカットを維持した。
 - BM25モードの「＋」は以前promptを開き、管理画面の「追加」は別フォームを使っていた。両方を同じ管理モーダルと作成関数へ接続した。
+- 「ソース管理」「＋ サイトを追加」「情報源を追加」は同じ `#source-modal` を開いていたため、「情報源を管理」に統一した。検索画面・管理メニューいずれの入口も同じ画面を開くことをPlaywrightで確認する。
+- 上部と空状態のメモ作成表記を「メモを作成」にそろえ、FABの短い表示「メモ」には同じアクセシブル名を付けた。上部とFABは同じReader Editorを開くショートカットとして残す。
+- データ取込のFABは短い表示「CSV」を保ち、表示ラベルとアクセシブル名を「データ取り込み」にそろえた。CSV/JSONの選択は同一モーダル内で行う。
+- `MD Export`、詳細の `MD`、要約の `Delete`、検索キーワード行の `Remove`、サイドバーの `Toggle sidebar` という英語表記を、画面全体で使う日本語の操作名に合わせた。内部関数・API・保存形式は変更しない。
+
+## 操作一覧の追加確認
+
+同じ目的の複数入口は、名称と着地先を合わせた便利なショートカットとして残す。独立した保存処理が増えないことを確認するため、Playwrightでは入口ごとに開いたモーダルのIDも確認する。
+
+| 目的 | 入口 | 共通の着地先 | 統合の扱い |
+|---|---|---|---|
+| 情報源を管理する | 上部「管理」／検索条件の検索先／検索結果の案内 | `openSourceModal()` → `#source-modal` | 同じ管理画面を開く3入口。追加と管理を別画面に分けず、入口名も「情報源を管理」に統一。 |
+| 通常メモを作る | カード一覧上部／FAB | `openNewCardModal()` → `#modal-reader` の通常メモEditor | 表示寸法だけ異なる同じ操作。保存は共有Editorの形式別アダプターへ集約。 |
+| 保存データを取り込む | 上部「管理」／FAB | `openCSVModal()` → `#modal-csv` | 同一モーダル内でCSV/JSONを選ぶ。FABはアイコン幅に合わせた短い表示を維持し、アクセシブル名を統一。 |
+| Markdownを書き出す | 選択カードの一括操作／詳細画面 | `exportSelectedMarkdown()`／`exportMarkdown(id)` | 対象件数が異なるため実行処理は別だが、利用者向けの操作名を「Markdown出力」に統一。 |
+| AI要約を扱う | 詳細の要約生成／既存要約の削除／複数カードの一括要約 | `summarizeOne()`／`deleteSummary()`／`summarizeBulk()` | 生成と削除は副作用が逆で、一括生成は対象数が異なる。ボタンを一つにまとめず、日本語ラベルで目的を明示。 |
+
+### 今回増やした画面検証
+
+- 情報源管理は、検索画面内と上部「管理」の両方から同じ `#source-modal` に遷移する。
+- メモ作成は、カード一覧上部とFABの両方から同じ `#modal-reader` を開く。
+- データ取込は、上部「管理」とFABの両方から同じ `#modal-csv` を開く。
+- これらの確認はモーダルを開閉する操作で、カード・情報源・取込データを作成・変更しない。
+- 表示名の整合はコード上の文字列とPlaywrightのロール名で確認する。利用者の迷いが減ったか、操作時間が短縮したかは未測定。

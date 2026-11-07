@@ -51,8 +51,8 @@ const sourceFields = {
 };
 
 const updateSchema = z.object({
-  color: z.string().trim().max(50).regex(/^(#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,30}|rgba?\([\d.,%\s]+\)|hsla?\([\d.,%\s]+\))$/).nullable().optional(),
   ...sourceFields,
+  color: z.string().trim().max(50).regex(/^(#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,30}|rgba?\([\d.,%\s]+\)|hsla?\([\d.,%\s]+\))$/).nullable().optional(),
   url: sourceUrlSchema.nullable().optional(),
   fetchedAt: z.string().datetime().nullable().optional(),
   paragraphs: paragraphsSchema,
@@ -63,8 +63,8 @@ const updateSchema = z.object({
 }).strict().refine(body => !body.translation || body.translation.paragraphs.length === body.paragraphs.length, { message: 'translation.paragraphs must match paragraphs' });
 
 const saveSchema = z.object({
-  color: z.string().trim().max(50).regex(/^(#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,30}|rgba?\([\d.,%\s]+\)|hsla?\([\d.,%\s]+\))$/).nullable().optional(),
   ...sourceFields,
+  color: z.string().trim().max(50).regex(/^(#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,30}|rgba?\([\d.,%\s]+\)|hsla?\([\d.,%\s]+\))$/).nullable().optional(),
   url: sourceUrlSchema.nullable().optional(),
   fetchedAt: z.string().datetime(),
   paragraphs: paragraphsSchema,
@@ -139,6 +139,7 @@ export function createReaderRouter(ctx: RouteContext) {
     const demo = isDemoMode();
     res.json({
       demo,
+      demoDataScope: demo ? (process.env.DEMO_DATA_SCOPE === 'local' ? 'local' : 'shared') : 'none',
       ai: IS_MOCK_AI || ctx.hasConfiguredProviderKey(),
       aiMode: IS_MOCK_AI ? 'mock' : ctx.hasConfiguredProviderKey() ? 'configured-server' : 'unavailable',
       readerTools: readerToolsEnabled(),
@@ -280,8 +281,8 @@ export function createReaderRouter(ctx: RouteContext) {
       toolsSourceHash: currentToolsHash,
       tools: toolAssessment.tools,
       toolState: safeToolState,
-      color: card.color ?? null,
       tags: card.tags ?? [],
+      color: card.color ?? null,
       isReaderFormat: parsed.isReaderFormat,
     });
   });
