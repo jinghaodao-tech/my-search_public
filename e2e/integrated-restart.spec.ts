@@ -151,11 +151,19 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
     await page.locator('#bm25-run-btn').click();
     await page.locator('#search-cards .score-card', { hasText: sourceTitle }).first()
       .getByRole('button', { name: 'メモを読む' }).click();
-    await page.locator('#reader-article [data-index="0"]').evaluate((element: Element) => {
+    const citationArticle = page.locator('#reader-article [data-index="0"]');
+    await expect(citationArticle).toContainText(quote);
+    const citationSelection = await citationArticle.evaluate((element: Element) => {
       const range = document.createRange(); range.selectNodeContents(element);
       const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range);
+      const state = { connected: element.isConnected, elementText: element.textContent, rangeText: range.toString(), selectionText: String(selection) };
+      (document.getElementById('reader-research-citation-add') as HTMLButtonElement).click();
+      return state;
     });
-    await page.getByRole('button', { name: '引用を原稿へ追加して戻る' }).click();
+    console.log('[integrated-restart citation range]', JSON.stringify(citationSelection));
+    expect(citationSelection.rangeText).toContain(quote);
+    expect(citationSelection.selectionText).toContain(quote);
+    await expect(page.locator('#modal-reader')).not.toHaveClass(/active/);
     await expect(page.locator('#document-citations')).toContainText('verified');
     await page.getByRole('button', { name: '保存', exact: true }).click();
     await expect(page.locator('#document-save-state')).toContainText('保存済み');
