@@ -3,13 +3,19 @@
 // with textContent only, so markup from external pages is never executed.
 let readerArticle = null;
 let readerCandidateId = null;
+let readerCardId = null; // set when an existing card is opened for editing
 let readerPlainCardMode = false; // ordinary cards share this editor but keep their existing card-body format
 let readerEditorColor = null;
 let readerEditorColorTouched = false;
-let readerCardId = null; // set when an existing card is opened for editing
 let readerInitialMemo = '';
 let readerCrossQuote = null;
 const READER_IMAGE_LINE = /^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/;
+let readerOriginalPdfDocument = null;
+let readerOriginalPdfParagraphsJson = '';
+let readerOriginalPdfPageCount = 0;
+let readerOriginalPdfRenderToken = 0;
+let readerOriginalPdfRenderTask = null;
+let readerPdfJsPromise = null;
 
 let readerRequestVersion = 0;
 let readerSaving = false;
@@ -205,21 +211,21 @@ function openReader(url = '', candidateId = null, fromSearch = false) {
   readerToolValues = {};
   readerToolPanel = null;
   readerCandidateId = candidateId;
-  readerPlainCardMode = false;
   readerCardId = null;
+  readerPlainCardMode = false;
   readerInitialMemo = '';
   readerCrossQuote = null;
   if (typeof resetReaderTranslation === 'function') resetReaderTranslation();
   if (readerPendingPurpose?.purpose) document.getElementById('evidence-purpose').value = readerPendingPurpose.purpose;
+  document.getElementById('reader-fallback-title').value = (typeof findSearchItem === 'function' ? findSearchItem(candidateId)?.article.title : '') || '';
   document.getElementById('reader-edit-title').value = document.getElementById('reader-fallback-title').value;
   readerEditorColor = null;
   readerEditorColorTouched = false;
   updateColorStrip('reader-card-color-strip', readerEditorColor, color => { readerEditorColor = color; readerEditorColorTouched = true; });
-  document.getElementById('reader-fallback-title').value = (typeof findSearchItem === 'function' ? findSearchItem(candidateId)?.article.title : '') || '';
   document.getElementById('reader-manual-text').value = '';
   setReaderSaveLabel();
-  setReaderEditorMode(false);
   document.getElementById('reader-url').value = url;
+  setReaderEditorMode(false);
   document.getElementById('reader-memo').value = '';
   document.getElementById('reader-tags').value = '';
   setReaderBiblio({});
@@ -237,6 +243,7 @@ function openReader(url = '', candidateId = null, fromSearch = false) {
   document.getElementById('reader-url').focus();
   offerReaderDraft();
 }
+
 function setReaderEditorMode(plainCard) {
   readerPlainCardMode = Boolean(plainCard);
   document.querySelector('#modal-reader .reader-modal')?.classList.toggle('reader-plain-mode', readerPlainCardMode);
@@ -289,7 +296,6 @@ function openPlainCardEditor() {
   document.getElementById('reader-edit-title').focus();
 }
 
-
 // Open an existing card: left = the saved copy (refetched only if none was saved), right = its memo.
 async function openReaderForCard(id) {
   invalidateContextualRequests();
@@ -301,19 +307,19 @@ async function openReaderForCard(id) {
     const data = await api.get(`/api/reader/cards/${encodeURIComponent(id)}`);
     if (requestVersion !== readerRequestVersion) return false;
     readerCandidateId = null;
-    setReaderEditorMode(!data.isReaderFormat);
     readerCardId = id;
+    setReaderEditorMode(!data.isReaderFormat);
     if (typeof resetReaderTranslation === 'function') resetReaderTranslation(data.translation);
     setReaderSaveLabel();
     document.getElementById('reader-url').value = data.url || '';
     document.getElementById('reader-memo').value = data.memo || '';
     readerInitialMemo = data.memo || '';
     // the title field must show this card, not the article opened before
+    document.getElementById('reader-fallback-title').value = data.title || '';
     document.getElementById('reader-edit-title').value = data.title || '';
     readerEditorColor = data.color || null;
     readerEditorColorTouched = false;
     updateColorStrip('reader-card-color-strip', readerEditorColor, color => { readerEditorColor = color; readerEditorColorTouched = true; });
-    document.getElementById('reader-fallback-title').value = data.title || '';
     document.getElementById('reader-manual-text').value = '';
     document.getElementById('reader-tags').value = (data.tags || []).join(' ');
     setReaderBiblio(data);
@@ -438,8 +444,8 @@ async function loadReaderArticle() {
   try {
     const extracted = await api.post('/api/reader/extract', { url });
     if (requestVersion !== readerRequestVersion) return;
-    if (!readerCardId) document.getElementById('reader-edit-title').value = extracted.title || '';
     readerArticle = extracted;
+    if (!readerCardId) document.getElementById('reader-edit-title').value = extracted.title || '';
     initializeReaderToolValues(readerArticle);
     if (typeof resetReaderTranslation === 'function' && !readerCardId) resetReaderTranslation();
     setReaderBiblio(readerArticle);
@@ -465,11 +471,14 @@ function renderReaderArticle() {
   resetEvidence();
   closeReaderToolPanel(false);
   const pane = document.getElementById('reader-article');
+  pane.hidden = false;
+  document.getElementById('reader-original-pdf-view').hidden = true;
   const meta = document.getElementById('reader-meta');
   pane.textContent = '';
   meta.textContent = '';
   if (!readerArticle) {
     pane.textContent = 'URLを入れて「読む」を押すか、「PDFを開く」で手元のPDFを選ぶと、ここに本文が出ます。';
+    updateResearchCitationTransferAvailability();
     return;
   }
   const title = document.createElement('h3');
@@ -523,6 +532,13 @@ function renderReaderArticle() {
   if (readerArticle.kind === 'pdf' || readerArticle.paragraphs.some(paragraph => PAGE_MARKER_LINE.test(paragraph))) renderPdfMeta(meta);
   else if (typeof renderTranslationBar === 'function') renderTranslationBar(meta);
   renderEvidenceEngine();
+  updateResearchCitationTransferAvailability();
+}
+
+function updateResearchCitationTransferAvailability() {
+  const button = document.getElementById('reader-research-citation-add');
+  if (!button) return;
+  button.hidden = !(typeof hasResearchSearchHandoff === 'function' && hasResearchSearchHandoff());
 }
 
 function initializeReaderToolValues(article) {
@@ -864,6 +880,13 @@ function renderPdfMeta(meta) {
   const sheetLabel = document.createElement('span'); sheetLabel.textContent = 'PDF';
   const sheetUnit = document.createElement('span'); sheetUnit.textContent = '枚目 = p.';
   row.append(note, sheetLabel, sheet, sheetUnit, printed, apply);
+  const originalAvailable = Boolean(readerOriginalPdfDocument && readerOriginalPdfParagraphsJson === JSON.stringify(readerArticle.paragraphs));
+  if (originalAvailable) {
+    const original = document.createElement('button');
+    original.type = 'button'; original.className = 'btn btn-secondary btn-sm'; original.textContent = 'PDF原本を表示';
+    original.onclick = () => showOriginalPdfAtSheet(1);
+    row.append(original);
+  }
   meta.appendChild(row);
   if (readerArticle.copyAllowed === false) {
     const warn = document.createElement('div');
@@ -882,6 +905,88 @@ function applyPageCorrection() {
   renderReaderArticle();
   document.getElementById('reader-article').scrollTop = scroll;
   toast(`PDF ${sheet}枚目を p. ${printed} として付け直しました（保存すると残ります）`);
+}
+
+function showOriginalPdfAtSheet(sheet) {
+  if (!readerOriginalPdfDocument || !readerArticle || readerOriginalPdfParagraphsJson !== JSON.stringify(readerArticle.paragraphs)) {
+    toast('このPDF原本はこのセッションで開かれていません。ファイルを選び直してください', 'warn');
+    return false;
+  }
+  const page = Math.max(1, Math.min(readerOriginalPdfPageCount || 1, Number(sheet) || 1));
+  document.getElementById('reader-original-pdf-page').value = String(page);
+  document.getElementById('reader-article').hidden = true;
+  const viewer = document.getElementById('reader-original-pdf-view');
+  viewer.hidden = false;
+  void renderOriginalPdfPage(page);
+  return true;
+}
+
+async function renderOriginalPdfPage(pageNumber) {
+  const token = ++readerOriginalPdfRenderToken;
+  readerOriginalPdfRenderTask?.cancel();
+  readerOriginalPdfRenderTask = null;
+  const status = document.getElementById('reader-original-pdf-status');
+  const canvas = document.getElementById('reader-original-pdf-canvas');
+  status.textContent = `PDF ${pageNumber}/${readerOriginalPdfPageCount}枚目を表示しています…`;
+  try {
+    await new Promise(resolve => requestAnimationFrame(() => resolve()));
+    if (token !== readerOriginalPdfRenderToken || !readerOriginalPdfDocument) return;
+    const page = await readerOriginalPdfDocument.getPage(pageNumber);
+    if (token !== readerOriginalPdfRenderToken) return;
+    const initial = page.getViewport({ scale: 1 });
+    const availableWidth = Math.max(240, document.querySelector('.reader-original-pdf-canvas-wrap').clientWidth - 24);
+    const scale = Math.min(1.8, availableWidth / initial.width);
+    const viewport = page.getViewport({ scale });
+    const ratio = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.ceil(viewport.width * ratio);
+    canvas.height = Math.ceil(viewport.height * ratio);
+    canvas.style.width = `${Math.ceil(viewport.width)}px`;
+    canvas.style.height = `${Math.ceil(viewport.height)}px`;
+    const context = canvas.getContext('2d');
+    const transform = ratio === 1 ? null : [ratio, 0, 0, ratio, 0, 0];
+    const task = page.render({ canvasContext: context, viewport, transform });
+    readerOriginalPdfRenderTask = task;
+    await task.promise;
+    if (token === readerOriginalPdfRenderToken) status.textContent = `PDF ${pageNumber}/${readerOriginalPdfPageCount}枚目 · 原本表示`;
+  } catch (error) {
+    if (error?.name !== 'RenderingCancelledException' && token === readerOriginalPdfRenderToken) status.textContent = `PDFページを表示できませんでした: ${error.message || '描画エラー'}`;
+  } finally {
+    if (token === readerOriginalPdfRenderToken) readerOriginalPdfRenderTask = null;
+  }
+}
+
+async function loadBrowserPdfJs() {
+  if (!readerPdfJsPromise) {
+    readerPdfJsPromise = import('/vendor/pdfjs/pdf.mjs').then(pdfjs => {
+      pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.mjs';
+      return pdfjs;
+    });
+  }
+  return readerPdfJsPromise;
+}
+
+function showExtractedReaderText() {
+  document.getElementById('reader-original-pdf-view').hidden = true;
+  document.getElementById('reader-article').hidden = false;
+}
+
+function goToOriginalPdfPage() {
+  const page = Number(document.getElementById('reader-original-pdf-page').value);
+  if (!Number.isInteger(page) || page < 1 || page > readerOriginalPdfPageCount) {
+    toast(`PDFのページは1〜${readerOriginalPdfPageCount}で指定してください`, 'warn');
+    return;
+  }
+  showOriginalPdfAtSheet(page);
+}
+
+function showOriginalPdfAtParagraph(paragraphIndex) {
+  if (!readerArticle) return false;
+  let sheet = 1;
+  for (let i = 0; i <= paragraphIndex && i < readerArticle.paragraphs.length; i += 1) {
+    const marker = PAGE_MARKER_LINE.exec(readerArticle.paragraphs[i]);
+    if (marker) sheet = Number(marker[1]);
+  }
+  return showOriginalPdfAtSheet(sheet);
 }
 
 // ── Source details used for citations (author, year, journal/book) ──
@@ -909,7 +1014,20 @@ async function openReaderPdf(input) {
     const payload = await response.json().catch(() => ({}));
     if (requestVersion !== readerRequestVersion) return;
     if (!response.ok) { const error = new Error(payload.error || `HTTP ${response.status}`); error.status = response.status; throw error; }
+    const pdfjs = await loadBrowserPdfJs();
+    const loadedPdf = await pdfjs.getDocument({
+      data: new Uint8Array(await file.arrayBuffer()),
+      cMapUrl: '/vendor/pdfjs/cmaps/',
+      cMapPacked: true,
+      standardFontDataUrl: '/vendor/pdfjs/standard_fonts/',
+    }).promise;
+    if (requestVersion !== readerRequestVersion) { await loadedPdf.destroy(); return; }
+    await readerOriginalPdfDocument?.destroy();
+    readerOriginalPdfDocument = loadedPdf;
+    readerOriginalPdfPageCount = loadedPdf.numPages;
     readerArticle = payload;
+    if (!readerCardId) document.getElementById('reader-edit-title').value = payload.title || '';
+    readerOriginalPdfParagraphsJson = JSON.stringify(payload.paragraphs);
     initializeReaderToolValues(readerArticle);
     document.getElementById('reader-url').value = '';
     setReaderBiblio(readerArticle);
@@ -1191,6 +1309,7 @@ async function deleteCurrentReaderCard() {
   }
 }
 async function saveReaderCardOnce() {
+  if (typeof syncMemoTable === 'function') syncMemoTable();
   if (readerPlainCardMode) {
     const title = document.getElementById('reader-edit-title').value.trim();
     const body = document.getElementById('reader-memo').value;
@@ -1216,7 +1335,6 @@ async function saveReaderCardOnce() {
     }
     return;
   }
-  if (typeof syncMemoTable === 'function') syncMemoTable();
   if (!readerArticle && !readerCardId) {
     const url = document.getElementById('reader-url').value.trim();
     if (!/^https?:\/\//i.test(url)) { toast('記事のURLを入力してください', 'warn'); return; }
@@ -1237,8 +1355,8 @@ async function saveReaderCardOnce() {
         ...(typeof readerTranslationPayload === 'function' ? readerTranslationPayload(article.paragraphs) : {}),
         memo: document.getElementById('reader-memo').value,
         ...(readerToolStatePayload() ? { toolState: readerToolStatePayload() } : {}),
-        ...(readerEditorColorTouched ? { color: readerEditorColor } : {}),
         tags,
+        ...(readerEditorColorTouched ? { color: readerEditorColor } : {}),
       });
       clearReaderDraft();
       toast('カードを更新しました');
@@ -1251,7 +1369,7 @@ async function saveReaderCardOnce() {
     return;
   }
   const payload = {
-    url: readerArticle.url || null,
+    url: document.getElementById('reader-url').value.trim() || null,
     fileName: readerArticle.fileName || null,
     title: (document.getElementById('reader-edit-title').value.trim() || readerArticle.title).slice(0, 200),
     ...readerBiblio(),
@@ -1260,8 +1378,8 @@ async function saveReaderCardOnce() {
     ...(typeof readerTranslationPayload === 'function' ? readerTranslationPayload(readerArticle.paragraphs) : {}),
     memo: document.getElementById('reader-memo').value,
     ...(readerToolStatePayload() ? { toolState: readerToolStatePayload() } : {}),
-    ...(readerEditorColor ? { color: readerEditorColor } : {}),
     tags,
+    ...(readerEditorColor ? { color: readerEditorColor } : {}),
   };
   if (readerCandidateId) payload.candidateId = readerCandidateId;
   try {

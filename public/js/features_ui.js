@@ -28,7 +28,9 @@ function renderDemoBanner() {
   if (!banner) return;
   banner.textContent = '';
   const text = document.createElement('span');
-  text.textContent = 'デモ版：データは共有され、しばらく使われないと見本に戻ります。個人的な内容は入れないでください。';
+  text.textContent = appFeatures.demoDataScope === 'local'
+    ? 'ローカル試用：通常利用DBと分離した専用DBを使います。保存期間は起動方法によって異なります。個人的な内容は入れないでください。'
+    : '共有デモ：利用者間でデータを共有し、再起動時に見本へ戻します。個人的な内容は入れないでください。';
   banner.appendChild(text);
   const samples = document.createElement('details');
   samples.className = 'demo-samples';

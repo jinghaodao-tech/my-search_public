@@ -24,7 +24,7 @@ function canonical(value: unknown): string {
 }
 
 export function sourceFingerprint(root: string): string {
-  const entries = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: root });
+  const entries = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: root, maxBuffer: 64 * 1024 * 1024 });
   const allowed = new Set(['.ts', '.tsx', '.js', '.mjs', '.css', '.html', '.json', '.yaml', '.yml', '.sql']);
   const excluded = ['quality/', 'node_modules/', 'dist/', 'data/', 'artifacts/', 'reports/', 'test-results/', 'playwright-report/'];
   const names = [...new Set(entries.toString('utf8').split('\0').filter(Boolean).map(name => name.replace(/\\/g, '/')))]

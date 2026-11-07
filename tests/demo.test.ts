@@ -5,7 +5,11 @@ import { DEMO_DOCUMENTS, demoUrl, isDemoMode, readDemoDocument, seedDemoData } f
 import { pdfMaxBytes } from '../services/pdf_service.js';
 
 const original = process.env.DEMO_MODE;
-afterEach(() => { if (original === undefined) delete process.env.DEMO_MODE; else process.env.DEMO_MODE = original; });
+const originalDataScope = process.env.DEMO_DATA_SCOPE;
+afterEach(() => {
+  if (original === undefined) delete process.env.DEMO_MODE; else process.env.DEMO_MODE = original;
+  if (originalDataScope === undefined) delete process.env.DEMO_DATA_SCOPE; else process.env.DEMO_DATA_SCOPE = originalDataScope;
+});
 
 describe('demo mode', () => {
   it('is off unless DEMO_MODE=true', () => {
@@ -39,8 +43,9 @@ describe('demo mode', () => {
 
   it('reports features, reads samples and blocks collecting in demo mode', async () => {
     process.env.DEMO_MODE = 'true';
+    process.env.DEMO_DATA_SCOPE = 'shared';
     const features = await request(app).get('/api/features');
-    expect(features.body).toMatchObject({ demo: true });
+    expect(features.body).toMatchObject({ demo: true, demoDataScope: 'shared' });
     expect(features.body.samples.length).toBe(Object.keys(DEMO_DOCUMENTS).length);
     const read = await request(app).post('/api/reader/extract').send({ url: demoUrl('/citation-pages') });
     expect(read.status).toBe(200);
@@ -55,6 +60,13 @@ describe('demo mode', () => {
     const pdf = await request(app).get('/demo/sample-paper.pdf');
     expect(pdf.status).toBe(200);
     expect(pdf.headers['content-type']).toContain('application/pdf');
+  });
+
+  it('reports local storage scope for isolated trial mode', async () => {
+    process.env.DEMO_MODE = 'true';
+    process.env.DEMO_DATA_SCOPE = 'local';
+    const features = await request(app).get('/api/features');
+    expect(features.body).toMatchObject({ demo: true, demoDataScope: 'local' });
   });
 
   it('reports no demo outside demo mode', async () => {

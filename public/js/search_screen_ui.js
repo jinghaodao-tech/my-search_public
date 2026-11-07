@@ -388,6 +388,7 @@ async function runCardSearch() {
       if (activeRefindStudy) recordRefindInteraction({ action: 'opened', cardId: article.id }).catch(() => {});
       searchReaderIndex = -1; openReaderForCard(article.id);
     }));
+    if (window.mySearchDesktop && article.url) actions.append(resultButton('内蔵ブラウザーで開く', () => window.mySearchDesktop.openBrowser(article.url)));
     card.append(actions);
     host.append(card);
   }

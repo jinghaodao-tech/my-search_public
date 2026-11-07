@@ -590,11 +590,19 @@ function buildCardListWhere(filters: CardListFilters): { whereSql: string; param
   const keyword = filters.q?.trim();
   if (keyword) {
     const like = `%${escapeLike(keyword.toLowerCase())}%`;
+    const readerTextClause = [...keyword].length >= 3
+      ? 'cards.id IN (SELECT card_id FROM reader_text_fts WHERE reader_text_fts MATCH ?)'
+      : `EXISTS (
+        SELECT 1 FROM reader_texts
+        WHERE reader_texts.card_id = cards.id
+          AND LOWER(reader_texts.paragraphs_json) LIKE ? ESCAPE '~'
+      )`;
     if (process.env.CARD_SEARCH_ENGINE === 'fts5' || process.env.CARD_SEARCH_ENGINE === 'fts5-raw') {
       const ftsQuery = keyword.split(/\s+/).filter(Boolean).map(term => `"${term.replace(/"/g, '""')}"`).join(' OR ');
-      where.push('cards.id IN (SELECT id FROM cards_fts WHERE cards_fts MATCH ?)');
+      where.push(`(cards.id IN (SELECT id FROM cards_fts WHERE cards_fts MATCH ?) OR ${readerTextClause})`);
       params.push(ftsQuery);
-    } else where.push(`(
+    } else {
+      where.push(`(
       LOWER(cards.title) LIKE ? ESCAPE '~'
       OR LOWER(COALESCE(cards.body, '')) LIKE ? ESCAPE '~'
       OR LOWER(COALESCE(cards.summary, '')) LIKE ? ESCAPE '~'
@@ -603,8 +611,12 @@ function buildCardListWhere(filters: CardListFilters): { whereSql: string; param
         WHERE q_tags.card_id = cards.id
           AND LOWER(q_tags.tag) LIKE ? ESCAPE '~'
       )
+      OR ${readerTextClause}
     )`);
-    if (process.env.CARD_SEARCH_ENGINE !== 'fts5' && process.env.CARD_SEARCH_ENGINE !== 'fts5-raw') params.push(like, like, like, like);
+      params.push(like, like, like, like);
+    }
+    if ([...keyword].length >= 3) params.push(`"${keyword.replace(/"/g, '""')}"`);
+    else params.push(like);
   }
 
   return {

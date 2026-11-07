@@ -131,7 +131,59 @@
     }
   }
 
+  /** @template {import('../../services/contextual_ai_provider.js').ContextualCapability} C
+   *  @param {C} capability
+   *  @param {import('../../services/contextual_ai_provider.js').ContextualSource} source
+   *  @param {(options:{signal?:AbortSignal})=>Promise<import('../../services/contextual_ai_provider.js').ContextualOutputByCapability[C]>} generate
+   *  @param {AbortSignal} [signal]
+   *  @returns {Promise<import('../../services/contextual_ai_provider.js').ContextualResult<C>>} */
+  async function runLocalWritingCapability(capability, source, generate, signal) {
+    if (signal?.aborted) return result(capability, 'cancelled', 'chrome_local', source, 'not_applicable', undefined, 'cancelled');
+    try {
+      if (typeof root.localAi === 'undefined' || (await root.localAi.availability('prompt')) === 'unavailable') {
+        return result(capability, 'unavailable', 'chrome_local', source, 'not_applicable', undefined, 'chrome_prompt_unavailable');
+      }
+      const output = await generate({ signal: signal });
+      if (signal?.aborted) return result(capability, 'cancelled', 'chrome_local', source, 'not_applicable', undefined, 'cancelled');
+      return result(capability, 'ok', 'chrome_local', source, 'unverified_generation', output);
+    } catch (error) {
+      return result(capability, signal?.aborted ? 'cancelled' : 'error', 'chrome_local', source, 'not_applicable', undefined, signal?.aborted ? 'cancelled' : (error instanceof Error ? error.message : String(error)).slice(0, 300));
+    }
+  }
+
+  /** @param {string} title @param {string} purpose @param {Array<{id:string,sourceTitle:string,quote:string,verification:string}>} citations @param {AbortSignal} [signal] */
+  async function proposeOutline(title, purpose, citations, signal) {
+    const source = { id: 'document-outline', version: String(Date.now()) };
+    return runLocalWritingCapability('outline_proposal', source, async options => ({
+      markdown: await root.localAi.draftCitationOutline(title, purpose, citations, options),
+    }), signal);
+  }
+
+  /** @param {string} purpose @param {Array<{id:string,title:string,citations:Array<{citationId:string,quote:string,verification:string}>}>} sources @param {AbortSignal} [signal] */
+  async function compareSources(purpose, sources, signal) {
+    const source = { id: sources.map(row => row.id).join(','), version: String(Date.now()) };
+    return runLocalWritingCapability('cross_source_comparison', source, async options => ({
+      markdown: await root.localAi.compareVerifiedSources(purpose, sources.map(row => ({ title: row.title, citations: row.citations.map(citation => ({ quote: citation.quote, verification: citation.verification })) })), options),
+    }), signal);
+  }
+
+  /** @param {string} claim @param {Array<{citationId:string,sourceTitle:string,quote:string}>} citations @param {AbortSignal} [signal] */
+  async function reviewClaim(claim, citations, signal) {
+    const source = { id: 'document-claim', version: String(Date.now()) };
+    return runLocalWritingCapability('claim_evidence_review', source, async options => ({
+      review: await root.localAi.reviewClaimEvidence(claim, citations, options),
+    }), signal);
+  }
+
+  /** @param {string} selection @param {string} purpose @param {Array<{sourceTitle:string,quote:string}>} citations @param {AbortSignal} [signal] */
+  async function rewriteSelection(selection, purpose, citations, signal) {
+    const source = { id: 'document-selection', version: String(Date.now()) };
+    return runLocalWritingCapability('rewrite_selection', source, async options => ({
+      rewrite: await root.localAi.rewriteSelection(selection, purpose, citations, options),
+    }), signal);
+  }
+
   /** @type {import('../../services/contextual_ai_provider.js').ContextualAiClient} */
-  const client = Object.freeze({ queryTerms, relatedPassages, articleSummary, proposeTool, sourceFor });
+  const client = Object.freeze({ queryTerms, relatedPassages, articleSummary, proposeTool, proposeOutline, compareSources, reviewClaim, rewriteSelection, sourceFor });
   root.contextualAi = client;
 })(/** @type {any} */ (typeof window !== 'undefined' ? window : globalThis));

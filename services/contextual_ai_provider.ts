@@ -1,5 +1,5 @@
 /** Typed boundary for contextual AI work. Providers never receive authority to mutate cards or execute code. */
-export type ContextualCapability = 'search_terms' | 'related_passages' | 'article_summary' | 'typed_tool_proposal';
+export type ContextualCapability = 'search_terms' | 'related_passages' | 'article_summary' | 'typed_tool_proposal' | 'outline_proposal' | 'cross_source_comparison' | 'claim_evidence_review' | 'rewrite_selection';
 export type ContextualProcessor = 'rules' | 'chrome_local' | 'configured_server' | 'mock' | 'future_browser';
 export type ContextualVerification = 'not_applicable' | 'unverified_generation' | 'exact_source_checked' | 'rejected';
 
@@ -14,6 +14,10 @@ export type ContextualInputByCapability = {
   related_passages: { purpose: string; paragraphs: string[] };
   article_summary: { title: string; paragraphs: string[]; purpose?: string };
   typed_tool_proposal: { paragraph: string; paragraphIndex: number };
+  outline_proposal: { title: string; purpose: string; citations: Array<{ id: string; sourceTitle: string; quote: string; verification: string }> };
+  cross_source_comparison: { purpose: string; sources: Array<{ id: string; title: string; citations: Array<{ citationId: string; quote: string }> }> };
+  claim_evidence_review: { claim: string; citations: Array<{ citationId: string; sourceTitle: string; quote: string; verification: string }> };
+  rewrite_selection: { selection: string; purpose?: string; citations: Array<{ sourceTitle: string; quote: string; verification: string }> };
 };
 
 export type ContextualOutputByCapability = {
@@ -33,6 +37,10 @@ export type ContextualOutputByCapability = {
     rejected?: Array<Record<string, unknown>>;
   };
   typed_tool_proposal: { supported: boolean; proposal: unknown };
+  outline_proposal: { markdown: string };
+  cross_source_comparison: { markdown: string };
+  claim_evidence_review: { review: string };
+  rewrite_selection: { rewrite: string };
 };
 
 export type ContextualRequest<C extends ContextualCapability = ContextualCapability> = {
@@ -78,6 +86,10 @@ export interface ContextualAiClient {
   relatedPassages(engine: ContextualEvidenceEngine, purpose: string, article: ContextualArticle, signal?: AbortSignal): Promise<ContextualResult<'related_passages'>>;
   articleSummary(engine: ContextualEvidenceEngine, purpose: string, article: ContextualArticle, signal?: AbortSignal): Promise<ContextualResult<'article_summary'>>;
   proposeTool(paragraph: string, paragraphIndex: number, article: ContextualArticle, signal?: AbortSignal): Promise<ContextualResult<'typed_tool_proposal'>>;
+  proposeOutline(title: string, purpose: string, citations: ContextualInputByCapability['outline_proposal']['citations'], signal?: AbortSignal): Promise<ContextualResult<'outline_proposal'>>;
+  compareSources(purpose: string, sources: ContextualInputByCapability['cross_source_comparison']['sources'], signal?: AbortSignal): Promise<ContextualResult<'cross_source_comparison'>>;
+  reviewClaim(claim: string, citations: ContextualInputByCapability['claim_evidence_review']['citations'], signal?: AbortSignal): Promise<ContextualResult<'claim_evidence_review'>>;
+  rewriteSelection(selection: string, purpose: string, citations: ContextualInputByCapability['rewrite_selection']['citations'], signal?: AbortSignal): Promise<ContextualResult<'rewrite_selection'>>;
   sourceFor(article: ContextualArticle, paragraphIndices?: number[]): ContextualSource;
 }
 

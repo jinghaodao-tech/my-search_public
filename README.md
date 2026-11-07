@@ -52,7 +52,7 @@ My Search App keeps collection and saved knowledge as separate lifecycles:
 
 `Collect -> BM25 rank -> Review -> Save as Card -> Organize -> Search saved knowledge -> Export`
 
-Collected candidates expose `unreviewed`, `reviewed_not_saved`, `deferred`, `saved_as_card`, and `expired` states through the candidate API. BM25 ranks collected articles before saving; `GET /api/cards?q=...` is intentionally a lightweight SQLite `LIKE` filter for already-saved cards, not a second BM25 pipeline.
+Collected candidates expose `unreviewed`, `reviewed_not_saved`, `deferred`, `saved_as_card`, and `expired` states through the candidate API. BM25 ranks collected articles before saving; `GET /api/cards?q=...` filters already-saved cards, including the full text preserved by Reader, and is not a second BM25 pipeline.
 
 The candidate lifecycle is local-only and stored in SQLite. Saving a candidate creates a normal article card and marks the source candidate as `saved_as_card`; candidate expiry never archives or deletes a saved card.
 ### Search workspace

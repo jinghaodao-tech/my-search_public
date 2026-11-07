@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import path from 'node:path';
 import request from "supertest";
 import { app, cardsEngine, database, resetCards, testDir } from "./helpers.js";
-import { backfillCardTokens, rebuildSavedCardTokenFts, savedCardTokenFtsStatus, updateCard } from "../repositories/cards_repository.js";
+import { backfillCardTokens, getCards, rebuildSavedCardTokenFts, savedCardTokenFtsStatus, updateCard } from "../repositories/cards_repository.js";
+import { saveReaderText } from "../repositories/reader_texts_repository.js";
 
 const db = database.db;
 
@@ -144,6 +145,32 @@ describe("card workflows", () => {
     process.env.CARD_SEARCH_ENGINE = "fts5";
     try {
       expect(cardsEngine.getCards({ q: "FTS5" }).map(item => item.id)).toContain(card.id);
+    } finally {
+      if (previous === undefined) delete process.env.CARD_SEARCH_ENGINE;
+      else process.env.CARD_SEARCH_ENGINE = previous;
+    }
+  });
+
+  it("finds saved Reader text beyond the card excerpt and keeps the index in sync", async () => {
+    const card = await cardsEngine.createCard({ title: "Saved article", body: "Short card excerpt", type: "article" });
+    const previous = process.env.CARD_SEARCH_ENGINE;
+    delete process.env.CARD_SEARCH_ENGINE;
+    try {
+      saveReaderText(card.id, ["A complete article paragraph containing the rare phrase quasar observatory protocol."]);
+      expect(getCards({ q: "quasar observatory" }).map(item => item.id)).toContain(card.id);
+      expect(getCards({ q: "UX" }).map(item => item.id)).not.toContain(card.id);
+      saveReaderText(card.id, ["A complete article paragraph containing UX workflows and the rare phrase quasar observatory protocol."]);
+      expect(getCards({ q: "UX" }).map(item => item.id)).toContain(card.id);
+      process.env.CARD_SEARCH_ENGINE = "fts5-raw";
+      expect(getCards({ q: "quasar observatory" }).map(item => item.id)).toContain(card.id);
+
+      delete process.env.CARD_SEARCH_ENGINE;
+      saveReaderText(card.id, ["A changed article paragraph containing a different rare phrase."]);
+      expect(getCards({ q: "quasar observatory" }).map(item => item.id)).not.toContain(card.id);
+      expect(getCards({ q: "different rare phrase" }).map(item => item.id)).toContain(card.id);
+
+      expect(cardsEngine.deleteCard(card.id)).toBe(true);
+      expect(getCards({ q: "different rare phrase" }).map(item => item.id)).not.toContain(card.id);
     } finally {
       if (previous === undefined) delete process.env.CARD_SEARCH_ENGINE;
       else process.env.CARD_SEARCH_ENGINE = previous;

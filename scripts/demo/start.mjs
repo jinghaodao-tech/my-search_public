@@ -48,7 +48,7 @@ function cleanup() {
 }
 
 const port = process.env.PORT || '3000';
-const env = { ...process.env, DEMO_MODE: 'true', DB_PATH: db, HOST: process.env.HOST || '127.0.0.1', PORT: port };
+const env = { ...process.env, DEMO_MODE: 'true', DEMO_DATA_SCOPE: 'local', DB_PATH: db, HOST: process.env.HOST || '127.0.0.1', PORT: port };
 const tsx = createRequire(import.meta.url).resolve('tsx/cli');
 
 console.log('\nmy-search お試し版を起動しています…');

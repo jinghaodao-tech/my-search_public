@@ -25,8 +25,10 @@
       </div>
     </details>
     <button class="tab" onclick="switchView('bm25')" title="登録したサイト・収集した記事・Webから探す">探す</button>
+    <button class="tab" onclick="switchView('writing')" title="保存資料を比較し、出典付き原稿を作る">書く</button>
   </div>
   <div class="spacer"></div>
+  <button id="desktop-browser-open" class="btn btn-secondary btn-sm" hidden onclick="openDesktopBrowser()">内蔵ブラウザー</button>
   <button class="btn btn-primary btn-sm" onclick="openReader()">読んでメモ</button>
   <details class="topbar-more topbar-admin">
     <summary>管理</summary>
@@ -37,6 +39,85 @@
     </div>
   </details>
 </div>
+
+<section id="research-writing-view" class="research-writing-view" aria-label="執筆ワークスペース">
+  <header class="writing-header">
+    <div><h2>調査して書く</h2><p>保存資料を選び、根拠を確認し、出典付きの原稿にまとめます。</p></div>
+    <div class="writing-actions"><button id="document-new" class="btn btn-primary" onclick="newResearchDocument()">＋ 新しい原稿</button></div>
+  </header>
+  <div class="writing-layout">
+    <aside class="writing-list-panel">
+      <input id="document-search" type="search" placeholder="原稿を検索" oninput="loadResearchDocuments()">
+      <div id="document-list" class="document-list" aria-live="polite"></div>
+    </aside>
+    <div class="writing-editor-panel">
+      <div class="writing-editor-toolbar">
+        <input id="document-title" maxlength="200" placeholder="原稿タイトル" aria-label="原稿タイトル">
+        <button class="btn btn-secondary btn-sm" onclick="saveResearchDocument()">保存</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportResearchDocument()">Markdown出力</button>
+        <button class="btn btn-secondary btn-sm" onclick="searchFromDocumentSelection()">選択文から検索</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteResearchDocument()">削除</button>
+      </div>
+      <p id="document-save-state" class="reader-note" aria-live="polite">原稿を選ぶか、新規作成してください。</p>
+      <div id="document-draft" class="document-draft" hidden>
+        <span id="document-draft-label">この原稿の未保存下書きがあります。</span>
+        <button class="btn btn-secondary btn-sm" onclick="restoreResearchDraft()">復旧</button>
+        <button class="btn btn-secondary btn-sm" onclick="discardResearchDraft()">破棄</button>
+      </div>
+      <div class="document-workbench">
+        <section class="document-writing-column">
+          <label class="writing-label" for="document-markdown">原稿（Markdown）</label>
+          <div class="document-markdown-toolbar">
+            <button class="btn btn-secondary btn-sm" onclick="insertDocumentText('## 見出し\n')">見出し</button>
+            <button class="btn btn-secondary btn-sm" onclick="insertDocumentText('\n- 箇条書き\n')">箇条書き</button>
+            <button class="btn btn-secondary btn-sm" onclick="wrapDocumentSelection('**','**')">太字</button>
+            <button class="btn btn-secondary btn-sm" onclick="wrapDocumentSelection('*','*')">斜体</button>
+            <button class="btn btn-secondary btn-sm" onclick="prefixDocumentLines('&gt; ')">引用</button>
+            <button class="btn btn-secondary btn-sm" onclick="insertDocumentText('\n| 主張 | 根拠 |\n|---|---|\n|  |  |\n')">表</button>
+            <button class="btn btn-secondary btn-sm" onclick="insertDocumentLink()">リンク</button>
+          </div>
+          <textarea id="document-markdown" spellcheck="true" placeholder="調査した内容を書きます。引用は資料比較欄からカーソル位置へ挿入できます。"></textarea>
+          <details class="document-preview-details"><summary>安全なMarkdownプレビュー</summary><div id="document-preview" class="document-preview" aria-label="Markdownプレビュー"></div></details>
+        </section>
+        <aside class="document-sources-column">
+          <h3>資料と根拠</h3>
+          <label class="writing-label" for="document-source-search">保存資料を追加</label>
+          <div class="document-source-search"><input id="document-source-search" type="search" placeholder="記事・メモを検索"><button class="btn btn-secondary btn-sm" onclick="searchResearchSources()">検索</button></div>
+          <div id="document-source-results" class="document-source-results"></div>
+          <h4>この原稿の資料</h4>
+          <div id="document-sources" class="document-sources"></div>
+          <div id="document-browser-clip" class="document-browser-clip" hidden>
+            <h4>内蔵ブラウザーから受け取った引用候補</h4>
+            <p id="document-browser-clip-status" class="reader-note">未検証クリップです。原文と出典を目視確認してください。</p>
+            <blockquote id="document-browser-clip-text"></blockquote>
+            <button class="btn btn-secondary btn-sm" onclick="addBrowserClipToDocument()">未検証クリップとして原稿に追加</button>
+            <button class="btn btn-secondary btn-sm" onclick="discardBrowserClip()">破棄</button>
+          </div>
+          <label class="writing-label" for="document-compare-purpose">比較したい論点</label>
+          <textarea id="document-compare-purpose" class="document-purpose" maxlength="300" placeholder="例: それぞれが示す制約と、効果が確認された条件"></textarea>
+          <button class="btn btn-secondary btn-sm" onclick="compareResearchSources()">3件以上の資料から根拠候補を抽出</button>
+          <p class="reader-note">オフラインのルール抽出です。AIの比較や論理的妥当性判定ではありません。採用前に原文を確認してください。</p>
+          <div id="document-evidence-results" class="document-evidence-results"></div>
+          <h4>執筆補助（明示操作・端末内AI）</h4>
+          <p class="reader-note">確認済み引用に基づく提案です。原稿を自動変更しません。生成内容と主張の妥当性は要確認です。</p>
+          <div class="document-ai-actions">
+            <button class="btn btn-secondary btn-sm" onclick="runResearchAI('outline')">構成案</button>
+            <button class="btn btn-secondary btn-sm" onclick="runResearchAI('compare')">資料をAI比較</button>
+            <button class="btn btn-secondary btn-sm" onclick="runResearchAI('review')">選択主張の根拠点検</button>
+            <button class="btn btn-secondary btn-sm" onclick="runResearchAI('rewrite')">選択文章の改善案</button>
+            <button id="document-ai-cancel" class="btn btn-secondary btn-sm" onclick="cancelResearchAI()" disabled>AI処理を中止</button>
+          </div>
+          <pre id="document-ai-outline" class="document-ai-outline" aria-live="polite"></pre>
+          <div id="document-ai-result-actions" class="document-ai-actions" hidden>
+            <button id="document-ai-apply" class="btn btn-secondary btn-sm" onclick="applyResearchAIProposal()">提案を原稿に適用</button>
+            <button id="document-ai-revert" class="btn btn-secondary btn-sm" onclick="revertResearchAIProposal()" hidden>適用を戻す</button>
+          </div>
+          <div id="document-citations" class="document-citations"></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</section>
 
 <div class="modal-overlay" id="modal-contextual-settings">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="contextual-settings-title">
@@ -346,7 +427,7 @@
           <button class="btn btn-secondary btn-sm" onclick="registerReaderSite()" title="この記事が載っているブログを情報源に登録（新しい記事が自動で集まり、検索できます）">このサイトを登録</button>
         </div>
       </details>
-      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-reader')">閉じる</button>
+      <button class="btn btn-secondary btn-sm" id="reader-close-btn" onclick="closeModal('modal-reader')">閉じる</button>
     </div>
     <div id="reader-search-actions" class="reader-bar" hidden>
       <span id="reader-search-position"></span>
@@ -363,6 +444,17 @@
         </details>
         <div id="reader-meta" class="reader-meta"></div>
         <div id="reader-article" class="reader-article"></div>
+        <section id="reader-original-pdf-view" class="reader-original-pdf-view" hidden aria-label="PDF原版表示">
+          <div class="reader-original-pdf-toolbar">
+            <button class="btn btn-secondary btn-sm" onclick="showExtractedReaderText()">抽出本文へ戻る</button>
+            <label for="reader-original-pdf-page">PDFページ</label>
+            <input id="reader-original-pdf-page" type="number" min="1" value="1">
+            <button class="btn btn-secondary btn-sm" onclick="goToOriginalPdfPage()">移動</button>
+          </div>
+          <p id="reader-original-pdf-status" class="reader-note" aria-live="polite"></p>
+          <div class="reader-original-pdf-canvas-wrap"><canvas id="reader-original-pdf-canvas" aria-label="PDF原本ページ"></canvas></div>
+          <p class="reader-note">原本はこのブラウザーのメモリー内だけで表示します。アプリ再起動後は元ファイルを選び直してください。ページはPDFのシート番号です。</p>
+        </section>
       </div>
       <div class="reader-divider" id="reader-divider" title="ドラッグで幅を調整（ダブルクリックで元に戻す）"></div>
       <div class="reader-right">
@@ -417,6 +509,7 @@
           <button class="btn btn-secondary btn-sm" id="reader-ai-tool-cancel" onclick="cancelReaderToolProposal()" hidden>結果を破棄</button>
           <button class="btn btn-secondary btn-sm" onclick="jumpToQuoteSource()" title="カーソルのある引用の元の段落へ（Alt+J）">引用元へ</button>
           <button class="btn btn-secondary btn-sm" onclick="quoteReaderSelection()" title="左で選んだ文を引用（Alt+Q／ドラッグでも可）">選択を引用</button>
+          <button class="btn btn-primary btn-sm" id="reader-research-citation-add" onclick="addSelectedQuoteToResearchDocument()" hidden>引用を原稿へ追加して戻る</button>
           <button class="btn btn-secondary btn-sm" id="reader-cross-quote-open" onclick="prepareQuoteTransfer()" title="選択した引用を、指定した別の保存メモへ追加" hidden>別メモへ引用</button>
           <button class="btn btn-secondary btn-sm" onclick="copyCitedSelection()" title="左で選んだ文を「引用」（著者，年，ページ）の形でコピー">出典つきでコピー</button>
           <button class="btn btn-danger btn-sm" id="reader-delete-btn" onclick="deleteCurrentReaderCard()" hidden>削除</button>
@@ -473,7 +566,7 @@
     <h2>グループ作成</h2>
     <div class="form-group"><label>グループ名 *</label><input type="text" id="group-name" placeholder="グループ名"></div>
     <div class="form-group"><label>説明</label><input type="text" id="group-desc" placeholder="任意"></div>
-    <div class="form-group"><label>濶ｲ</label><div class="color-strip" id="group-color-strip"></div></div>
+    <div class="form-group"><label>色</label><div class="color-strip" id="group-color-strip"></div></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-group')">キャンセル</button>
       <button class="btn btn-primary" onclick="submitGroup()">作成</button>
@@ -586,6 +679,7 @@
 <script src="js/search_screen_ui.js"></script>
 <script src="js/tag_tidy_ui.js"></script>
 <script src="js/features_ui.js"></script>
+<script src="js/documents_ui.js"></script>
 <script type="module" src="js/typed/api_client.js"></script>
 </body>
 </html>

@@ -11,6 +11,8 @@ services:
     envVars:
       - key: DEMO_MODE
         value: "true"
+      - key: DEMO_DATA_SCOPE
+        value: shared
       # word splitting built into Node: ~250MB instead of ~490MB (docs/deploy-demo.md)
       - key: TOKENIZER
         value: segmenter
