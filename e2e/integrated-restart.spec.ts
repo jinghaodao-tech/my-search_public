@@ -151,24 +151,10 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
     await page.locator('#bm25-run-btn').click();
     await page.locator('#search-cards .score-card', { hasText: sourceTitle }).first()
       .getByRole('button', { name: 'メモを読む' }).click();
-    await page.locator('#reader-article [data-index="0"]').evaluate((element: Element) => {
-      const range = document.createRange(); range.selectNodeContents(element);
-      const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range);
-    });
-    const citationSelection = await page.evaluate(() => {
-      const selection = window.getSelection();
-      const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-      const node = range?.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range?.startContainer.parentElement;
-      const element = node instanceof Element ? node : node?.parentElement;
-      return { text: String(selection ?? ''), paragraph: element?.closest('#reader-article [data-index]')?.getAttribute('data-index') ?? null };
-    });
-    console.log('[integrated-restart citation selection]', JSON.stringify(citationSelection));
+    const citationArticle = page.locator('#reader-article [data-index="0"]');
+    await expect(citationArticle).toContainText(quote);
+    await citationArticle.selectText();
     await page.getByRole('button', { name: '引用を原稿へ追加して戻る' }).click();
-    console.log('[integrated-restart citation result]', JSON.stringify({
-      readerModal: await page.locator('#modal-reader').getAttribute('class'),
-      toast: await page.locator('#toast').textContent(),
-      citations: await page.locator('#document-citations').textContent(),
-    }));
     await expect(page.locator('#modal-reader')).not.toHaveClass(/active/);
     await expect(page.locator('#document-citations')).toContainText('verified');
     await page.getByRole('button', { name: '保存', exact: true }).click();
