@@ -703,6 +703,20 @@ button.search-target-group-label:hover { color: var(--accent); text-decoration: 
 /* Integrated research and writing workspace */
 .research-writing-view{display:none;flex:1;min-height:0;flex-direction:column;background:var(--bg);color:var(--text)}
 .research-writing-view.active{display:flex}
+.investigation-layout{display:grid;grid-template-columns:minmax(190px,250px) minmax(0,1fr);gap:12px;min-height:0;flex:1;padding:12px;overflow:auto}
+.investigation-list-panel{display:flex;flex-direction:column;gap:10px;min-height:0}
+.investigation-main{min-width:0;overflow:auto;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.investigation-workspace-fields{display:grid;grid-template-columns:minmax(140px,1fr) minmax(180px,2fr) auto auto;gap:8px;align-items:center}
+.investigation-workspace-fields input,.investigation-group-create input,.investigation-main select{min-width:0;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)}
+.investigation-section{padding:10px 0;border-top:1px solid var(--border)}.investigation-section h3{margin:3px 0 8px;font-size:15px}
+.investigation-group-create{display:flex;gap:6px;margin:8px 0}.investigation-source-row,.investigation-group-drop{gap:8px}
+.investigation-source-row[draggable="true"]{cursor:grab}.investigation-source-title{flex:1;min-width:120px;overflow-wrap:anywhere}
+.investigation-group-drop{min-height:40px;border:1px dashed var(--border);border-radius:6px;padding:6px;margin:4px 0}
+.investigation-network{height:220px;width:100%;border:1px solid var(--border);border-radius:8px;margin-top:8px}
+.investigation-result-actions{display:flex;justify-content:flex-end;margin:6px 0}
+.investigation-main .document-source-search select{flex:1;min-width:0;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text)}
+.investigation-main .document-source-search select option{background:var(--surface2);color:var(--text)}
+@media(max-width:760px){.investigation-layout{grid-template-columns:1fr;grid-template-rows:minmax(90px,22%) minmax(0,1fr)}.investigation-list-panel{overflow:auto}.investigation-workspace-fields{grid-template-columns:1fr 1fr}.investigation-source-row{flex-wrap:wrap}.investigation-source-title{flex-basis:100%}}
 .writing-header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
 .writing-header h2{font-size:16px;margin:0 0 4px}.writing-header p{font-size:12px;color:var(--text-dim);margin:0}
 .writing-layout{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);gap:12px;padding:12px;min-height:0;flex:1}

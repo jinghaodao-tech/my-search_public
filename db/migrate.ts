@@ -307,6 +307,52 @@ const migrations: Migration[] = [
       DELETE FROM reader_text_fts WHERE card_id = OLD.card_id;
     END;
   ` },
+  { id: '030_create_investigation_workspaces', sql: `
+    CREATE TABLE IF NOT EXISTS investigation_workspaces (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 120),
+      purpose TEXT NOT NULL DEFAULT '' CHECK(length(purpose) <= 2000),
+      state_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_investigation_workspaces_updated ON investigation_workspaces(updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS investigation_workspace_groups (
+      workspace_id TEXT NOT NULL REFERENCES investigation_workspaces(id) ON DELETE CASCADE,
+      id TEXT NOT NULL,
+      name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 100),
+      color TEXT,
+      position INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY(workspace_id, id)
+    );
+
+    CREATE TABLE IF NOT EXISTS investigation_workspace_sources (
+      workspace_id TEXT NOT NULL REFERENCES investigation_workspaces(id) ON DELETE CASCADE,
+      card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+      group_id TEXT,
+      position INTEGER NOT NULL DEFAULT 0,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY(workspace_id, card_id),
+      FOREIGN KEY(workspace_id, group_id) REFERENCES investigation_workspace_groups(workspace_id, id) ON DELETE RESTRICT
+    );
+    CREATE INDEX IF NOT EXISTS idx_investigation_workspace_sources_card ON investigation_workspace_sources(card_id);
+
+    CREATE TABLE IF NOT EXISTS investigation_workspace_documents (
+      workspace_id TEXT NOT NULL REFERENCES investigation_workspaces(id) ON DELETE CASCADE,
+      document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY(workspace_id, document_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS investigation_workspace_searches (
+      workspace_id TEXT NOT NULL REFERENCES investigation_workspaces(id) ON DELETE CASCADE,
+      saved_search_id TEXT NOT NULL REFERENCES saved_searches(id) ON DELETE CASCADE,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY(workspace_id, saved_search_id)
+    );
+  ` },
 ];
 
 function columns(db: Database.Database, table: string): Set<string> {

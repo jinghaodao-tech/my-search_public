@@ -11,7 +11,7 @@ import type { Card } from '../domain/card.js';
 import { buildStoredTokenSet, numericUnitSearchTerms, type Article } from '../bm25_engine.js';
 import { buildSearchSnippet } from '../services/search_match_service.js';
 import { rerankWithE5Rrf } from '../services/e5_rrf_ranker.js';
-import { loadCardsByIds, savedCardCount, savedCardTokenFtsAvailable, searchSavedCardIdsByNumericPhrase, searchSavedCardIdsFts5Morphological, searchSavedCardIdsFts5Raw, searchSavedCardIdsFts5Rrf } from '../repositories/cards_repository.js';
+import { loadCardsByIds, savedCardCount, savedCardTokenFtsAvailable, searchSavedCardIdsByNumericPhrase, searchSavedCardIdsFts5Morphological, searchSavedCardIdsFts5Raw, searchSavedCardIdsFts5Rrf, searchSavedReaderText } from '../repositories/cards_repository.js';
 
 function parseCardSort(value: unknown): 'created_at_asc' | 'created_at_desc' | undefined {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -81,12 +81,13 @@ export function createCardsRouter(ctx: RouteContext) {
         const excluded = (body.filters?.excludedTerms ?? []).map(term => term.normalize('NFKC').toLowerCase());
         const selected: Array<{ card: Card; rank: ReturnType<typeof searchSavedCardIdsFts5Rrf>[number] }> = [];
         const pageSize = excluded.length ? 500 : limit;
+        const indexCandidateLimit = Math.min(500, Math.max(limit, limit * 4));
         let offset = 0;
         let candidateCount = 0;
         let rawOnlyFallbackUsed = false;
         let numericPhraseFallbackUsed = false;
         const rankingStartedAt = performance.now();
-        while (selected.length < limit) {
+        while (selected.length < indexCandidateLimit) {
           let ranks = numericPhraseFallbackUsed
             ? searchSavedCardIdsByNumericPhrase(numericPhraseTerms, pageSize, offset)
             : useRawOnlyFts && !rawOnlyFallbackUsed
@@ -111,11 +112,44 @@ export function createCardsRouter(ctx: RouteContext) {
             const content = `${card.title} ${card.body} ${card.summary ?? ''}`.normalize('NFKC').toLowerCase();
             if (excluded.some(term => content.includes(term))) continue;
             selected.push({ card, rank });
-            if (selected.length >= limit) break;
+            if (selected.length >= indexCandidateLimit) break;
           }
           offset += ranks.length;
           if (ranks.length < pageSize) break;
         }
+        const readerTextMatches = searchSavedReaderText(queryTerms, indexCandidateLimit, excluded);
+        const readerCardsById = new Map(loadCardsByIds(readerTextMatches.map(match => match.id)).map(card => [card.id, card]));
+        const selectedById = new Map(selected.map(entry => [entry.card.id, entry]));
+        for (const match of readerTextMatches) {
+          const existing = selectedById.get(match.id);
+          const card = existing?.card ?? readerCardsById.get(match.id);
+          if (!card || !matchesCardFilters(card)) continue;
+          if (match.excludedTermMatched) continue;
+          if (existing) {
+            existing.rank.readerTextRank = match.readerTextRank;
+            existing.rank.readerSnippet = match.readerSnippet;
+            continue;
+          }
+          const readerScore = 61 / (60 + match.readerTextRank);
+          const entry = {
+            card,
+            rank: {
+              id: card.id,
+              morphologicalRank: null,
+              ngramRank: null,
+              rawTextRank: null,
+              readerTextRank: match.readerTextRank,
+              readerSnippet: match.readerSnippet,
+              rrfScore: 1 / (60 + match.readerTextRank),
+              normalizedScore: readerScore,
+              matchedCount: match.matchedCount,
+            },
+          };
+          selected.push(entry);
+          selectedById.set(card.id, entry);
+        }
+        selected.sort((a, b) => b.rank.normalizedScore - a.rank.normalizedScore);
+        selected.splice(limit);
         const scoringMs = performance.now() - rankingStartedAt;
         const keywords = ctx.buildSearchKeywordCandidates(body.config);
         const archiveThreshold = body.options?.archiveScoreThreshold ?? 0.5;
@@ -163,17 +197,19 @@ export function createCardsRouter(ctx: RouteContext) {
               matchedTerms: [],
             },
             scoreSources: {
-              method: numericPhraseFallbackUsed ? 'sqlite-exact-numeric-phrase'
+              method: rank.readerTextRank && !rank.morphologicalRank && !rank.ngramRank && !rank.rawTextRank ? 'sqlite-reader-text-fts5'
+                : numericPhraseFallbackUsed ? 'sqlite-exact-numeric-phrase'
                 : useRawOnlyFts && !rawOnlyFallbackUsed ? 'sqlite-fts5-raw-bm25'
                 : useMorphologyOnlyFts && !rawOnlyFallbackUsed ? 'sqlite-fts5-morphological-bm25' : 'sqlite-fts5-rrf',
               rrfScore: rank.rrfScore,
               morphologicalRank: rank.morphologicalRank,
               ngramRank: rank.ngramRank,
               rawTextRank: rank.rawTextRank,
+              readerTextRank: rank.readerTextRank ?? null,
               reciprocalRankConstant: 60,
             },
             ...meta,
-            snippet: buildSearchSnippet(article, [...meta.matchedKeywords, ...keywords]),
+            snippet: rank.readerSnippet || buildSearchSnippet(article, [...meta.matchedKeywords, ...keywords]),
           };
           if (score < archiveThreshold) archived.push({ ...item, reason: `スコア閾値割れ (${score.toFixed(3)} < ${archiveThreshold})` });
           else active.push(item);
@@ -222,8 +258,10 @@ export function createCardsRouter(ctx: RouteContext) {
               morphology: !useRawOnlyFts || rawOnlyFallbackUsed,
               ngram: !useRawOnlyFts && !useMorphologyOnlyFts || rawOnlyFallbackUsed,
               raw: !useMorphologyOnlyFts || rawOnlyFallbackUsed,
+              readerText: true,
               candidateCountExact: true,
             },
+            readerTextCandidateCount: readerTextMatches[0]?.matchedCount ?? 0,
             fallbackUsed: rawOnlyFallbackUsed || numericPhraseFallbackUsed,
             directNumericPhraseFallback: numericPhraseFallbackUsed,
           },
@@ -270,6 +308,48 @@ export function createCardsRouter(ctx: RouteContext) {
         ...baselineOptions,
         ...(useE5Rrf ? { resultLimit: candidateLimit, archiveScoreThreshold: Number.NEGATIVE_INFINITY } : {}),
       });
+      const articleById = new Map(articles.map(article => [article.id, article]));
+      const readerTextMatches = searchSavedReaderText(queryTerms, Math.min(500, Math.max(candidateLimit, resultLimit * 4)), excluded);
+      const readerSnippetById = new Map<string, string>();
+      const mergeReaderCandidates = () => {
+        const present = new Set([...result.active, ...result.archived].map(item => item.article.id));
+        const archiveThreshold = body.options?.archiveScoreThreshold ?? 0.5;
+        for (const match of readerTextMatches) {
+          const article = articleById.get(match.id);
+          if (!article || match.excludedTermMatched) continue;
+          readerSnippetById.set(match.id, match.readerSnippet);
+          if (present.has(match.id) || !match.readerSnippet) continue;
+          const score = 61 / (60 + match.readerTextRank);
+          const item = {
+            article: { ...article, summary: [article.summary, match.readerSnippet].filter(Boolean).join('\n') },
+            score,
+            breakdown: {
+              bm25Raw: 1 / (60 + match.readerTextRank),
+              bm25Morphological: 0,
+              bm25Ngram: 0,
+              bm25RawText: 0,
+              normalizedMorphological: 0,
+              normalizedNgram: 0,
+              tokenWeights: { morphological: 0, ngram: 0, rawText: 0 },
+              contextBonus: 1,
+              timeDecay: 1,
+              finalScore: score,
+              matchedTerms: [],
+            },
+            scoreSources: { method: 'sqlite-reader-text-fts5', readerTextRank: match.readerTextRank },
+          } as typeof result.active[number];
+          if (useE5Rrf || score >= archiveThreshold) result.active.push(item);
+          else result.archived.push({ ...item, reason: `Reader本文検索スコア閾値割れ (${score.toFixed(3)} < ${archiveThreshold})` });
+          present.add(match.id);
+        }
+        result.active.sort((a, b) => b.score - a.score);
+        result.active = result.active.slice(0, useE5Rrf ? candidateLimit : resultLimit);
+        result.belowThreshold = result.archived;
+        result.stats.activeCount = result.active.length;
+        result.stats.archivedCount = result.archived.length;
+        result.stats.avgScore = result.active.length ? result.active.reduce((sum, item) => sum + item.score, 0) / result.active.length : 0;
+      };
+      mergeReaderCandidates();
       let candidateIdsBeforeRerank = [...result.active, ...result.archived].map(item => item.article.id);
       let e5FallbackUsed = false;
       let e5CandidateCount = 0;
@@ -313,6 +393,7 @@ export function createCardsRouter(ctx: RouteContext) {
           e5FallbackUsed = true;
           logger.warn({ event: 'saved_card_e5_fallback', reason: error instanceof Error ? error.name : 'unknown' }, 'E5 reranking unavailable; using BM25 results');
           result = await ctx.runPipeline(articles, body.config, 'custom', baselineOptions);
+          mergeReaderCandidates();
           candidateIdsBeforeRerank = [...result.active, ...result.archived].map(item => item.article.id);
         }
       }
@@ -324,9 +405,9 @@ export function createCardsRouter(ctx: RouteContext) {
         return article;
       };
       const serialize = (item: typeof result.active[number]) => {
-        const article = cleanArticle(item.article);
+        const article = cleanArticle(articleById.get(item.article.id) ?? item.article);
         const meta = ctx.buildSearchMatchMeta(article, keywords, item.breakdown?.matchedTerms);
-        return { ...item, article, ...meta, snippet: buildSearchSnippet(article, [...meta.matchedKeywords, ...keywords]) };
+        return { ...item, article, ...meta, snippet: readerSnippetById.get(article.id) || buildSearchSnippet(article, [...meta.matchedKeywords, ...keywords]) };
       };
       const searched = articles.length;
       res.json({
@@ -336,6 +417,7 @@ export function createCardsRouter(ctx: RouteContext) {
           searchMethod: e5FallbackUsed ? 'bm25-e5-fallback-saved-cards' : useE5Rrf && result.stats.modeUsed === 'bm25-e5-rrf' ? 'bm25-e5-rrf-saved-cards' : cardSearchEngine === 'fts5' ? 'bm25-saved-cards-fallback' : 'bm25-saved-cards',
           fallbackUsed: e5FallbackUsed,
           e5CandidateCount,
+          readerTextCandidateCount: readerTextMatches[0]?.matchedCount ?? 0,
           candidateCount: cards.length,
           totalCount: cards.length,
           searchedCount: searched,

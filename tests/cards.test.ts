@@ -199,6 +199,84 @@ describe("card workflows", () => {
     }
   });
 
+  it("searches untruncated saved Reader text through card search and card-list search", async () => {
+    const card = await cardsEngine.createCard({
+      type: 'article',
+      title: 'Long saved Reader article',
+      body: 'The card keeps only its short preview.',
+    });
+    const latePhrase = '後半部固有の天体同期方式';
+    saveReaderText(card.id, [`${'導入本文。'.repeat(3000)}${latePhrase}の詳細を記録した段落です。`]);
+    const previousEngine = process.env.CARD_SEARCH_ENGINE;
+    process.env.CARD_SEARCH_ENGINE = 'fts5-morph';
+    const body = {
+      config: { label: 'test', description: '', k1: 1.5, b: 0.75, lambda: 0, contextBonus: 1.5, keywords: [{ term: latePhrase, weight: 1 }] },
+      options: { dedupThreshold: 1, archiveScoreThreshold: 0.5, resultLimit: 10 },
+      filters: { excludedTerms: [], sources: [], status: 'all' },
+    };
+    try {
+      const list = await request(app).get('/api/cards').query({ q: latePhrase });
+      expect(list.status).toBe(200);
+      expect(list.body.map((item: { id: string }) => item.id)).toContain(card.id);
+
+      const search = await request(app).post('/api/cards/search').send(body);
+      expect(search.status).toBe(200);
+      const result = search.body.active.find((item: { article: { id: string } }) => item.article.id === card.id);
+      expect(result).toBeTruthy();
+      expect(result.snippet).toContain(latePhrase);
+      expect(`${'導入本文。'.repeat(3000)}${latePhrase}の詳細を記録した段落です。`).toContain(result.snippet);
+      expect(result.scoreSources).toMatchObject({ method: 'sqlite-reader-text-fts5', readerTextRank: 1 });
+
+      process.env.CARD_SEARCH_ENGINE = 'bm25';
+      const pipelineSearch = await request(app).post('/api/cards/search').send(body);
+      expect(pipelineSearch.status).toBe(200);
+      expect(pipelineSearch.body.active[0]?.article?.id).toBe(card.id);
+      expect(pipelineSearch.body.active[0]?.snippet).toContain(latePhrase);
+
+      const updatedPhrase = '後半部固有の量子航路記録';
+      saveReaderText(card.id, [`${'除外対象語。'.repeat(1000)}${updatedPhrase}を追記した段落です。`]);
+      process.env.CARD_SEARCH_ENGINE = 'fts5-morph';
+      const stale = await request(app).post('/api/cards/search').send(body);
+      expect(stale.status).toBe(200);
+      expect(stale.body.active.some((item: { article: { id: string } }) => item.article.id === card.id)).toBe(false);
+      const updated = await request(app).post('/api/cards/search').send({
+        ...body,
+        config: { ...body.config, keywords: [{ term: updatedPhrase, weight: 1 }] },
+      });
+      expect(updated.status).toBe(200);
+      expect(updated.body.active[0]?.article?.id).toBe(card.id);
+      const excluded = await request(app).post('/api/cards/search').send({
+        ...body,
+        config: { ...body.config, keywords: [{ term: updatedPhrase, weight: 1 }] },
+        filters: { ...body.filters, excludedTerms: ['除外対象語'] },
+      });
+      expect(excluded.status).toBe(200);
+      expect(excluded.body.active.some((item: { article: { id: string } }) => item.article.id === card.id)).toBe(false);
+
+      const shortList = await request(app).get('/api/cards').query({ q: '量子' });
+      expect(shortList.status).toBe(200);
+      expect(shortList.body.map((item: { id: string }) => item.id)).toContain(card.id);
+      const shortSearch = await request(app).post('/api/cards/search').send({
+        ...body,
+        config: { ...body.config, keywords: [{ term: '量子', weight: 1 }] },
+      });
+      expect(shortSearch.status).toBe(200);
+      expect(shortSearch.body.active[0]?.article?.id).toBe(card.id);
+
+      expect(cardsEngine.deleteCard(card.id)).toBe(true);
+      const deleted = await request(app).post('/api/cards/search').send({
+        ...body,
+        config: { ...body.config, keywords: [{ term: updatedPhrase, weight: 1 }] },
+      });
+      expect(deleted.status).toBe(200);
+      expect(deleted.body.active.some((item: { article: { id: string } }) => item.article.id === card.id)).toBe(false);
+      expect(db.prepare('SELECT card_id FROM reader_text_fts WHERE card_id = ?').get(card.id)).toBeUndefined();
+    } finally {
+      if (previousEngine === undefined) delete process.env.CARD_SEARCH_ENGINE;
+      else process.env.CARD_SEARCH_ENGINE = previousEngine;
+    }
+  });
+
   it("captures pre-rerank candidates only in explicit private evaluation mode", async () => {
     const matching = await cardsEngine.createCard({ title: "Candidate capture SQLite", body: "private evaluation fixture" });
     const previousCapture = process.env.PERSONAL_REFIND_EVAL_CAPTURE;
