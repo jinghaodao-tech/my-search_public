@@ -143,6 +143,8 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
     await page.getByRole('button', { name: '検索', exact: true }).click();
     await page.locator('#document-source-results .document-source-row', { hasText: sourceTitle })
       .getByRole('button', { name: '資料に追加' }).click();
+    await page.getByRole('button', { name: '保存', exact: true }).click();
+    await expect(page.locator('#document-save-state')).toContainText('保存済み');
     await selectText(page, '#document-markdown', sourceTitle);
     await page.getByRole('button', { name: '選択文から検索' }).click();
     await expect(page.locator('#search-terms')).toHaveValue(sourceTitle);
