@@ -27,6 +27,7 @@ import { createSiteRouter } from './routes/site_routes.js';
 import { createRefindStudyRouter } from './routes/refind_study_routes.js';
 import { createResearchExperimentRouter, isTrustedLocalRequest } from './routes/research_experiment_routes.js';
 import { createDocumentsRouter } from './routes/documents_routes.js';
+import { createInvestigationWorkspacesRouter } from './routes/investigation_workspaces_routes.js';
 import { assessSiteRun, startSiteScheduler, syncSite } from './services/site_collector.js';
 import { safeFetch } from './services/safe_fetch.js';
 import {
@@ -136,6 +137,7 @@ app.use('/api', createCandidateRouter(routeContext));
 app.use('/api', createJobsRouter(routeContext));
 app.use('/api', createCardsRouter(routeContext));
 app.use('/api', createDocumentsRouter());
+app.use('/api', createInvestigationWorkspacesRouter());
 app.use('/api', createRefindStudyRouter({
   directory: path.join(__dirname, 'quality', 'e2e', 'local', 'personal-refind', 'study'),
   root: __dirname,
