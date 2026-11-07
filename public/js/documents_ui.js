@@ -8,6 +8,7 @@ let researchAIController = null;
 let researchAIRequestId = 0;
 let pendingResearchAIProposal = null;
 let researchSearchHandoff = null;
+let pendingResearchCitationSelection = null;
 let pendingBrowserClip = null;
 
 function documentApi() {
@@ -387,8 +388,10 @@ async function addSelectedQuoteToResearchDocument() {
     toast('先にReaderのメモを保存してください。原稿へ戻る操作でメモを失わないためです', 'warn');
     return;
   }
-  const quote = typeof selectedReaderText === 'function' ? selectedReaderText() : '';
-  const paragraphIndex = typeof selectionParagraphIndex === 'function' ? selectionParagraphIndex() : null;
+  const captured = pendingResearchCitationSelection;
+  pendingResearchCitationSelection = null;
+  const quote = captured?.quote ?? (typeof selectedReaderText === 'function' ? selectedReaderText() : '');
+  const paragraphIndex = captured?.paragraphIndex ?? (typeof selectionParagraphIndex === 'function' ? selectionParagraphIndex() : null);
   if (!quote || !Number.isInteger(paragraphIndex)) { toast('原稿へ追加する引用文を本文上で選択してください', 'warn'); return; }
   if (!activeResearchDocument || activeResearchDocument.version !== researchSearchHandoff.version
       || document.getElementById('document-title').value.trim() !== researchSearchHandoff.title
@@ -766,6 +769,20 @@ function discardBrowserClip() {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('desktop-browser-open').hidden = !window.mySearchDesktop;
   const editor = document.getElementById('document-markdown');
+  document.getElementById('reader-research-citation-add')?.addEventListener('mousedown', event => {
+    pendingResearchCitationSelection = null;
+    const selection = window.getSelection?.();
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    const selectedNode = range?.startContainer.nodeType === Node.ELEMENT_NODE
+      ? range.startContainer
+      : range?.startContainer.parentElement;
+    const paragraph = selectedNode?.closest?.('#reader-article [data-index]');
+    const paragraphIndex = paragraph ? Number(paragraph.getAttribute('data-index')) : null;
+    if (selection && !selection.isCollapsed && selection.toString().trim() && Number.isInteger(paragraphIndex)) {
+      pendingResearchCitationSelection = { quote: selectedReaderText(), paragraphIndex };
+      event.preventDefault();
+    }
+  });
   editor?.addEventListener('input', () => { renderDocumentPreview(); persistResearchDraft(); setDocumentMessage('未保存の変更があります。下書きはこのブラウザー内に保存しています。', true); });
   document.getElementById('document-title')?.addEventListener('input', () => { persistResearchDraft(); setDocumentMessage('未保存の変更があります。下書きはこのブラウザー内に保存しています。', true); });
   document.getElementById('document-source-search')?.addEventListener('keydown', event => { if (event.key === 'Enter') searchResearchSources(); });

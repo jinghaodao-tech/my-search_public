@@ -3,7 +3,9 @@ import { _electron as electron } from 'playwright';
 import path from 'node:path';
 
 test('Electron separates remote pages, allows two HTTPS tabs, and refuses unsafe destinations', async () => {
-  test.setTimeout(90_000);
+  // App startup and graceful shutdown include a real SQLite-backed server child;
+  // allow slower hosted CI runners enough time after local measurements.
+  test.setTimeout(180_000);
   const app = await electron.launch({
     args: [path.resolve('desktop/main.mjs'), '--trial'],
     timeout: 60_000,
@@ -13,11 +15,13 @@ test('Electron separates remote pages, allows two HTTPS tabs, and refuses unsafe
     await main.waitForLoadState('domcontentloaded');
     await expect(main.locator('#desktop-browser-open')).toBeVisible();
     const initialContents = await app.evaluate(electronApi => (electronApi as any).webContents.getAllWebContents().map((contents: any) => contents.id));
-    await main.evaluate(() => (window as any).mySearchDesktop.openBrowser('https://first.test.invalid/'));
+    // These are security-context probes only; a closed loopback port fails immediately
+    // and keeps the test independent of public DNS and network availability.
+    await main.evaluate(() => (window as any).mySearchDesktop.openBrowser('https://127.0.0.1:1/'));
     await expect.poll(() => app.windows().length).toBe(2);
     const browser = app.windows().find(window => window.url().startsWith('file:'))!;
     await expect(browser.locator('#tabs button[role="tab"]')).toHaveCount(1);
-    await browser.evaluate(() => (window as any).desktopBrowser.openTab('https://second.test.invalid/'));
+    await browser.evaluate(() => (window as any).desktopBrowser.openTab('https://127.0.0.1:1/'));
     await expect(browser.locator('#tabs button[role="tab"]')).toHaveCount(2);
 
     const unsafeResult = await browser.evaluate(async () => {
