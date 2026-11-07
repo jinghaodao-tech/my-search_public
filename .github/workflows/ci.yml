@@ -69,8 +69,14 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Install virtual display for Electron
+        run: sudo apt-get update && sudo apt-get install --yes xvfb
+
+      - name: Prepare Electron binary
+        run: node node_modules/electron/install.js
+
       - name: E2E tests
-        run: npm run test:e2e
+        run: xvfb-run --auto-servernum npm run test:e2e
 
       - name: Audit dependencies
         run: npm audit --audit-level=high

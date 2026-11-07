@@ -126,7 +126,8 @@
 
 | 面／要素 | 利用者の目的・主要操作 | 呼び出し先・結果 | 監査上の判断 |
 |---|---|---|---|
-| 共通ナビゲーション | カード一覧、候補レビュー、グルーピングボード、Zettelkasten、探すへ移動 | `switchView()` → `#card-grid` / `#candidate-view` / `#kj-board` / `#zettel-view` / `#bm25-view` | 対象と作業状態が異なるため分離。小さい画面では一部を「その他」に収め、同じ画面を開く。 |
+| 共通ナビゲーション | カード一覧、候補レビュー、グルーピングボード、Zettelkasten、探す、調査、書くへ移動 | `switchView()` → `#card-grid` / `#candidate-view` / `#kj-board` / `#zettel-view` / `#bm25-view` / `#investigations-view` / `#writing-view` | 対象と作業状態が異なるため分離。小さい画面では一部を「その他」に収め、同じ画面を開く。 |
+| 調査ワークスペース `#investigations-view` | 調査の作成・再開、保存資料の検索と明示的な追加、調査内分類、リンク確認、保存本文の比較、原稿・保存検索の関連付け | `loadInvestigationWorkspaces()`、`/api/workspaces/*`、既存 `/api/cards/search`・`/api/reader/passages` | 原稿を作る前の情報整理として独立。資料は既存カードを参照し、複製しない。検索結果は自動追加せず「資料に追加」を明示する。比較はオフライン語句一致で、AIによる妥当性判断とは表示しない。 |
 | カード一覧 `#card-grid` | カード検索、通常／アーカイブ切替、種類・タグ絞り込み、カード／表表示、タグ整理、新規メモ、複数選択 | `onSearch()`、`filterArchived()`、`filterType()`、`filterTag()`、`setCardLayout()`、`toggleTagTidy()`、`openNewCardModal()`、`toggleMultiSelect()` | 表示・絞込みは同じ一覧状態。選択後の一括操作は複数件へ作用するため単カード編集と分離。鉛筆は共有Editorへのショートカット。 |
 | カード詳細 `#detail-panel` | 編集、アーカイブ、Markdown出力、削除、要約、リンク、Reader表示 | `openEditModal()`、`toggleArchived()`、`exportMarkdown()`、`deleteCurrentReaderCard()`、`summarizeOne()` / `deleteSummary()`、リンク操作、`openReaderForCard()` | タイトル等の編集は共有Editor。アーカイブ・出力・削除・要約・関係編集は副作用が異なるため個別操作を維持。 |
 | 候補レビュー `#candidate-view` | 候補更新、状態絞り込み、確認済みにする、Readerで読む、メモとして保存、見送り | `loadCandidates()`、候補状態フィルター、`reviewCandidate()`、`openReader()`、`saveCandidateAsCard()`、`expireOneCandidate()` | 候補の状態変更と保存カード編集を分離。保存後のカード編集は一覧・詳細の共通Editorへつなぐ。 |
@@ -165,6 +166,17 @@
 | データ取込（管理メニュー／モバイルFAB） | 同じ取込目的の入口名称・表示方法が異なる。 | 管理メニュー／FAB→同じ `#modal-csv`。 | 入口1クリック、画面1遷移。CSV/JSONの選択はモーダル内で行う。 |
 
 実際の所要時間・認知負荷・誤操作率は、本人または第三者の操作観察が必要であり、今回の自動操作数から改善したとは主張しない。
+
+## 調査ワークスペースの追加確認
+
+調査は原稿編集と別の作業面にした。調査内の検索、分類、比較、既存原稿への引用、保存検索の関連付けは同じワークスペースを中心に行う。調査が必要な利用者に専用の入口が1つ増えるため、全利用者のナビゲーション選択肢が減ったとは主張しない。既存のカード一覧・Reader・原稿・保存検索は、それぞれ本来の目的のまま維持している。
+
+| 確認項目 | 結果 |
+|---|---|
+| APIとデータ | 調査・分類・関連付けだけを追加するSQLite migration。記事本文・原稿・検索条件は既存レコードを参照し、調査削除時もそれらを削除しない。 |
+| 再開状態 | 調査ごとの検索文と比較論点を保存し、再読込後に復元。2項目の入力保存は別々のタイマーで行う。 |
+| 操作試験 | `e2e/investigation-workspaces.spec.ts` で作成済み調査を開き、記事検索・追加・分類・関係図・比較・原稿/保存検索の関連付け・検索・再読込・スマホ幅を確認。 |
+| 限界 | 自動試験は利用者の分かりやすさや検索品質を証明しない。比較結果は一致語と引用候補であり、主張の真偽や意味上の支持は判定しない。 |
 
 ## 修正前後の画面
 

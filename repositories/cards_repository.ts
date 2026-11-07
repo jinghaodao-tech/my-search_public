@@ -324,8 +324,18 @@ export type SavedCardFtsRank = {
   morphologicalRank: number | null;
   ngramRank: number | null;
   rawTextRank: number | null;
+  readerTextRank?: number | null;
+  readerSnippet?: string | null;
   rrfScore: number;
   normalizedScore: number;
+  matchedCount: number;
+};
+
+export type SavedReaderTextMatch = {
+  id: string;
+  readerTextRank: number;
+  readerSnippet: string;
+  excludedTermMatched: boolean;
   matchedCount: number;
 };
 
@@ -373,6 +383,97 @@ export function searchSavedCardIdsByNumericPhrase(terms: readonly string[], limi
 function ftsExpression(tokens: readonly string[]): string | null {
   const unique = [...new Set(tokens.map(token => token.trim()).filter(Boolean))];
   return unique.length ? unique.map(token => `"${token.replace(/"/g, '""')}"`).join(' OR ') : null;
+}
+
+function readerExcerpt(paragraphsJson: string, terms: readonly string[], excludedTerms: readonly string[]): { snippet: string; excludedTermMatched: boolean } {
+  let paragraphs: unknown;
+  try { paragraphs = JSON.parse(paragraphsJson); } catch { return { snippet: '', excludedTermMatched: false }; }
+  if (!Array.isArray(paragraphs)) return { snippet: '', excludedTermMatched: false };
+  const normalizedTerms = terms.map(term => term.normalize('NFKC').toLocaleLowerCase()).filter(Boolean);
+  const normalizedExcluded = excludedTerms.map(term => term.normalize('NFKC').toLocaleLowerCase()).filter(Boolean);
+  let excludedTermMatched = false;
+  let snippet = '';
+  for (const value of paragraphs) {
+    if (typeof value !== 'string') continue;
+    const paragraph = value;
+    const normalized = paragraph.normalize('NFKC').toLocaleLowerCase();
+    if (!excludedTermMatched && normalizedExcluded.some(term => normalized.includes(term))) excludedTermMatched = true;
+    const matchAt = normalizedTerms.map(term => normalized.indexOf(term)).filter(index => index >= 0).sort((a, b) => a - b)[0];
+    if (typeof matchAt !== 'number' || snippet) continue;
+    // Use the original paragraph as the returned source text. When normalization
+    // changes character width, a small margin keeps the matching phrase in view.
+    const start = Math.max(0, matchAt - 100);
+    const end = Math.min(paragraph.length, matchAt + 240);
+    // Keep this a literal substring: the Reader uses it to locate the exact
+    // source paragraph and will treat ambiguous matches separately.
+    snippet = paragraph.slice(start, end);
+  }
+  return { snippet, excludedTermMatched };
+}
+
+/** Search the separately stored, untruncated Reader/PDF text without copying it into cards. */
+export function searchSavedReaderText(queryTerms: readonly string[], limit: number, excludedTerms: readonly string[] = []): SavedReaderTextMatch[] {
+  const terms = [...new Set(queryTerms.map(term => term.normalize('NFKC').trim()).filter(Boolean))].slice(0, 24);
+  if (!terms.length) return [];
+  const expression = ftsExpression(terms.filter(term => [...term].length >= 3));
+  let rows: Array<{ id: string; reader_text_rank: number; matched_count: number; paragraphs_json: string }>;
+  if (expression) {
+    const ftsAvailable = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reader_text_fts'").get();
+    if (ftsAvailable) {
+      rows = db.prepare(`
+        WITH ranked AS MATERIALIZED (
+          SELECT reader_text_fts.card_id AS id,
+            ROW_NUMBER() OVER (ORDER BY bm25(reader_text_fts), reader_text_fts.card_id) AS reader_text_rank
+          FROM reader_text_fts
+          JOIN reader_texts ON reader_texts.card_id = reader_text_fts.card_id
+          JOIN cards ON cards.id = reader_text_fts.card_id
+          WHERE reader_text_fts MATCH ?
+        ), scored AS (
+          SELECT id, reader_text_rank, COUNT(*) OVER() AS matched_count FROM ranked
+        )
+        SELECT scored.id, scored.reader_text_rank, scored.matched_count, reader_texts.paragraphs_json
+        FROM scored JOIN reader_texts ON reader_texts.card_id = scored.id
+        ORDER BY scored.reader_text_rank, scored.id LIMIT ?
+      `).all(expression, Math.max(1, Math.min(1000, Math.floor(limit)))) as typeof rows;
+    } else {
+      rows = [];
+    }
+  } else {
+    rows = [];
+  }
+
+  // SQLite's trigram tokenizer intentionally has no terms shorter than three
+  // characters. Keep a bounded, parameterized substring fallback for those queries.
+  if (!rows.length && terms.some(term => [...term].length < 3)) {
+    const shortTerms = terms.filter(term => [...term].length < 3).slice(0, 8);
+    const patterns = shortTerms.map(term => `%${term.replace(/[~%_]/g, char => `~${char}`)}%`);
+    const rowsForShortTerms = db.prepare(`
+      WITH ranked AS MATERIALIZED (
+        SELECT reader_texts.card_id AS id,
+          1 AS reader_text_rank
+        FROM reader_texts JOIN cards ON cards.id = reader_texts.card_id
+        WHERE ${patterns.map(() => "lower(reader_texts.paragraphs_json) LIKE ? ESCAPE '~'").join(' OR ')}
+        GROUP BY reader_texts.card_id
+      ), scored AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY reader_text_rank, id) AS reader_text_rank,
+          COUNT(*) OVER() AS matched_count FROM ranked
+      )
+      SELECT scored.id, scored.reader_text_rank, scored.matched_count, reader_texts.paragraphs_json
+      FROM scored JOIN reader_texts ON reader_texts.card_id = scored.id
+      ORDER BY scored.reader_text_rank, scored.id LIMIT ?
+    `).all(...patterns, Math.max(1, Math.min(1000, Math.floor(limit)))) as typeof rows;
+    rows = rowsForShortTerms;
+  }
+  return rows.map(row => {
+    const excerpt = readerExcerpt(row.paragraphs_json, terms, excludedTerms);
+    return {
+      id: row.id,
+      readerTextRank: row.reader_text_rank,
+      readerSnippet: excerpt.snippet,
+      excludedTermMatched: excerpt.excludedTermMatched,
+      matchedCount: row.matched_count,
+    };
+  });
 }
 
 export function savedCardTokenFtsAvailable(): boolean {

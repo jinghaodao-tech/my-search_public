@@ -15,17 +15,18 @@
 <div id="topbar">
   <h1>カード検索</h1>
   <div class="tab-group">
-    <button class="tab active" onclick="switchView('cards')">カード一覧</button>
-    <button class="tab" onclick="switchView('candidates')">候補レビュー</button>
+    <button class="tab active" data-view="cards" onclick="switchView('cards')">カード一覧</button>
+    <button class="tab" data-view="candidates" onclick="switchView('candidates')">候補レビュー</button>
     <details class="topbar-more">
       <summary>整理</summary>
       <div class="topbar-more-menu tab-group">
-        <button class="tab" onclick="switchView('kj');this.closest('details').open=false">グルーピングボード</button>
-        <button class="tab" onclick="switchView('zettel');this.closest('details').open=false">Zettelkasten</button>
+        <button class="tab" data-view="kj" onclick="switchView('kj');this.closest('details').open=false">グルーピングボード</button>
+        <button class="tab" data-view="zettel" onclick="switchView('zettel');this.closest('details').open=false">Zettelkasten</button>
       </div>
     </details>
-    <button class="tab" onclick="switchView('bm25')" title="登録したサイト・収集した記事・Webから探す">探す</button>
-    <button class="tab" onclick="switchView('writing')" title="保存資料を比較し、出典付き原稿を作る">書く</button>
+    <button class="tab" data-view="bm25" onclick="switchView('bm25')" title="登録したサイト・収集した記事・Webから探す">探す</button>
+    <button class="tab" data-view="investigations" onclick="switchView('investigations')" title="保存資料を調査単位で集め、分類・比較する">調査</button>
+    <button class="tab" data-view="writing" onclick="switchView('writing')" title="保存資料を比較し、出典付き原稿を作る">書く</button>
   </div>
   <div class="spacer"></div>
   <button id="desktop-browser-open" class="btn btn-secondary btn-sm" hidden onclick="openDesktopBrowser()">内蔵ブラウザー</button>
@@ -39,6 +40,61 @@
     </div>
   </details>
 </div>
+
+<section id="investigations-view" class="research-writing-view" aria-label="調査ワークスペース">
+  <header class="writing-header">
+    <div><h2>調査ワークスペース</h2><p>原稿を作る前の資料集め、検索、分類、比較を保存します。カード本文は複製しません。</p></div>
+  </header>
+  <div class="investigation-layout">
+    <aside class="writing-list-panel investigation-list-panel">
+      <button class="btn btn-primary btn-sm" type="button" onclick="createInvestigationWorkspace()">＋ 新しい調査</button>
+      <div id="investigation-workspace-list" class="document-list" aria-live="polite"></div>
+    </aside>
+    <main class="investigation-main">
+      <div class="investigation-workspace-fields">
+        <input id="investigation-name" maxlength="120" aria-label="調査名" placeholder="調査名" disabled>
+        <input id="investigation-purpose" maxlength="2000" aria-label="調査の目的" placeholder="この調査で明らかにしたいこと" disabled>
+        <button id="investigation-save" class="btn btn-secondary btn-sm" type="button" onclick="saveInvestigationWorkspace()" disabled>調査を保存</button>
+        <button id="investigation-delete" class="btn btn-danger btn-sm" type="button" onclick="deleteInvestigationWorkspace()" disabled>調査を削除</button>
+      </div>
+      <p id="investigation-status" class="reader-note" aria-live="polite">調査を作成するか、既存の調査を選んでください。</p>
+      <div id="investigation-content" hidden>
+        <section class="investigation-section">
+          <h3>資料を探す</h3>
+          <div class="document-source-search"><input id="investigation-source-query" type="search" placeholder="保存記事・メモを検索"><button class="btn btn-secondary btn-sm" type="button" onclick="searchInvestigationSources()">検索</button></div>
+          <div id="investigation-source-results" class="document-source-results"></div>
+        </section>
+        <section class="investigation-section">
+          <h3>この調査の資料</h3>
+          <p class="reader-note">1つの保存記事を複数の調査で共有できます。分類はこの調査内だけに保存します。</p>
+          <div id="investigation-sources" class="document-sources"></div>
+          <div class="investigation-group-create"><input id="investigation-group-name" maxlength="100" placeholder="新しい分類名"><button class="btn btn-secondary btn-sm" type="button" onclick="createInvestigationGroup()">分類を追加</button></div>
+          <div id="investigation-groups" class="document-sources"></div>
+          <div id="investigation-graph" class="reader-note" aria-live="polite"></div>
+        </section>
+        <section class="investigation-section">
+          <h3>調査中に検索</h3>
+          <div class="document-source-search"><input id="investigation-search-query" type="search" placeholder="内容の記憶や関連語"><button class="btn btn-secondary btn-sm" type="button" onclick="runInvestigationSearch()">保存記事を検索</button></div>
+          <div class="investigation-result-actions"><button class="btn btn-secondary btn-sm" type="button" onclick="saveInvestigationSearch()">この検索を保存</button></div>
+          <div id="investigation-search-results" class="document-source-results"></div>
+        </section>
+        <section class="investigation-section">
+          <h3>資料を比較</h3>
+          <div class="document-source-search"><input id="investigation-compare-purpose" maxlength="300" placeholder="比較したい論点"><button class="btn btn-secondary btn-sm" type="button" onclick="compareInvestigationSources()">保存本文から根拠候補</button></div>
+          <p class="reader-note">オフラインの語句一致です。意味上の比較・妥当性は判定しません。引用を採用する前にReaderで原文を確認してください。</p>
+          <div id="investigation-evidence" class="document-evidence-results"></div>
+        </section>
+        <section class="investigation-section">
+          <h3>原稿と保存検索を関連付ける</h3>
+          <div class="document-source-search"><select id="investigation-document-select" aria-label="既存原稿"></select><button class="btn btn-secondary btn-sm" type="button" onclick="attachInvestigationDocument()">原稿を追加</button></div>
+          <div id="investigation-documents" class="document-sources"></div>
+          <div class="document-source-search"><select id="investigation-search-select" aria-label="保存した検索"></select><button class="btn btn-secondary btn-sm" type="button" onclick="attachInvestigationSavedSearch()">保存検索を追加</button></div>
+          <div id="investigation-saved-searches" class="document-sources"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</section>
 
 <section id="research-writing-view" class="research-writing-view" aria-label="執筆ワークスペース">
   <header class="writing-header">
@@ -680,6 +736,7 @@
 <script src="js/tag_tidy_ui.js"></script>
 <script src="js/features_ui.js"></script>
 <script src="js/documents_ui.js"></script>
+<script src="js/investigation_workspaces_ui.js"></script>
 <script type="module" src="js/typed/api_client.js"></script>
 </body>
 </html>
