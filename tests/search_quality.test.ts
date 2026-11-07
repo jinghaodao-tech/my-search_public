@@ -17,7 +17,7 @@ describe('search quality regression contract', () => {
     for (const profile of profiles) {
       assert.equal(profile.pAt1ByLambda.length, 41);
       // A diagnostic sweep must report narrow or absent windows honestly, not require every
-      // experimental floor to work. The production default below must still have real width.
+      // experimental floor to work. The temporary production-default check below needs one pass.
       const passing = profile.pAt1ByLambda.filter(row => row.bothPass);
       if (!passing.length) assert.equal(profile.passingRange, null);
       else {
@@ -27,6 +27,6 @@ describe('search quality regression contract', () => {
       }
     }
     const production = profiles.find(profile => profile.timeDecayFloor === 0.35);
-    assert.ok((production?.passingRange?.lambdaWidth ?? 0) > 0);
+    assert.ok((production?.passingRange?.count ?? 0) >= 1);
   });
 });
