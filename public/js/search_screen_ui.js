@@ -192,7 +192,7 @@ async function loadSearchTargets() {
   if (!hasCollectedArticles) {
     const hint = document.createElement('p');
     hint.className = 'reader-note';
-    hint.textContent = 'まだ記事が集まっていません。「＋ サイトを追加」でよく読むブログを登録するか、Webを選んで検索してください。';
+    hint.textContent = 'まだ記事が集まっていません。「情報源を管理」でよく読むブログを登録するか、Webを選んで検索してください。';
     host.append(hint);
   }
   rememberTargetChoice();

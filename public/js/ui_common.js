@@ -1,7 +1,7 @@
 //  カラーストリップ
 // ════════════════════════════════════════
 function buildColorStrips(){
-  ['new-color-strip','edit-color-strip','group-color-strip'].forEach(id=>{
+  ['reader-card-color-strip','group-color-strip'].forEach(id=>{
     const el=document.getElementById(id); if(!el)return;
     el.innerHTML=[null,...COLORS].map(c=>c
       ?`<span class="color-dot" data-color="${c}" style="background:${c}" title="${c}"></span>`
@@ -9,6 +9,7 @@ function buildColorStrips(){
     ).join('');
   });
 }
+document.addEventListener('DOMContentLoaded', buildColorStrips);
 function updateColorStrip(stripId,selected,onSelect){
   const strip=document.getElementById(stripId); if(!strip)return;
   strip.querySelectorAll('.color-dot').forEach(dot=>{

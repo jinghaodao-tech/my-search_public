@@ -23,7 +23,7 @@ async function openSavedReader(page: Page, request: APIRequestContext) {
   const { card } = await response.json();
   await page.goto('/');
   await page.locator('.card', { hasText: card.title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await expect(page.locator('#reader-article')).toContainText('電気料金');
   await expect(page.locator('#reader-evidence-details')).toHaveJSProperty('open', false);
   await expect(page.locator('#reader-article .reader-tool-panel')).toHaveCount(0);
@@ -62,7 +62,7 @@ test('uses inline calculator and comparison from source, then saves and restores
   await expect(page.locator('#modal-reader')).not.toHaveClass(/active/);
 
   await page.locator('.card', { hasText: card.title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await page.locator('#reader-article [data-index="2"]').click();
   await expect(page.locator('.reader-tool-panel input[aria-label="使用量 (kWh)"]')).toHaveValue('400');
   await expect(page.locator('.reader-tool-panel input[aria-label="単価 (円/kWh)"]')).toHaveValue('30');
@@ -87,7 +87,7 @@ test('ordinary article stays unchanged and text selection remains available for 
   const { card } = await response.json();
   await page.goto('/');
   await page.locator('.card', { hasText: card.title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   const paragraph = page.locator('#reader-article [data-index="1"]');
   await expect(paragraph).not.toHaveClass(/reader-tool-target/);
   await expect(page.locator('.reader-tool-panel')).toHaveCount(0);
@@ -172,6 +172,8 @@ test('completes search, Reader tools, memo save, interruption, resume and source
 
   await result.getByRole('button', { name: 'メモを読む' }).click();
   await expect(page.locator('#reader-article')).toContainText(card.title);
+  await page.evaluate(() => (window as unknown as Window & { setContextualFeature: (feature: string, enabled: boolean) => void }).setContextualFeature('f4', true));
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('mySearch:lastReaderSession:v1') || 'null')?.cardId)).toBe(card.id);
   await page.reload();
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
   await expect(page.locator('#reader-memo')).toHaveValue(/電気料金を試算できる条件を説明する記事。 \[¶1\]/);
@@ -201,7 +203,7 @@ test('keeps a saved article and memo readable when its original URL is offline',
   await page.route('https://example.test/**', route => route.abort());
   await page.goto('/');
   await page.locator('.card', { hasText: card.title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await expect(page.locator('#reader-article')).toContainText('保存時点の本文コピーです。');
   await expect(page.locator('#reader-memo')).toHaveValue('ネットワーク障害前のメモ');
   await page.locator('#reader-memo').fill('オフライン中に追記したメモ');
@@ -251,7 +253,7 @@ test('resumes the active saved article and reading position after reload without
   const { card } = await saved.json();
   await page.goto('/');
   await page.locator('.card', { hasText: card.title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await expect(page.locator('#reader-article')).toContainText('段落1');
   await expect(page.locator('#reader-memo')).toHaveValue('再開後も残るメモ');
 
@@ -284,7 +286,7 @@ test('reopening and saving the same logical article updates one card instead of 
   await page.goto('/');
   for (const memo of ['2回目のメモ', '3回目のメモ']) {
     await page.locator('.card', { hasText: card.title }).click();
-    await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+    await page.locator('#reader-edit-btn').click();
     await expect(page.locator('#reader-memo')).not.toHaveValue('');
     await page.locator('#reader-memo').fill(memo);
     await page.locator('#reader-save-btn').click();
@@ -322,7 +324,7 @@ test('shows a source-change warning and preserves saved tool values while memo e
 
   await page.goto('/');
   await page.locator('.card', { hasText: card.title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await expect(page.locator('#reader-tool-state-stale')).toContainText('本文が保存時から変わった');
   await expect(page.locator('#reader-memo-source-stale')).toContainText('本文との一致がなく変更の可能性がある箇所');
   await expect(page.locator('#reader-article .reader-tool-target')).toHaveCount(0);
@@ -341,7 +343,7 @@ test('shows a source-change warning and preserves saved tool values while memo e
   expect(reopened.memo).toContain('> 電気料金を試算できる条件を説明する記事。 [¶1]');
   expect(reopened.toolState.sourceHash).not.toBe(reopened.toolsSourceHash);
   await page.locator('.card', { hasText: card.title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await expect(page.locator('#reader-tool-state-stale')).toBeVisible();
   await expect(page.locator('#reader-memo')).toHaveValue(/更新確認を追記したメモ/);
 });
@@ -359,7 +361,7 @@ test('keeps a duplicate source quote and refuses to guess its Reader location', 
 
   await page.goto('/');
   await page.locator('.card', { hasText: card.title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await expect(page.locator('#reader-memo-source-stale')).toContainText('本文内で引用が重複し位置を確定できない');
   const memoBefore = await page.locator('#reader-memo').inputValue();
   await page.locator('#reader-memo').evaluate(element => {
@@ -433,7 +435,7 @@ test('article-provided HTML-like labels stay inert in Reader and tool UI', async
   const { card } = await response.json();
   await page.goto('/');
   await page.locator('.card', { hasText: card.title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await page.locator('#reader-article p').filter({ hasText: '式: total (units)' }).click();
   await expect(page.locator('.reader-tool-panel')).toContainText(payload);
   await expect(page.locator('#reader-article img, .reader-tool-panel img')).toHaveCount(0);
@@ -482,7 +484,7 @@ test('administration actions remain reachable from the compact top bar', async (
   await page.goto('/');
   const menu = page.locator('#topbar .topbar-admin');
   await menu.locator('summary').click();
-  await menu.getByRole('button', { name: 'ソース管理' }).click();
+  await menu.getByRole('button', { name: '情報源を管理' }).click();
   await expect(page.locator('#source-modal')).toHaveClass(/active/);
   await page.locator('#source-modal').getByRole('button', { name: '閉じる' }).click();
   await menu.locator('summary').click();
@@ -539,7 +541,7 @@ test('demo sample supports the full saved-article, tool, memo and resume flow', 
   const card = page.locator('.card', { hasText: title });
   await expect(card).toBeVisible();
   await card.click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await expect(page.locator('#reader-article')).toContainText('数値は説明用');
 
   await page.locator('#reader-article p').filter({ hasText: '式: total (円)' }).click();
@@ -558,7 +560,7 @@ test('demo sample supports the full saved-article, tool, memo and resume flow', 
   await expect(page.locator('#modal-reader')).not.toHaveClass(/active/);
 
   await page.locator('.card', { hasText: title }).click();
-  await page.locator('button[onclick="openReaderForCard(currentCardId)"]').click();
+  await page.locator('#reader-edit-btn').click();
   await page.locator('#reader-article p').filter({ hasText: '式: total (円)' }).click();
   await expect(page.locator('.reader-tool-panel input[aria-label="使用量 (kWh)"]')).toHaveValue('500');
   await page.locator('.reader-tool-panel [aria-label="操作パネルを閉じる"]').click();

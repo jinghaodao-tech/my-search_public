@@ -51,6 +51,7 @@ const sourceFields = {
 };
 
 const updateSchema = z.object({
+  color: z.string().trim().max(50).regex(/^(#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,30}|rgba?\([\d.,%\s]+\)|hsla?\([\d.,%\s]+\))$/).nullable().optional(),
   ...sourceFields,
   url: sourceUrlSchema.nullable().optional(),
   fetchedAt: z.string().datetime().nullable().optional(),
@@ -62,6 +63,7 @@ const updateSchema = z.object({
 }).strict().refine(body => !body.translation || body.translation.paragraphs.length === body.paragraphs.length, { message: 'translation.paragraphs must match paragraphs' });
 
 const saveSchema = z.object({
+  color: z.string().trim().max(50).regex(/^(#[a-fA-F0-9]{3,8}|[a-zA-Z]{1,30}|rgba?\([\d.,%\s]+\)|hsla?\([\d.,%\s]+\))$/).nullable().optional(),
   ...sourceFields,
   url: sourceUrlSchema.nullable().optional(),
   fetchedAt: z.string().datetime(),
@@ -207,7 +209,7 @@ export function createReaderRouter(ctx: RouteContext) {
       paragraphs: body.paragraphs,
       translation: body.translation ?? null,
     });
-    const fields = { title: body.title, body: cardBody, ...(body.url ? { url: body.url } : {}), tags: body.tags, type: 'article' as const };
+    const fields = { title: body.title, body: cardBody, ...(body.url ? { url: body.url } : {}), tags: body.tags, type: 'article' as const, ...(body.color ? { color: body.color } : {}) };
 
     if (!body.candidateId) {
       const content = await prepareReaderContent(body.url ?? null, body.paragraphs.filter(p => !PAGE_MARKER.test(p)).join('\n\n'));
@@ -278,6 +280,7 @@ export function createReaderRouter(ctx: RouteContext) {
       toolsSourceHash: currentToolsHash,
       tools: toolAssessment.tools,
       toolState: safeToolState,
+      color: card.color ?? null,
       tags: card.tags ?? [],
       isReaderFormat: parsed.isReaderFormat,
     });
@@ -302,7 +305,7 @@ export function createReaderRouter(ctx: RouteContext) {
       translation,
     });
     const content = await prepareReaderContent(url, body.paragraphs.filter(p => !PAGE_MARKER.test(p)).join('\n\n'));
-    const card = await ctx.updateCard(req.params.id, { title: body.title, url: url ?? undefined, body: cardBody, ...(body.tags ? { tags: body.tags } : {}) }, () => {
+    const card = await ctx.updateCard(req.params.id, { title: body.title, url: url ?? undefined, body: cardBody, ...(body.tags ? { tags: body.tags } : {}), ...(body.color !== undefined ? { color: body.color } : {}) }, () => {
       saveReaderText(req.params.id, body.paragraphs, translation);
       storeReaderContent(content, body.fetchedAt ?? new Date().toISOString());
       if (readerToolsEnabled() && body.toolState) {

@@ -139,6 +139,7 @@ export const systemCreateCardSchema = createCardSchema.extend({
 
 export const updateCardSchema = z.object({
   ...cardFieldsSchema,
+  color: colorSchema.nullable().optional(),
   title: cardFieldsSchema.title.optional(),
   body: z.string().max(20000).optional(),
   tags: tagsSchema,

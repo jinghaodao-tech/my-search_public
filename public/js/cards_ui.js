@@ -260,7 +260,7 @@ function renderDetailBody(card) {
   if (!parts) return `<div class="detail-section"><h4>本文</h4><div class="detail-body-text">${esc(card.body).slice(0,400)}${card.body.length>400?'...':''}</div></div>`;
   const source = parts.sourceLines.map(line => `<div>${esc(line.replace(/^- /, ''))}</div>`).join('');
   return `<div class="detail-section"><h4>メモ</h4><div class="memo-view">${parts.memo ? renderMemoHtml(parts.memo) : '<span style="color:var(--text-dim)">（なし）</span>'}</div></div>`
-    + `<div class="detail-section"><h4>出典</h4><div class="detail-source">${source}</div><button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="openReaderForCard(${jsArg(card.id)})">本文と一緒に開く</button></div>`;
+    + `<div class="detail-section"><h4>出典</h4><div class="detail-source">${source}</div></div>`;
 }
 function renderDetailPanel(card) {
   document.getElementById('detail-title').textContent = card.title;
@@ -269,21 +269,17 @@ function renderDetailPanel(card) {
     return `<div class="linked-card" onclick="selectCard(${jsArg(lid)})"><span>📇 ${esc(lc.title)}</span><button class="btn-icon btn-sm" onclick="event.stopPropagation();unlinkCard(${jsArg(card.id)},${jsArg(lid)})">✕</button></div>`;
   }).join('');
   const backHtml = (card.backlinks||[]).map(bl=>`<div class="linked-card" onclick="selectCard(${jsArg(bl.id)})"><span>← ${esc(bl.title)}</span></div>`).join('');
-  const tagsHtml = (card.tags||[]).map(t=>`<span class="tag-edit-pill">${esc(t)}<button onclick="removeTagFromCard(${jsArg(card.id)},${jsArg(t)})">×</button></span>`).join('');
+  const tagsHtml = (card.tags||[]).map(t=>`<span class="tag-edit-pill">${esc(t)}</span>`).join('');
   document.getElementById('detail-body').innerHTML = `
     ${safeLinkUrl(card.url)?`<div class="detail-section detail-url"><h4>リンク</h4><a href="${esc(safeLinkUrl(card.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(card.url)}</a></div>`:''}
     <div class="detail-section">
       <h4>AI要約${card.summary?'':'<span style="color:var(--text-dim);font-weight:400"> (未生成)</span>'}</h4>
-      ${card.summary?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="deleteSummary(${jsArg(card.id)})">Delete</button></div><div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm needs-ai" onclick="summarizeOne(${jsArg(card.id)})">⚡ AI要約を生成</button>`}
+      ${card.summary?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><button class="btn btn-secondary btn-sm" onclick="deleteSummary(${jsArg(card.id)})">要約を削除</button></div><div class="detail-summary">${esc(card.summary)}</div>`:`<button class="btn btn-secondary btn-sm needs-ai" onclick="summarizeOne(${jsArg(card.id)})">⚡ AI要約を生成</button>`}
     </div>
     ${renderDetailBody(card)}
     <div class="detail-section">
       <h4>タグ</h4>
-      <div class="tag-edit">${tagsHtml}</div>
-      <div class="tag-input-row" style="margin-top:8px">
-        <input type="text" id="tag-add-input" placeholder="タグ追加..." onkeydown="if(event.key==='Enter')addTagToCard('${card.id}')">
-        <button class="btn btn-secondary btn-sm" onclick="addTagToCard(${jsArg(card.id)})">追加</button>
-      </div>
+      <div class="tag-edit">${tagsHtml||'<span style="color:var(--text-dim)">タグなし</span>'}</div>
     </div>
     <div class="detail-section">
       <h4>Zettelkastenリンク (${(card.links||[]).length})</h4>
@@ -294,17 +290,6 @@ function renderDetailPanel(card) {
       <div class="link-candidates" id="link-candidates"></div>
     </div>
     ${backHtml?`<div class="detail-section"><h4>バックリンク (${(card.backlinks||[]).length})</h4>${backHtml}</div>`:''}`;
-}
-async function addTagToCard(cardId) {
-  const inp=document.getElementById('tag-add-input'); const tag=inp.value.trim(); if(!tag) return;
-  const card=allCards.find(c=>c.id===cardId); if(!card) return;
-  await api.put(`/api/cards/${cardId}`,{tags:[...new Set([...card.tags,tag])]});
-  inp.value=''; await Promise.all([loadCards(),loadTags()]); selectCard(cardId);
-}
-async function removeTagFromCard(cardId,tag) {
-  const card=allCards.find(c=>c.id===cardId); if(!card) return;
-  await api.put(`/api/cards/${cardId}`,{tags:card.tags.filter(t=>t!==tag)});
-  await Promise.all([loadCards(),loadTags()]); selectCard(cardId);
 }
 function searchLinkCandidates(q,currentId) {
   const box=document.getElementById('link-candidates');
@@ -326,41 +311,9 @@ async function unlinkCard(id1,id2) {
 //  新規カード・編集・削除
 // ════════════════════════════════════════
 function openNewCardModal() {
-  selectedNewColor=null;
-  ['new-title','new-body','new-url','new-tags'].forEach(id=>document.getElementById(id).value='');
-  updateColorStrip('new-color-strip',null,c=>selectedNewColor=c);
-  openModal('modal-new'); setTimeout(()=>document.getElementById('new-title').focus(),100);
+  openPlainCardEditor();
 }
-async function submitNewCard() {
-  const title=document.getElementById('new-title').value.trim();
-  if(!title){toast('タイトルを入力してください','warn');return;}
-  const tags=document.getElementById('new-tags').value.trim().split(/\s+/).filter(Boolean);
-  await api.post('/api/cards',{title,body:document.getElementById('new-body').value,url:document.getElementById('new-url').value||undefined,tags,color:selectedNewColor||undefined,type:'memo'});
-  closeModal('modal-new'); toast('カードを作成しました'); await Promise.all([loadCards(),loadTags()]);
-}
-async function openEditModal(id) {
-  const card=allCards.find(c=>c.id===id)||await api.get(`/api/cards/${id}`);
-  document.getElementById('edit-id').value=card.id;
-  document.getElementById('edit-title').value=card.title;
-  document.getElementById('edit-body').value=card.body;
-  document.getElementById('edit-url').value=card.url??'';
-  document.getElementById('edit-tags').value=card.tags.join(' ');
-  selectedEditColor=card.color||null; updateColorStrip('edit-color-strip',selectedEditColor,c=>selectedEditColor=c);
-  openModal('modal-edit');
-}
-async function submitEdit() {
-  const id=document.getElementById('edit-id').value;
-  const tags=document.getElementById('edit-tags').value.trim().split(/\s+/).filter(Boolean);
-  await api.put(`/api/cards/${id}`,{title:document.getElementById('edit-title').value,body:document.getElementById('edit-body').value,url:document.getElementById('edit-url').value||undefined,tags,color:selectedEditColor||undefined});
-  closeModal('modal-edit'); toast('保存しました'); await Promise.all([loadCards(),loadTags()]);
-  if(currentCardId===id) selectCard(id);
-}
-async function confirmDelete() {
-  const id=document.getElementById('edit-id').value;
-  if(!confirm('このカードを削除しますか？')) return;
-  await api.del(`/api/cards/${id}`); closeModal('modal-edit');
-  if(currentCardId===id) closeDetail(); toast('削除しました'); await Promise.all([loadCards(),loadTags()]);
-}
+function openEditModal(id) { return openReaderForCard(id); }
 
 // ════════════════════════════════════════
 document.addEventListener('click', event => {

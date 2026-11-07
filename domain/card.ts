@@ -8,7 +8,7 @@ export interface Card {
   links:       string[];     // Zettelkasten リンク先カードID
   kjGroupId?:  string;       // KJ法グループID
   type:        'article' | 'memo' | 'csv';
-  color?:      string;       // カード色 (例: '#FFD700')
+  color?:      string | null; // カード色 (例: '#FFD700')
   archived?:   boolean;
   archivedAt?: string;
   createdAt:   string;       // ISO文字列

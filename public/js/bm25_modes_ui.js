@@ -1,20 +1,8 @@
 //  BM25 モード追加・管理
 // ════════════════════════════════════════
 function addBM25Mode(){
-  const name = prompt('新しいモード名を入力してください');
-  if(!name?.trim()) return;
-  const id = 'mode_'+Date.now();
-  bm25Modes[id] = {
-    label: name.trim(),
-    description: '',
-    status: 'stopped',
-    k1: 1.5, b: 0.75, lambda: 0.1, contextBonus: 1.5,
-    keywords: [{term:'キーワード1', weight:1.0, synonyms:[]}],
-  };
-  loadBM25Modes();          // タブ再描画
-  selectBM25Mode(id);       // 新モードを選択状態に
-  toast('モード「'+name+'」を追加しました');
-  // サーバーには /api/run 時に config として渡すので永続化不要
+  openModeManagerModal();
+  document.getElementById('new-mode-name')?.focus();
 }
 
 function openModeManagerModal(){
@@ -59,6 +47,7 @@ function confirmAddMode(){
   };
   document.getElementById('new-mode-name').value='';
   loadBM25Modes();
+  selectBM25Mode(id);
   renderModeManagerList();
   toast('モード追加: '+name);
 }

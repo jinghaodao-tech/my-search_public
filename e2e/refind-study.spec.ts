@@ -26,7 +26,7 @@ test('shows voluntary study consent and allows withdrawal before any search is r
   await page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: '参加を撤回してローカル記録を削除' }).click();
   await expect.poll(() => withdrawalRequests).toBe(1);
-  expect(await page.evaluate(() => localStorage.getItem('mySearch.personalRefindCaptureParticipant20261025'))).toBeNull();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('mySearch.personalRefindCaptureParticipant20261025'))).toBeNull();
 });
 
 test('captures an opted-in natural search from the saved-card list and confirms its target there', async ({ page }) => {

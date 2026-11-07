@@ -28,7 +28,7 @@ function renderKeywords() {
   if (simple) simple.value = bm25Keywords.map(keyword => keyword.term).filter(Boolean).join(' ');
   // the box now shows exactly these keywords: searching it again keeps their weights
   if (simple && typeof searchKeywordsText !== 'undefined') searchKeywordsText = simple.value.trim();
-  list.innerHTML = bm25Keywords.map((keyword, index) => `<div class="kw-row"><input class="kw-term" value="${esc(keyword.term)}" oninput="bm25Keywords[${index}].term=this.value; cancelKeywordExpansion(); syncSimpleTerms()"><input class="kw-weight" type="number" value="${keyword.weight}" oninput="bm25Keywords[${index}].weight=parseFloat(this.value)||1"><input class="kw-syn" value="${esc(keyword.synonyms || '')}" oninput="bm25Keywords[${index}].synonyms=this.value"><button type="button" onclick="removeKeyword(${index})">Remove</button></div>`).join('');
+  list.innerHTML = bm25Keywords.map((keyword, index) => `<div class="kw-row"><input class="kw-term" value="${esc(keyword.term)}" oninput="bm25Keywords[${index}].term=this.value; cancelKeywordExpansion(); syncSimpleTerms()"><input class="kw-weight" type="number" value="${keyword.weight}" oninput="bm25Keywords[${index}].weight=parseFloat(this.value)||1"><input class="kw-syn" value="${esc(keyword.synonyms || '')}" oninput="bm25Keywords[${index}].synonyms=this.value"><button type="button" onclick="removeKeyword(${index})">削除</button></div>`).join('');
 }
 function addKeyword() { if (typeof cancelKeywordExpansion === 'function') cancelKeywordExpansion(); bm25Keywords.push({ term: '', weight: 1, synonyms: '' }); renderKeywords(); }
 function removeKeyword(index) { if (typeof cancelKeywordExpansion === 'function') cancelKeywordExpansion(); bm25Keywords.splice(index, 1); renderKeywords(); }

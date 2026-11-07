@@ -125,5 +125,5 @@ function attachTagSuggest(input) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  for (const id of ['reader-tags', 'new-tags', 'edit-tags']) attachTagSuggest(document.getElementById(id));
+  attachTagSuggest(document.getElementById('reader-tags'));
 });
