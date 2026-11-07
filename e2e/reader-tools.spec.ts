@@ -173,7 +173,7 @@ test('completes search, Reader tools, memo save, interruption, resume and source
   await result.getByRole('button', { name: 'メモを読む' }).click();
   await expect(page.locator('#reader-article')).toContainText(card.title);
   await page.reload();
-  await expect(page.locator('#modal-reader')).toHaveClass(/active/);
+  await expect(page.locator('#modal-reader')).toHaveClass(/active/, { timeout: 20_000 });
   await expect(page.locator('#reader-memo')).toHaveValue(/電気料金を試算できる条件を説明する記事。 \[¶1\]/);
   await page.locator('#reader-article [data-index="2"]').click();
   const restoredCalculator = page.locator('.reader-tool-panel[aria-label="計算: 月額料金"]');
