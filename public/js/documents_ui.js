@@ -783,10 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   const citationButton = document.getElementById('reader-research-citation-add');
-  citationButton?.addEventListener('pointerdown', () => {
-    pendingResearchCitationSelection = null;
-    captureResearchCitationSelection();
-  });
+  citationButton?.addEventListener('pointerdown', captureResearchCitationSelection);
   citationButton?.addEventListener('mousedown', captureResearchCitationSelection);
   document.addEventListener('selectionchange', () => {
     const selection = window.getSelection?.();
