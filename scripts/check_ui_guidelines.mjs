@@ -9,6 +9,10 @@ const modes = read('public/js/bm25_modes_ui.js');
 const ai = read('public/js/ai_ui.js');
 const keywords = read('public/js/bm25_ui.js');
 const audit = read('docs/ui-operation-audit.md');
+const guidelines = read('docs/ui-guidelines.md');
+const surfaceTest = read('e2e/ui-surface-audit.spec.ts');
+const editorTest = read('e2e/card-editor-consolidation.spec.ts');
+const operationInventory = audit.split('## 画面別の操作一覧（全画面）')[1] ?? '';
 const fail = message => { console.error(`UI guideline check failed: ${message}`); process.exitCode = 1; };
 const requireText = (source, text, message) => { if (!source.includes(text)) fail(message); };
 const forbidText = (source, text, message) => { if (source.includes(text)) fail(message); };
@@ -17,11 +21,34 @@ if ((html.match(/id="modal-reader"/g) ?? []).length !== 1) fail('Reader Editor m
 for (const obsolete of ['id="modal-edit"', 'id="modal-new"', 'id="mobile-edit-panel"', 'js/mobile_edit.js']) {
   forbidText(html, obsolete, `obsolete editor remains in HTML: ${obsolete}`);
 }
+if (fs.existsSync('public/js/mobile_edit.js')) fail('unreachable mobile editor implementation remains in the source tree.');
 for (const match of html.matchAll(/class="modal-overlay" id="([^"]+)"/g)) {
   if (!audit.includes(`#${match[1]}`)) fail(`modal is missing from docs/ui-operation-audit.md: #${match[1]}`);
+  if (!operationInventory.includes(`#${match[1]}`)) fail(`modal has no operation mapping in the screen inventory: #${match[1]}`);
+  if (!surfaceTest.includes(`#${match[1]}`)) fail(`modal has no Playwright surface coverage: #${match[1]}`);
 }
 for (const viewId of ['card-grid', 'candidate-view', 'kj-board', 'zettel-view', 'bm25-view']) {
   if (!audit.includes(`#${viewId}`)) fail(`primary view is missing from docs/ui-operation-audit.md: #${viewId}`);
+  if (!operationInventory.includes(`#${viewId}`)) fail(`primary view has no operation mapping in the screen inventory: #${viewId}`);
+  if (!surfaceTest.includes(`#${viewId}`)) fail(`primary view has no Playwright surface coverage: #${viewId}`);
+}
+for (const operation of ['#detail-panel', 'switchView()', 'loadCandidates()', 'runSearchScreen()', 'saveReaderCard()', 'openSourceModal()', 'openCSVModal()']) {
+  if (!operationInventory.includes(operation)) fail(`screen/action inventory does not map ${operation} to its purpose and result.`);
+}
+for (const standardLabel of ['| 編集 |', '| 読んでメモ |', '| 保存 |', '| 情報源を管理 |', '| データ取り込み |', '| Markdown出力 |', '| 削除 |']) {
+  if (!guidelines.includes(standardLabel)) fail(`UI standard label is missing from docs/ui-guidelines.md: ${standardLabel}`);
+}
+for (const editRoute of ['title="タイトル・本文・メモ・出典を編集"', 'button[title="編集"]', '#modal-reader']) {
+  if (!editorTest.includes(editRoute)) fail(`card editing route is missing from Playwright coverage: ${editRoute}`);
+}
+for (const duplicateRoute of ['読んで編集', '本文と一緒に開く']) {
+  if (!editorTest.includes(`{ name: '${duplicateRoute}', exact: true })).toHaveCount(0)`)) fail(`Playwright must assert the duplicate detail route is absent: ${duplicateRoute}`);
+}
+for (const cardKind of ["kind: 'article'", "kind: 'pdf'", 'memo creation']) {
+  if (!editorTest.includes(cardKind)) fail(`card editor Playwright coverage is missing ${cardKind}.`);
+}
+for (const viewportWidth of ['width: 1280', 'width: 390']) {
+  if (!editorTest.includes(viewportWidth)) fail(`card editor Playwright coverage is missing viewport ${viewportWidth}.`);
 }
 for (const obsolete of ['submitEdit(', 'confirmDelete(', 'mepSave(', 'mepDelete(']) {
   forbidText(cards + reader, obsolete, `separate card-edit handler remains: ${obsolete}`);

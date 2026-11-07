@@ -172,6 +172,8 @@ test('completes search, Reader tools, memo save, interruption, resume and source
 
   await result.getByRole('button', { name: 'メモを読む' }).click();
   await expect(page.locator('#reader-article')).toContainText(card.title);
+  await page.evaluate(() => (window as unknown as Window & { setContextualFeature: (feature: string, enabled: boolean) => void }).setContextualFeature('f4', true));
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('mySearch:lastReaderSession:v1') || 'null')?.cardId)).toBe(card.id);
   await page.reload();
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
   await expect(page.locator('#reader-memo')).toHaveValue(/電気料金を試算できる条件を説明する記事。 \[¶1\]/);

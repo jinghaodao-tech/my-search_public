@@ -281,8 +281,8 @@ export function createReaderRouter(ctx: RouteContext) {
       toolsSourceHash: currentToolsHash,
       tools: toolAssessment.tools,
       toolState: safeToolState,
-      tags: card.tags ?? [],
       color: card.color ?? null,
+      tags: card.tags ?? [],
       isReaderFormat: parsed.isReaderFormat,
     });
   });

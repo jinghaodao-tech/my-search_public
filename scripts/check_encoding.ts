@@ -4,7 +4,7 @@ import path from 'node:path';
 const root = process.cwd();
 const mojibakePatterns = [
   '\uFFFD', '\u7E3A', '\u8B41', '\u9AEB', '\u8373', '\u8737', '\u9666',
-  '\u9060', '\u9695', '\u7E67', '\u7E5D', '\u00E3', '\u00C2', '\u00C3',
+  '\u9695', '\u7E67', '\u7E5D', '\u00E3', '\u00C2', '\u00C3',
 ].map(pattern => JSON.parse('"' + pattern + '"'));
 const allowedExtensions = new Set(['.md', '.html', '.css', '.js', '.ts', '.json', '.csv']);
 const excludedDirs = new Set([

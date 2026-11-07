@@ -12,6 +12,7 @@ test('Electron separates remote pages, allows two HTTPS tabs, and refuses unsafe
     const main = await app.firstWindow();
     await main.waitForLoadState('domcontentloaded');
     await expect(main.locator('#desktop-browser-open')).toBeVisible();
+    const initialContents = await app.evaluate(electronApi => (electronApi as any).webContents.getAllWebContents().map((contents: any) => contents.id));
     await main.evaluate(() => (window as any).mySearchDesktop.openBrowser('https://first.test.invalid/'));
     await expect.poll(() => app.windows().length).toBe(2);
     const browser = app.windows().find(window => window.url().startsWith('file:'))!;
@@ -25,16 +26,23 @@ test('Electron separates remote pages, allows two HTTPS tabs, and refuses unsafe
     });
     expect(unsafeResult).toContain('HTTPS');
 
-    const remote = await app.evaluate(async electronApi => {
-      const wc = (electronApi as any).webContents.getAllWebContents().find((candidate: any) => candidate.getURL().startsWith('https://first.test.invalid/'));
-      if (!wc) return null;
-      const prefs = wc.getLastWebPreferences();
-      const globals = await wc.executeJavaScript('JSON.stringify({process: typeof process, require: typeof require, electron: typeof window.mySearchDesktop})').catch(() => 'unavailable');
-      return { preferences: { nodeIntegration: prefs.nodeIntegration, contextIsolation: prefs.contextIsolation, sandbox: prefs.sandbox, webSecurity: prefs.webSecurity, preload: prefs.preload || null }, globals };
-    });
-    expect(remote).not.toBeNull();
-    expect(remote?.preferences).toMatchObject({ nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, preload: null });
-    expect(remote?.globals).toBe('{"process":"undefined","require":"undefined","electron":"undefined"}');
+    const readRemotePages = () => app.evaluate(async (electronApi, knownIds) => {
+      const candidates = (electronApi as any).webContents.getAllWebContents()
+        .filter((candidate: any) => !knownIds.includes(candidate.id)
+          && !candidate.getLastWebPreferences().preload
+          && !candidate.getURL().startsWith('file:'));
+      return Promise.all(candidates.map(async (candidate: any) => {
+          const prefs = candidate.getLastWebPreferences();
+          const globals = await candidate.executeJavaScript('JSON.stringify({process: typeof process, require: typeof require, electron: typeof window.mySearchDesktop})').catch(() => 'unavailable');
+          return { preferences: { nodeIntegration: prefs.nodeIntegration, contextIsolation: prefs.contextIsolation, sandbox: prefs.sandbox, webSecurity: prefs.webSecurity, preload: prefs.preload || null }, globals };
+        }));
+    }, initialContents);
+    await expect.poll(() => readRemotePages().then(pages => pages.length)).toBe(2);
+    const remotePages = await readRemotePages();
+    for (const remote of remotePages) {
+      expect(remote.preferences).toMatchObject({ nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, preload: null });
+      expect(remote.globals).toBe('{"process":"undefined","require":"undefined","electron":"undefined"}');
+    }
   } finally {
     await app.close();
   }

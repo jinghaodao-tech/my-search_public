@@ -4,13 +4,13 @@
 
 | 利用者の目的 | 入口・画面 | 保存処理 | 重複・問題 |
 |---|---|---|---|
-| 通常カードを編集 | カード上の鉛筆 → `modal-edit` | `submitEdit` → `PUT /api/cards/:id` | 記事カードも同じ本文欄へ送れるため、Reader形式の本文・出典構造を壊し得る。 |
-| 記事・PDFを読みながら編集 | 詳細の「読んで編集」またはReader経由 → `modal-reader` | `saveReaderCard` → `PUT /api/reader/cards/:id` | Reader本文・引用を保持するが、通常メモを編集する共通入口ではなかった。 |
-| 通常カードをスマホ編集 | モバイル専用パネル | `mepSave` → `PUT /api/cards/:id` とリンク全解除・再作成 | PCと入力項目・タグ区切り・リンク処理・保存実装が別。 |
+| 通常カードを編集 | 一覧の鉛筆／詳細の「編集」→ `modal-edit` | `submitEdit` → `PUT /api/cards/:id` | 記事カードにも同じ本文欄を使え、Reader形式の本文・出典構造を壊し得る。PC・スマホの実際の入口はこのモーダルだった。 |
+| 記事・PDFを読みながら編集 | 詳細の「読んで編集」または出典欄の「本文と一緒に開く」→ `modal-reader` | `saveReaderCard` → `PUT /api/reader/cards/:id` | 原文・引用を保持できるが、通常メモを編集する共通入口ではなかった。同じReaderを開く2入口に別ラベルが付いていた。 |
+| モバイル専用編集パネルの実装 | `#mobile-edit-panel`／`openMobileEdit()` はHTML・`mobile_edit.js` に存在 | `mepSave` → `PUT /api/cards/:id` とリンク全解除・再作成 | `origin/main` では `openMobileEdit()` の呼出元が同ファイル内にしかなく、画面から到達する導線はなかった。実利用経路ではなく、未接続の重複実装として扱う。 |
 | タグを編集 | 詳細画面の追加・削除操作 | 個別 `PUT /api/cards/:id` | 編集全体とは別の部分更新経路。 |
-| 新規メモ作成 | `modal-new` またはモバイル専用パネル | `submitNewCard` または `mepSave` | 作成時にもPCとスマホで別フォーム・保存処理。 |
+| 新規メモ作成 | 一覧上部／FAB → 共通の `modal-new` | `submitNewCard` → `POST /api/cards` | 画面上の入口は複数だがフォーム・保存先は共通。モバイル専用パネルは作成経路としても呼ばれていなかった。 |
 
-変更前には、少なくとも3種類のカード編集画面と4種類のクライアント保存関数があり、作成にも2種類の入力経路があった。編集を直接開く入口はカード上の鉛筆、詳細の編集、詳細のReader、詳細本文の「本文と一緒に開く」に分かれていた。
+変更前の `origin/main` では、画面から到達できる編集面は汎用モーダルとReaderの2つで、未接続のモバイル編集パネル実装も残っていた。詳細には「編集」「読んで編集」「本文と一緒に開く」の3入口があり、一覧の鉛筆も別画面を開いていた。上部とFABのメモ作成は同じモーダルを開いていた。
 
 ## 変更後
 
@@ -24,10 +24,10 @@
 
 | 観点 | 変更前 | 変更後 |
 |---|---:|---:|
-| 保存カードの編集画面 | 汎用モーダル・Reader・スマホパネルの3 | 1 |
-| 通常カードの作成フォーム | PCモーダル・スマホパネルの2 | 1 |
-| 主な保存関数 | `submitEdit`・Reader更新・`mepSave`・タグ個別更新に分散 | `saveReaderCard` 1つ（内部でデータ形式別にAPIを選択） |
-| 編集の主要画面 | 汎用モーダル・Reader・スマホパネルの3 | 1 |
+| 画面から到達できる編集面 | 汎用モーダル・Readerの2（別に未接続のモバイルパネル実装あり） | 1 |
+| 通常カードの作成フォーム | 上部・FABが共通のPC/スマホ対応モーダル1つ（別に未接続パネル実装あり） | 共有Reader Editor 1つ |
+| 主な保存処理 | 通常カード更新・Reader更新・タグ部分更新、未接続パネル用保存に分散 | `saveReaderCard` 1つ（内部で形式別APIを選択） |
+| 画面幅による編集フォーム差 | 到達する汎用モーダルは共通だが、未接続のモバイルパネル実装が併存 | 共有Editorのレイアウトだけを変更 |
 | 詳細画面の編集入口 | 「編集」「読んで編集」「本文と一緒に開く」の3 | 「編集」の1 |
 | 一覧を含む編集入口 | 詳細の3入口＋一覧の鉛筆の計4 | 詳細の「編集」＋一覧の鉛筆ショートカットの計2 |
 
@@ -119,3 +119,60 @@
 - データ取込は、上部「管理」とFABの両方から同じ `#modal-csv` を開く。
 - これらの確認はモーダルを開閉する操作で、カード・情報源・取込データを作成・変更しない。
 - 表示名の整合はコード上の文字列とPlaywrightのロール名で確認する。利用者の迷いが減ったか、操作時間が短縮したかは未測定。
+
+## 画面別の操作一覧（全画面）
+
+下表は `public/index.html` の主要画面・ダイアログと、カード・候補・Readerが `public/js/` から動的に描画する主要アクションを呼び出し先まで追跡したもの。アイコンだけの短縮表示はアクセシブル名を記録した。Playwrightの画面到達チェックは `e2e/ui-surface-audit.spec.ts`、作成・編集・保存の実操作は `e2e/card-editor-consolidation.spec.ts`、Readerの引用・出典照合は `e2e/reader-tools.spec.ts` に分けている。
+
+| 面／要素 | 利用者の目的・主要操作 | 呼び出し先・結果 | 監査上の判断 |
+|---|---|---|---|
+| 共通ナビゲーション | カード一覧、候補レビュー、グルーピングボード、Zettelkasten、探すへ移動 | `switchView()` → `#card-grid` / `#candidate-view` / `#kj-board` / `#zettel-view` / `#bm25-view` | 対象と作業状態が異なるため分離。小さい画面では一部を「その他」に収め、同じ画面を開く。 |
+| カード一覧 `#card-grid` | カード検索、通常／アーカイブ切替、種類・タグ絞り込み、カード／表表示、タグ整理、新規メモ、複数選択 | `onSearch()`、`filterArchived()`、`filterType()`、`filterTag()`、`setCardLayout()`、`toggleTagTidy()`、`openNewCardModal()`、`toggleMultiSelect()` | 表示・絞込みは同じ一覧状態。選択後の一括操作は複数件へ作用するため単カード編集と分離。鉛筆は共有Editorへのショートカット。 |
+| カード詳細 `#detail-panel` | 編集、アーカイブ、Markdown出力、削除、要約、リンク、Reader表示 | `openEditModal()`、`toggleArchived()`、`exportMarkdown()`、`deleteCurrentReaderCard()`、`summarizeOne()` / `deleteSummary()`、リンク操作、`openReaderForCard()` | タイトル等の編集は共有Editor。アーカイブ・出力・削除・要約・関係編集は副作用が異なるため個別操作を維持。 |
+| 候補レビュー `#candidate-view` | 候補更新、状態絞り込み、確認済みにする、Readerで読む、メモとして保存、見送り | `loadCandidates()`、候補状態フィルター、`reviewCandidate()`、`openReader()`、`saveCandidateAsCard()`、`expireOneCandidate()` | 候補の状態変更と保存カード編集を分離。保存後のカード編集は一覧・詳細の共通Editorへつなぐ。 |
+| グルーピングボード `#kj-board` / `#modal-group` | グループ追加・名前変更・削除、カードの移動 | `openNewGroupModal()`、`submitGroup()`、`editGroup()`、`deleteGroup()`、ドラッグ移動 | グループと所属関係の操作。カード本文Editorへ混ぜない。 |
+| Zettelkasten `#zettel-view` | 関連カードを探索して詳細へ移動 | `loadZettelkasten()`、ノード選択 → `selectCard()` → `switchView('cards')` | 関係の閲覧と移動が目的。本文編集入口は追加せず、詳細画面へ集約。 |
+| 検索 `#bm25-view` | 条件入力、実行、検索先管理、条件の保存・別名保存・復元・削除、キーワード追加・削除、AI類義語追加、同じ語でWeb検索 | `runSearchScreen()`、`openSourceModal()`、`saveCurrentSearch()`、`restoreSavedSearch()`、`deleteSavedSearch()`、`addKeyword()`、`expandKeywordsWithAI()`、`openExternalSearch()` | 保存カード検索と新着候補検索を結果ラベルで区別。AI拡張は明示操作のまま。条件保存は検索結果の保存と誤認しない名称・位置を維持。 |
+| 検索結果・候補の一括操作 | 結果記事を読む、カードに保存、フィード収集、アーカイブ表示 | `openReader()`、`saveTopAsCards()`、`refreshInputArticlesNow()`、`toggleArchived()` | 取得・保存・状態変更で副作用が異なる。検索条件管理と同一ボタンへ統合しない。 |
+| Reader / 共通Editor `#modal-reader` | URL取得、PDFを開く、サイト登録、手動本文反映、候補の保留・見送り・次へ、要点と根拠、保存・削除 | `loadReaderArticle()`、`chooseReaderPdf()`、`registerReaderSite()`、`applyManualReaderText()`、`decideReaderSearch()` / `nextSearchArticle()`、`runEvidence()` / `cancelEvidenceRequest()`、`saveReaderCard()` / `deleteCurrentReaderCard()` | 入力元別の読込は同じReaderへ統合。保存済み原文・PDFページ標識は閲覧専用。メモ・引用等の編集は共有保存経路を使う。 |
+| Readerメモ・引用 | テキスト／表表示、選択を引用、出典付きコピー、引用元へ移動、同じメモへ挿入、別メモへ転送、AI道具案 | `setMemoMode()`、`quoteReaderSelection()`、`copyCitedSelection()`、`jumpToQuoteSource()`、`transferReaderQuote()`、`prepareQuoteTransfer()`、`proposeReaderToolForSelection()` | コピー、現在メモへの追記、別カードへの保存、位置照合は対象・副作用が異なるため別操作を維持。曖昧な引用位置は自動で推測しない。 |
+| 情報源管理 `#source-modal` | Web/RSS/arXiv/GitHubの設定、サイト調査、設定保存 | `openSourceModal()`、`switchSourceTab()`、`previewSite()`、`addSrcRow()`、`saveSourceConfig()` | 管理上部、検索条件、検索結果からの入口は同じモーダルへ統一。設定内の情報源種別は別接続先を表すためタブを維持。 |
+| データ取り込み `#modal-csv` | CSV／JSON選択、ファイル／テキスト取込、取込確定 | `openCSVModal()`、`switchImportTab()`、`submitImport()` → CSV/JSON API | 入口は管理メニューとモバイルFABに統一。形式の選択は同一モーダル内。 |
+| モード管理 `#mode-manager-modal` | 検索モード追加・編集・選択 | `openModeManagerModal()`、`confirmAddMode()`、`selectBM25Mode()` | 「＋」と「管理」の追加フォームを統一済み。別prompt経路は置かない。 |
+| 状況別補助管理 `#modal-contextual-settings` | ローカル記録のエクスポート・削除、参加撤回 | `openContextualSettings()`、`exportContextualStudyEvents()`、`clearContextualStudyEvents()`、`withdrawRefindStudy()` | 設定・記録管理は記事の検索／編集操作と別の責務。破壊操作は確認を伴う。 |
+| モバイルFAB | メモ作成、データ取り込み | `openNewCardModal()` → `#modal-reader`、`openCSVModal()` → `#modal-csv` | 狭い表示ラベルでもアクセシブル名はデスクトップと共通。両入口は便利なショートカットとして維持。 |
+
+## 問題・根拠・影響・リスク
+
+| 検出した問題と根拠 | 利用者への影響 | 対応 | 変更リスク／残る確認 |
+|---|---|---|---|
+| 到達可能な編集は `modal-edit` とReaderの2面。さらに `mobile_edit.js` の未接続パネル実装があり、詳細には同じReaderを開く名前違いの入口が2つあった（`origin/main` の呼出元検索と修正前Playwright画面で確認）。 | 記事カードも汎用本文編集へ入り、保存形式を誤る可能性がある。未接続コードは利用可能な機能だと誤解させ、保守範囲も曖昧にする。 | メモ・記事・PDFを共有Editorへ統合。詳細の編集入口を1つにし、一覧鉛筆は同じ保存処理へのショートカットとして維持。 | API形式はカード種別ごとに維持。PC/モバイルと3種類のカードの保存後データをPlaywrightで確認。 |
+| 詳細の「読んで編集」と「本文と一緒に開く」は同じReaderを開き、「編集」は別画面を開いていた。 | 似た目的の3候補から画面と機能差を推測する必要があった。 | 詳細からの編集は「編集」へ統合し、原文も同じEditorで表示。 | Readerへ入る独立した「読んでメモ」は新規読込という別目的なので残す。 |
+| 情報源・メモ・取込に入口ごとの名称差があったが着地先は同じ。 | 同じ操作か判断しにくく、特にアイコン表示で支援技術向け名称が不十分だった。 | 表示名／アクセシブル名を共通化し、入口ごとに同じモーダルを開くE2Eを追加。 | 操作時間や利用者の迷いの減少は測定していない。 |
+| Markdown出力、要約削除、検索キーワード削除などに英語の混在表記があった。 | 目的を画面ごとに読み替える必要がある。 | 同じ目的の日本語ラベルへ統一。 | 表示名のみの変更。ダウンロード形式や削除対象は変えていない。 |
+| 収集、検索、候補状態、引用コピー／移動、アーカイブ、削除、一括操作は似た場所にあるが副作用が異なる。 | まとめ過ぎると実行対象や結果を誤認する可能性がある。 | 責務が異なる操作は別のままにし、一覧で呼び出し先と理由を明示。 | 文言が自然かは本人・第三者の試用で未確認。 |
+
+## 主要シナリオの画面遷移数・操作数
+
+クリック数はPlaywrightで通った経路の明示操作数。画面遷移は別の主要面（詳細／モーダル）へ移った数。入力・待ち時間・操作ミスは数えず、操作一貫性はコード経路の同一性で評価する。変更前は `origin/main` の実装、変更後はこのブランチを比較して数えた。利用者が感じる迷い・負荷の実測ではない。
+
+| シナリオ | 変更前 | 変更後 | 操作数／判断 |
+|---|---|---|---|
+| 一覧カードから編集 | PC: 鉛筆1回→汎用編集モーダル。スマホ幅: カードを開く→詳細の「編集」で2回。別に未接続のモバイルパネル実装あり。 | PC: 鉛筆1回→共有Editor。スマホ幅: カードを開く→「編集」で2回→共有Editor。 | PCは1クリック・1画面、スマホ幅は2クリック・2面。どちらも共有保存処理になり、記事・PDFが汎用本文フォームへ入る不整合と未接続コードを解消。 |
+| 詳細画面から編集 | カード選択→「編集」で2クリック・汎用モーダル。記事原文を見る経路は別ボタン。 | カード選択→「編集」で2クリック・共有Editor。 | クリック2、画面2（一覧から詳細、詳細からEditor）。選択肢3種を1つにし、記事/PDFでは原文を同時表示。 |
+| 新規メモ作成 | PC/モバイルとも上部またはFABから同じ `modal-new`。別に未接続のモバイルパネル実装あり。 | PC/モバイルともメモ作成→共有Editor。 | 起動1クリック＋保存1クリック。表示面は一覧からEditorの1遷移。フォームと保存処理をカード編集と共通化。 |
+| 情報源管理（検索画面／管理メニュー） | 同じ設定を別名称の入口から開く。 | 共通名称の入口→同じ `#source-modal`。 | 入口1クリック、画面1遷移。名称と着地先の一貫性をE2Eで確認。 |
+| データ取込（管理メニュー／モバイルFAB） | 同じ取込目的の入口名称・表示方法が異なる。 | 管理メニュー／FAB→同じ `#modal-csv`。 | 入口1クリック、画面1遷移。CSV/JSONの選択はモーダル内で行う。 |
+
+実際の所要時間・認知負荷・誤操作率は、本人または第三者の操作観察が必要であり、今回の自動操作数から改善したとは主張しない。
+
+## 修正前後の画面
+
+修正前は `origin/main` (`94fc15bd`) の隔離DBとPlaywrightで撮影した。上部にカード詳細、汎用編集、Readerの3経路が並ぶ状態と、スマホ幅で一覧の鉛筆から汎用編集を開く状態を記録している。修正後は同じ保存記事種別と画面幅で共有Editorを撮影した。各画像のタイトルはテスト用で、実ユーザーデータを含まない。
+
+| 比較する操作 | 修正前 | 修正後 |
+|---|---|---|
+| デスクトップ詳細からの選択肢 | [詳細に「編集」「読んで編集」「本文と一緒に開く」が並ぶ](../artifacts/ui-edit-consolidation/before-desktop-detail.png) | [原文とメモを同じEditorに表示](../artifacts/ui-edit-consolidation/desktop-article-editor.png) |
+| デスクトップの汎用編集 | [カード本文・URL・タグ用モーダル](../artifacts/ui-edit-consolidation/before-desktop-generic-edit.png) | [共有Editorに出典・メモをまとめて表示](../artifacts/ui-edit-consolidation/desktop-article-editor.png) |
+| デスクトップのReader編集 | [別画面のReader経路](../artifacts/ui-edit-consolidation/before-desktop-reader-edit.png) | [共有Editorで原文を見ながら編集](../artifacts/ui-edit-consolidation/desktop-article-editor.png) |
+| スマホ幅で一覧カードを編集 | [カードを開いた詳細](../artifacts/ui-edit-consolidation/before-mobile-width-detail.png)／[汎用編集モーダル](../artifacts/ui-edit-consolidation/before-mobile-width-edit.png) | [共有Editor](../artifacts/ui-edit-consolidation/mobile-article-editor.png) |

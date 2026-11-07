@@ -203,17 +203,17 @@ test.describe("core user flows", () => {
     const target = await createCard(request, `E2E Link B ${id}`, "Target card");
 
     await openApp(page);
-    await page.locator(".card", { hasText: source.title }).click();
+    await page.locator(".card").filter({ has: page.locator(".card-title").getByText(source.title, { exact: true }) }).click();
     await page.locator("#link-search").fill(target.title);
     await page.locator(".link-candidate", { hasText: target.title }).click();
     await expect(page.locator("#detail-body")).toContainText(target.title);
 
-    await page.locator(".card", { hasText: target.title }).click();
+    await page.locator(".card").filter({ has: page.locator(".card-title").getByText(target.title, { exact: true }) }).click();
     await expect(page.locator("#detail-body")).toContainText(source.title);
 
     await request.delete(`/api/cards/${source.id}/links/${target.id}`);
     await page.reload();
-    await page.locator(".card", { hasText: target.title }).click();
+    await page.locator(".card").filter({ has: page.locator(".card-title").getByText(target.title, { exact: true }) }).click();
     await expect(page.locator("#detail-body")).not.toContainText(source.title);
   });
   test("reviews and saves a collected candidate from the browser UI", async ({ page, request }) => {
