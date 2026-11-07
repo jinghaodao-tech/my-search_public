@@ -243,8 +243,24 @@ async function cleanupTrialDb() {
 app.on('before-quit', event => {
   if (!serverProcess || stopping) return;
   event.preventDefault(); stopping = true;
-  serverProcess.once('close', async () => { await cleanupTrialDb(); app.exit(0); });
-  serverProcess.kill();
+  // `close` also waits for child stdout/stderr streams to close. On Linux, a
+  // descendant may keep those pipes open after the server process has exited.
+  const child = serverProcess;
+  let shutdownTimer;
+  let finished = false;
+  const finish = async () => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(shutdownTimer);
+    try { await cleanupTrialDb(); } finally { app.exit(0); }
+  };
+  if (child.exitCode !== null || child.signalCode !== null) { void finish(); return; }
+  child.once('exit', () => { void finish(); });
+  shutdownTimer = setTimeout(() => {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    setTimeout(() => { void finish(); }, 1000);
+  }, 8000);
+  child.kill();
 });
 
 app.whenReady().then(async () => {

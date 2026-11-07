@@ -10,38 +10,31 @@ test('Electron separates remote pages, allows two HTTPS tabs, and refuses unsafe
     args: [path.resolve('desktop/main.mjs'), '--trial'],
     timeout: 60_000,
   });
-  console.log('[desktop-e2e] app launched');
   try {
     const main = await app.firstWindow();
-    console.log('[desktop-e2e] main window acquired');
     await main.waitForLoadState('domcontentloaded');
-    console.log('[desktop-e2e] main page loaded');
     await expect(main.locator('#desktop-browser-open')).toBeVisible();
     const initialContents = await app.evaluate(electronApi => (electronApi as any).webContents.getAllWebContents().map((contents: any) => contents.id));
     // These are security-context probes only; a closed loopback port fails immediately
     // and keeps the test independent of public DNS and network availability.
     await main.evaluate(() => (window as any).mySearchDesktop.openBrowser('https://127.0.0.1:1/'));
-    console.log('[desktop-e2e] browser open IPC returned');
     const browserWindowId = async () => app.evaluate((electronApi, mainId) => {
       const windows = (electronApi as any).BrowserWindow.getAllWindows();
       return windows.find((window: any) => window.webContents.id !== mainId)?.webContents.id ?? null;
     }, initialContents[0]);
     await expect.poll(browserWindowId).not.toBeNull();
     const browserId = await browserWindowId();
-    console.log('[desktop-e2e] browser window id', browserId);
     const browserTabCount = () => app.evaluate(async (electronApi, id) => {
       const contents = (electronApi as any).webContents.fromId(id);
       if (!contents || contents.isDestroyed()) return -1;
       return contents.executeJavaScript("document.querySelectorAll('#tabs button[role=tab]').length").catch(() => -1);
     }, browserId);
     await expect.poll(browserTabCount).toBe(1);
-    console.log('[desktop-e2e] first tab ready');
     await app.evaluate(async (electronApi, id) => {
       const contents = (electronApi as any).webContents.fromId(id);
       await contents.executeJavaScript("window.desktopBrowser.openTab('https://127.0.0.1:1/')");
     }, browserId);
     await expect.poll(browserTabCount).toBe(2);
-    console.log('[desktop-e2e] second tab ready');
 
     const unsafeResult = await app.evaluate(async (electronApi, id) => {
       const contents = (electronApi as any).webContents.fromId(id);
@@ -63,14 +56,21 @@ test('Electron separates remote pages, allows two HTTPS tabs, and refuses unsafe
     }, initialContents);
     await expect.poll(() => readRemotePages().then(pages => pages.length)).toBe(2);
     const remotePages = await readRemotePages();
-    console.log('[desktop-e2e] remote pages inspected');
     for (const remote of remotePages) {
       expect(remote.preferences).toMatchObject({ nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, preload: null });
       expect(remote.globals).toBe('{"process":"undefined","require":"undefined","electron":"undefined"}');
     }
   } finally {
-    console.log('[desktop-e2e] app close start');
+    const electronProcess = app.process();
+    const exited = new Promise<void>(resolve => {
+      if (electronProcess.exitCode !== null || electronProcess.signalCode !== null) resolve();
+      else electronProcess.once('exit', () => resolve());
+    });
+    await app.evaluate(electronApi => {
+      setImmediate(() => (electronApi as any).app.quit());
+      return true;
+    });
+    await exited;
     await app.close();
-    console.log('[desktop-e2e] app closed');
   }
 });
