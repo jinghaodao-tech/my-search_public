@@ -4,6 +4,97 @@ let investigationSearchConfig = null;
 let investigationGraph = null;
 let investigationSearchDebounce = null;
 let investigationCompareDebounce = null;
+let activeInvestigationPanel = 'materials';
+let activeInvestigationOrganizeView = 'board';
+
+function initializeInvestigationPanels() {
+  const content = document.getElementById('investigation-content');
+  if (!content || content.dataset.integrated === 'true') return;
+  const nav = content.querySelector('.investigation-tabs');
+  const sections = [...content.querySelectorAll(':scope > .investigation-section')];
+  if (!nav || sections.length < 5) return;
+  const panels = Object.fromEntries(['materials', 'organize', 'compare', 'documents'].map(name => {
+    const panel = document.createElement('div'); panel.id = `investigation-panel-${name}`; panel.className = 'investigation-panel';
+    content.append(panel); return [name, panel];
+  }));
+  const [sourceSearch, sourceList, savedSearch, compare, documents] = sections;
+  panels.materials.append(sourceSearch);
+  for (const selector of ['h3', '.reader-note', '#investigation-sources']) {
+    const node = sourceList.querySelector(selector); if (node) panels.materials.append(node);
+  }
+  panels.materials.append(savedSearch);
+  panels.compare.append(compare);
+  panels.documents.append(documents);
+  documents.dataset.workspaceRequired = 'true';
+
+  const organizeSection = document.createElement('section'); organizeSection.className = 'investigation-section';
+  const heading = document.createElement('h3'); heading.textContent = '同じ資料を整理'; organizeSection.append(heading);
+  const layoutSwitch = document.createElement('div'); layoutSwitch.className = 'investigation-layout-switch';
+  for (const [view, label] of [['list', '一覧'], ['board', 'ボード'], ['graph', '関係図']]) {
+    const button = investigationButton(label, () => setInvestigationOrganizeView(view));
+    button.dataset.organizeViewButton = view; layoutSwitch.append(button);
+  }
+  organizeSection.append(layoutSwitch);
+  const list = document.createElement('div'); list.id = 'investigation-organize-list'; list.dataset.organizeView = 'list'; organizeSection.append(list);
+  for (const id of ['investigation-group-name']) { const node = document.getElementById(id); if (node) organizeSection.append(node.closest('.investigation-group-create')); }
+  for (const [id, view] of [['investigation-groups', 'board'], ['investigation-graph', 'graph']]) {
+    const node = document.getElementById(id); if (node) { node.dataset.organizeView = view; organizeSection.append(node); }
+  }
+  panels.organize.append(organizeSection);
+
+  const editor = document.getElementById('research-writing-view');
+  const editorHost = document.createElement('div'); editorHost.id = 'investigation-document-editor-host'; panels.documents.append(editorHost);
+  if (editor) { editor.classList.add('embedded'); editor.setAttribute('aria-label', '調査内の原稿エディタ'); editorHost.append(editor); }
+  sourceList.remove();
+  content.dataset.integrated = 'true';
+  setInvestigationPanel(activeInvestigationPanel, { persist: false });
+  setInvestigationOrganizeView(activeInvestigationOrganizeView, false);
+}
+
+function setInvestigationPanel(panel, options = {}) {
+  if (!['materials', 'organize', 'compare', 'documents'].includes(panel)) return;
+  if (!activeInvestigationWorkspace && panel !== 'documents') return;
+  const editor = document.getElementById('research-writing-view');
+  if (activeInvestigationPanel === 'documents' && panel !== 'documents' && typeof persistResearchDraft === 'function') persistResearchDraft();
+  activeInvestigationPanel = panel;
+  const content = document.getElementById('investigation-content');
+  if (content) content.hidden = !activeInvestigationWorkspace && panel !== 'documents';
+  document.querySelectorAll('[data-investigation-panel]').forEach(button => { button.disabled = !activeInvestigationWorkspace && button.dataset.investigationPanel !== 'documents'; });
+  document.querySelectorAll('[data-workspace-required="true"]').forEach(node => { node.hidden = !activeInvestigationWorkspace; });
+  for (const node of document.querySelectorAll('[id^="investigation-panel-"]')) {
+    if (node.classList.contains('investigation-panel')) node.hidden = node.id !== `investigation-panel-${panel}`;
+  }
+  document.querySelectorAll('[data-investigation-panel]').forEach(button => button.classList.toggle('active', button.dataset.investigationPanel === panel));
+  editor?.classList.toggle('active', panel === 'documents');
+  if (panel === 'documents' && typeof loadResearchDocuments === 'function') void loadResearchDocuments();
+  if (options.persist !== false && activeInvestigationWorkspace) void saveInvestigationState({ activePanel: panel });
+}
+
+function setInvestigationOrganizeView(view, persist = true) {
+  if (!['list', 'board', 'graph'].includes(view)) return;
+  activeInvestigationOrganizeView = view;
+  document.querySelectorAll('[data-organize-view]').forEach(node => { node.hidden = node.dataset.organizeView !== view; });
+  document.querySelectorAll('[data-organize-view-button]').forEach(button => button.classList.toggle('active', button.dataset.organizeViewButton === view));
+  if (view === 'list') renderInvestigationOrganizeList();
+  if (view === 'graph' && activeInvestigationWorkspace) requestAnimationFrame(() => void loadInvestigationGraph());
+  if (persist && activeInvestigationWorkspace) void saveInvestigationState({ organizeView: view });
+}
+
+function renderInvestigationOrganizeList() {
+  const host = document.getElementById('investigation-organize-list'); if (!host) return;
+  host.replaceChildren();
+  const sources = activeInvestigationWorkspace?.sources ?? [];
+  if (!sources.length) { host.textContent = 'この調査にはまだ資料がありません。'; return; }
+  for (const source of sources) {
+    const row = document.createElement('div'); row.className = 'document-source-row investigation-source-row';
+    const title = document.createElement('span'); title.className = 'investigation-source-title'; title.textContent = source.card.title;
+    const group = document.createElement('select'); group.setAttribute('aria-label', `${source.card.title}の調査内分類`);
+    const none = document.createElement('option'); none.value = ''; none.textContent = '未分類'; group.append(none);
+    for (const item of activeInvestigationWorkspace.groups ?? []) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; group.append(option); }
+    group.value = source.groupId ?? ''; group.onchange = () => updateInvestigationSourceGroup(source.card.id, group.value || null);
+    row.append(title, group, investigationButton('Reader', () => openReaderForCard(source.card.id))); host.append(row);
+  }
+}
 
 function investigationStatus(message, error = false) {
   const node = document.getElementById('investigation-status');
@@ -36,15 +127,25 @@ function setInvestigationWorkspace(workspace) {
   activeInvestigationWorkspace = workspace;
   const enabled = Boolean(workspace);
   for (const id of ['investigation-name', 'investigation-purpose', 'investigation-save', 'investigation-delete']) document.getElementById(id).disabled = !enabled;
-  document.getElementById('investigation-content').hidden = !enabled;
+  document.getElementById('investigation-content').hidden = !enabled && activeInvestigationPanel !== 'documents';
+  document.querySelectorAll('[data-investigation-panel]').forEach(button => { button.disabled = !enabled && button.dataset.investigationPanel !== 'documents'; });
+  document.querySelectorAll('[data-workspace-required="true"]').forEach(node => { node.hidden = !enabled; });
   document.getElementById('investigation-name').value = workspace?.name ?? '';
   document.getElementById('investigation-purpose').value = workspace?.purpose ?? '';
   document.getElementById('investigation-search-query').value = workspace?.state?.searchQuery ?? '';
   document.getElementById('investigation-compare-purpose').value = workspace?.state?.comparePurpose ?? '';
+  activeInvestigationPanel = window.mySearchOpenDocumentsOnEnter ? 'documents' : (workspace?.state?.activePanel ?? activeInvestigationPanel);
+  window.mySearchOpenDocumentsOnEnter = false;
+  activeInvestigationOrganizeView = workspace?.state?.organizeView ?? activeInvestigationOrganizeView;
+  initializeInvestigationPanels();
+  setInvestigationPanel(activeInvestigationPanel, { persist: false });
+  setInvestigationOrganizeView(activeInvestigationOrganizeView, false);
   renderInvestigationWorkspaceList();
   if (!workspace) return;
   renderInvestigationSources();
+  renderInvestigationOrganizeList();
   renderInvestigationGroups();
+  renderInvestigationCompareSelection();
   renderInvestigationDocuments();
   renderInvestigationSavedSearches();
   void loadInvestigationGraph();
@@ -56,7 +157,9 @@ async function loadInvestigationWorkspaces(preferredId = null) {
     const result = await api.get('/api/workspaces');
     investigationWorkspaces = result.workspaces ?? [];
     renderInvestigationWorkspaceList();
-    const targetId = preferredId || activeInvestigationWorkspace?.id;
+    let rememberedId = null;
+    try { rememberedId = localStorage.getItem('my-search:active-investigation-workspace'); } catch { /* local storage may be disabled */ }
+    const targetId = preferredId || activeInvestigationWorkspace?.id || rememberedId;
     const selected = investigationWorkspaces.find(row => row.id === targetId) || investigationWorkspaces[0];
     if (selected) await openInvestigationWorkspace(selected.id);
     else {
@@ -69,9 +172,17 @@ async function loadInvestigationWorkspaces(preferredId = null) {
 async function openInvestigationWorkspace(id) {
   try {
     const result = await api.get(`/api/workspaces/${encodeURIComponent(id)}`);
+    try { localStorage.setItem('my-search:active-investigation-workspace', id); } catch { /* local storage may be disabled */ }
     setInvestigationWorkspace(result.workspace);
     investigationStatus('調査を開きました。検索結果は「資料に追加」を押したときだけ関連付けます。');
   } catch (error) { investigationStatus(error.message || '調査を開けませんでした。', true); }
+}
+
+function openAllResearchDocuments() {
+  setInvestigationWorkspace(null);
+  setInvestigationPanel('documents', { persist: false });
+  investigationStatus('すべての原稿を表示しています。原稿は調査へ関連付けずに編集できます。');
+  void loadResearchDocuments();
 }
 
 async function createInvestigationWorkspace() {
@@ -102,6 +213,7 @@ async function deleteInvestigationWorkspace() {
   const oldId = activeInvestigationWorkspace.id;
   try {
     await api.del(`/api/workspaces/${encodeURIComponent(oldId)}`);
+    try { if (localStorage.getItem('my-search:active-investigation-workspace') === oldId) localStorage.removeItem('my-search:active-investigation-workspace'); } catch { /* local storage may be disabled */ }
     activeInvestigationWorkspace = null;
     await loadInvestigationWorkspaces();
     investigationStatus('調査の関連付けを削除しました。保存記事・原稿・検索条件は保持されています。');
@@ -151,6 +263,12 @@ function renderInvestigationSources() {
     row.dataset.cardId = source.card.id;
     row.addEventListener('dragstart', event => event.dataTransfer?.setData('text/plain', source.card.id));
     const label = document.createElement('span'); label.className = 'investigation-source-title'; label.textContent = source.card.title;
+    const compare = document.createElement('input'); compare.type = 'checkbox'; compare.className = 'investigation-compare-source';
+    compare.setAttribute('aria-label', `${source.card.title}を比較対象にする`);
+    const selectedIds = activeInvestigationWorkspace.state?.compareCardIds;
+    compare.checked = Array.isArray(selectedIds) ? selectedIds.includes(source.card.id) : true;
+    compare.dataset.cardId = source.card.id;
+    compare.onchange = () => updateInvestigationCompareSelection(source.card.id, compare.checked);
     const group = document.createElement('select'); group.setAttribute('aria-label', `${source.card.title}の調査内分類`);
     const ungrouped = document.createElement('option'); ungrouped.value = ''; ungrouped.textContent = '未分類'; group.append(ungrouped);
     for (const item of activeInvestigationWorkspace.groups ?? []) {
@@ -158,11 +276,48 @@ function renderInvestigationSources() {
     }
     group.value = source.groupId ?? '';
     group.onchange = () => updateInvestigationSourceGroup(source.card.id, group.value || null);
-    row.append(label, group,
+    row.append(compare, label, group,
       investigationButton('Readerで開く', () => openReaderForCard(source.card.id)),
       investigationButton('関連解除', () => removeInvestigationSource(source.card.id), 'btn btn-secondary btn-sm'));
     host.append(row);
   }
+}
+
+function renderInvestigationCompareSelection() {
+  const host = document.getElementById('investigation-compare-source-selection'); if (!host) return;
+  host.replaceChildren();
+  const sources = activeInvestigationWorkspace?.sources ?? [];
+  if (!sources.length) { host.textContent = '先に「資料」から保存記事やメモを追加してください。'; return; }
+  const selectedIds = activeInvestigationWorkspace.state?.compareCardIds;
+  for (const source of sources) {
+    const label = document.createElement('label'); label.className = 'investigation-compare-choice';
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.dataset.cardId = source.card.id;
+    checkbox.checked = Array.isArray(selectedIds) ? selectedIds.includes(source.card.id) : true;
+    checkbox.setAttribute('aria-label', `${source.card.title}を比較対象にする`);
+    checkbox.onchange = () => updateInvestigationCompareSelection(source.card.id, checkbox.checked);
+    const title = document.createElement('span'); title.textContent = source.card.title;
+    label.append(checkbox, title); host.append(label);
+  }
+}
+
+function updateInvestigationCompareSelection(cardId, checked) {
+  if (!activeInvestigationWorkspace) return;
+  const current = activeInvestigationWorkspace.state?.compareCardIds;
+  const selected = new Set(Array.isArray(current) ? current : (activeInvestigationWorkspace.sources ?? []).map(source => source.card.id));
+  if (checked && !selected.has(cardId) && selected.size >= 10) {
+    document.querySelectorAll('#investigation-sources .investigation-compare-source, #investigation-compare-source-selection input[type="checkbox"]').forEach(input => {
+      if (input.dataset.cardId === cardId) input.checked = false;
+    });
+    investigationStatus('一度に比較できる資料は10件までです。', true);
+    return;
+  }
+  if (checked) selected.add(cardId); else selected.delete(cardId);
+  const compareCardIds = [...selected].filter(id => activeInvestigationWorkspace.sources?.some(source => source.card.id === id));
+  activeInvestigationWorkspace.state = { ...(activeInvestigationWorkspace.state ?? {}), compareCardIds };
+  document.querySelectorAll('#investigation-sources .investigation-compare-source, #investigation-compare-source-selection input[type="checkbox"]').forEach(input => {
+    if (input.dataset.cardId === cardId) input.checked = checked;
+  });
+  void saveInvestigationState({ compareCardIds });
 }
 
 async function updateInvestigationSourceGroup(cardId, groupId) {
@@ -203,21 +358,49 @@ async function deleteInvestigationGroup(groupId) {
 function renderInvestigationGroups() {
   const host = document.getElementById('investigation-groups'); host.replaceChildren();
   const groups = activeInvestigationWorkspace?.groups ?? [];
-  if (!groups.length) { host.textContent = '分類はありません。分類を追加するか、資料一覧の選択欄で「未分類」のまま使えます。'; return; }
-  for (const group of groups) {
-    const row = document.createElement('div'); row.className = 'document-source-row investigation-group-drop'; row.dataset.groupId = group.id;
-    row.addEventListener('dragover', event => event.preventDefault());
-    row.addEventListener('drop', event => { event.preventDefault(); const cardId = event.dataTransfer?.getData('text/plain'); if (cardId) void updateInvestigationSourceGroup(cardId, group.id); });
+  const columns = [{ id: null, name: '未分類' }, ...groups];
+  if (!activeInvestigationWorkspace?.sources?.length && !groups.length) { host.textContent = '資料を追加し、分類を作るとボードで整理できます。'; return; }
+  host.classList.add('investigation-kanban');
+  for (const group of columns) {
+    const column = document.createElement('section'); column.className = 'investigation-kanban-column investigation-group-drop';
+    column.dataset.groupId = group.id ?? '';
+    column.addEventListener('dragover', event => { event.preventDefault(); column.classList.add('drag-over'); });
+    column.addEventListener('dragleave', () => column.classList.remove('drag-over'));
+    column.addEventListener('drop', event => {
+      event.preventDefault(); column.classList.remove('drag-over');
+      const cardId = event.dataTransfer?.getData('text/plain'); if (cardId) void updateInvestigationSourceGroup(cardId, group.id);
+    });
+    const heading = document.createElement('header'); heading.className = 'investigation-kanban-heading';
     const label = document.createElement('strong'); label.textContent = group.name;
-    const count = (activeInvestigationWorkspace.sources ?? []).filter(source => source.groupId === group.id).length;
-    const tally = document.createElement('span'); tally.textContent = `${count}件 · 資料をここへドラッグできます`;
-    row.append(label, tally, investigationButton('分類を削除', () => deleteInvestigationGroup(group.id)));
-    host.append(row);
+    const members = (activeInvestigationWorkspace.sources ?? []).filter(source => (source.groupId ?? null) === group.id);
+    const tally = document.createElement('span'); tally.textContent = `${members.length}`;
+    heading.append(label, tally);
+    if (group.id) {
+      heading.append(investigationButton('名前変更', async () => {
+        const name = prompt('新しい分類名', group.name)?.trim(); if (!name || name === group.name) return;
+        try {
+          const result = await api.put(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/groups/${encodeURIComponent(group.id)}`, { name });
+          setInvestigationWorkspace(result.workspace);
+        } catch (error) { investigationStatus(error.message || '分類名を変更できませんでした。', true); }
+      }));
+      heading.append(investigationButton('削除', () => deleteInvestigationGroup(group.id)));
+    }
+    column.append(heading);
+    for (const source of members) {
+      const card = document.createElement('article'); card.className = 'investigation-kanban-card'; card.draggable = true;
+      card.addEventListener('dragstart', event => event.dataTransfer?.setData('text/plain', source.card.id));
+      const title = document.createElement('strong'); title.textContent = source.card.title; title.title = source.card.title;
+      const select = document.createElement('select'); select.setAttribute('aria-label', `${source.card.title}の調査内分類`);
+      for (const item of [{ id: '', name: '未分類' }, ...groups.map(item => ({ id: item.id, name: item.name }))]) {
+        const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; select.append(option);
+      }
+      select.value = source.groupId ?? ''; select.onchange = () => updateInvestigationSourceGroup(source.card.id, select.value || null);
+      card.append(title, select, investigationButton('Readerで読む', () => openReaderForCard(source.card.id)));
+      column.append(card);
+    }
+    if (!members.length) { const empty = document.createElement('p'); empty.className = 'reader-note'; empty.textContent = '資料をここへドラッグできます'; column.append(empty); }
+    host.append(column);
   }
-  const ungrouped = document.createElement('div'); ungrouped.className = 'document-source-row investigation-group-drop'; ungrouped.textContent = '未分類へドラッグ';
-  ungrouped.addEventListener('dragover', event => event.preventDefault());
-  ungrouped.addEventListener('drop', event => { event.preventDefault(); const cardId = event.dataTransfer?.getData('text/plain'); if (cardId) void updateInvestigationSourceGroup(cardId, null); });
-  host.append(ungrouped);
 }
 
 async function loadInvestigationGraph() {
@@ -273,7 +456,8 @@ async function saveInvestigationSearch() {
 async function compareInvestigationSources() {
   if (!activeInvestigationWorkspace) return;
   const purpose = document.getElementById('investigation-compare-purpose').value.trim();
-  const cardIds = (activeInvestigationWorkspace.sources ?? []).map(source => source.card.id).slice(0, 10);
+  const selectedIds = activeInvestigationWorkspace.state?.compareCardIds;
+  const cardIds = (Array.isArray(selectedIds) ? selectedIds : (activeInvestigationWorkspace.sources ?? []).map(source => source.card.id)).slice(0, 10);
   if (cardIds.length < 1) { investigationStatus('比較する保存資料を追加してください。', true); return; }
   if (purpose.length < 2) { investigationStatus('比較したい論点を入力してください。', true); return; }
   const host = document.getElementById('investigation-evidence'); host.textContent = '保存本文から一致箇所を抽出しています…';
@@ -287,7 +471,7 @@ async function compareInvestigationSources() {
       const claim = document.createElement('p'); claim.textContent = evidence.claim;
       const actions = document.createElement('div'); actions.className = 'evidence-actions';
       actions.append(investigationButton('Readerで原文確認', async () => { if (await openReaderForCard(evidence.sourceId)) jumpToParagraph(evidence.paragraphIndex); }));
-      if (activeInvestigationWorkspace.documents?.length) actions.append(investigationButton('既存原稿に引用', () => insertInvestigationCitation(evidence)));
+      actions.append(investigationButton(activeInvestigationWorkspace.documents?.length ? '原稿に引用' : '原稿を作成して引用', () => insertInvestigationCitation(evidence)));
       row.append(source, quote, claim, actions); host.append(row);
     }
     if (!host.childElementCount) host.textContent = '一致箇所を確認できませんでした。資料をReaderで確認してください。';
@@ -296,9 +480,21 @@ async function compareInvestigationSources() {
 }
 
 async function insertInvestigationCitation(evidence) {
-  const documentId = activeInvestigationWorkspace?.documents?.[0]?.id;
-  if (!documentId || typeof insertVerifiedDocumentCitation !== 'function') return;
-  switchView('writing');
+  if (typeof insertVerifiedDocumentCitation !== 'function') return;
+  let documentId = activeInvestigationWorkspace?.documents?.[0]?.id;
+  if (!documentId) {
+    setInvestigationPanel('documents');
+    await newResearchDocument();
+    documentId = activeResearchDocument?.id;
+    if (documentId) {
+      try {
+        const result = await api.post(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/documents`, { id: documentId });
+        setInvestigationWorkspace(result.workspace);
+      } catch (error) { investigationStatus(error.message || '原稿を調査に関連付けられませんでした。', true); return; }
+    }
+  }
+  if (!documentId) return;
+  setInvestigationPanel('documents');
   await openResearchDocument(documentId);
   await insertVerifiedDocumentCitation(evidence.sourceId, evidence.paragraphIndex, evidence.quote);
 }
@@ -319,7 +515,7 @@ function renderInvestigationDocuments() {
   const host = document.getElementById('investigation-documents'); host.replaceChildren();
   for (const doc of activeInvestigationWorkspace?.documents ?? []) {
     const row = document.createElement('div'); row.className = 'document-source-row'; const label = document.createElement('span'); label.textContent = `${doc.title} · v${doc.version}`;
-    row.append(label, investigationButton('開いて執筆', async () => { switchView('writing'); await openResearchDocument(doc.id); }), investigationButton('関連解除', () => detachInvestigationItem('documents', doc.id)));
+    row.append(label, investigationButton('編集', async () => { setInvestigationPanel('documents'); await openResearchDocument(doc.id); }), investigationButton('関連解除', () => detachInvestigationItem('documents', doc.id)));
     host.append(row);
   }
   if (!host.childElementCount) host.textContent = '原稿は任意です。資料の整理や比較は原稿なしでもできます。';
@@ -356,7 +552,27 @@ async function detachInvestigationItem(kind, id) {
 
 async function rerunInvestigationSearch(id) {
   try {
+    const searches = await api.get('/api/saved-searches');
+    const saved = searches.find(search => search.id === id);
+    if (!saved) throw new Error('保存検索が見つかりません。');
+    if (saved.source === 'cards') {
+      const host = document.getElementById('investigation-search-results'); host.replaceChildren();
+      document.getElementById('investigation-search-query').value = saved.name;
+      investigationStatus('保存した条件で保存資料を検索しています…');
+      const result = await api.post('/api/cards/search', { config: saved.config, options: saved.options, filters: saved.filters });
+      for (const item of result.active ?? []) {
+        const row = document.createElement('div'); row.className = 'document-source-row';
+        const label = document.createElement('span'); label.textContent = `${item.article.title} · ${item.snippet || ''}`;
+        row.append(label, investigationButton('Readerで読む', () => openReaderForCard(item.article.id)), investigationButton('資料に追加', () => addInvestigationSource(item.article.id)));
+        host.append(row);
+      }
+      if (!host.childElementCount) host.textContent = '一致する保存記事はありませんでした。';
+      await saveInvestigationState({ searchQuery: saved.name });
+      investigationStatus(`${result.active?.length ?? 0}件を調査内に表示しました。`);
+      return;
+    }
     if (typeof loadSavedSearches === 'function') await loadSavedSearches();
+    investigationStatus('Web・収集記事を含む保存検索は「探す」で再実行します。調査と選択状態は保持されます。');
     switchView('bm25');
     restoreSavedSearch(id);
     await runSearchScreen();

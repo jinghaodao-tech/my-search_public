@@ -196,7 +196,7 @@ function renderTagCloud() {
     const active = allTags.find(t => t.tag === currentFilter.tag);
     if (active) shown.unshift(active);
   }
-  document.getElementById('tag-count').textContent = `(${allTags.length})`;
+  document.getElementById('tag-count').textContent = currentFilter.tag ? `(絞込: ${currentFilter.tag})` : `(${allTags.length})`;
   cloud.innerHTML = shown.map(({tag,count})=>
     `<span class="tag-pill ${currentFilter.tag===tag?'active':''}" onclick="filterTag(${jsArg(tag)})">${esc(tag)} <small>${count}</small></span>`
   ).join('') || '<span class="muted" style="font-size:12px">該当するタグはありません</span>';

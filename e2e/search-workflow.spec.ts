@@ -29,6 +29,8 @@ test('saved search survives reload and ranked reading saves a candidate once', a
   const result = page.locator('.score-card').filter({ hasText: candidate.title });
   await expect(result).toBeVisible();
   await result.getByRole('button', { name: '読んでメモ' }).click();
+  await expect(page.locator('#modal-reader .reader-modal')).toHaveClass(/reader-has-source/);
+  await expect(page.locator('.reader-right')).toBeVisible();
   await expect(page.locator('#reader-article')).toContainText('Portfolio article text');
   await page.locator('#reader-memo').fill('保存したメモ');
   await page.locator('#reader-save-btn').click();

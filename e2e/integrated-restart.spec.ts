@@ -106,6 +106,13 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
         paragraphs: [quote], memo: '', tags: [],
       }),
     });
+    const workspaceResult = await jsonRequest<{ workspace: { id: string; name: string } }>(baseUrl, '/api/workspaces', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: `再起動後も続く調査 ${suffix}`, purpose: '引用と原稿を再開する' }),
+    });
+    await jsonRequest(baseUrl, `/api/workspaces/${workspaceResult.workspace.id}/sources`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cardId: saved.card.id }),
+    });
 
     await page.goto(baseUrl);
     await page.locator('.card', { hasText: sourceTitle }).click();
@@ -133,7 +140,9 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
     expect(initialMemo).toContain(quote);
     await page.locator('#modal-reader').getByRole('button', { name: '閉じる' }).click();
 
-    await page.locator('button[onclick="switchView(\'writing\')"]').click();
+    await page.locator('button[data-view="investigations"]').click();
+    await page.getByRole('button', { name: workspaceResult.workspace.name, exact: true }).click();
+    await page.getByRole('button', { name: '原稿', exact: true }).click();
     await page.getByRole('button', { name: '＋ 新しい原稿' }).click();
     const title = `サーバー再起動後に復旧する調査原稿 ${suffix}`;
     const editor = page.locator('#document-markdown');
@@ -145,6 +154,7 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
       .getByRole('button', { name: '資料に追加' }).click();
     await page.getByRole('button', { name: '保存', exact: true }).click();
     await expect(page.locator('#document-save-state')).toContainText('保存済み');
+    await expect(page.locator('#investigation-documents')).toContainText(title);
     await selectText(page, '#document-markdown', sourceTitle);
     await page.getByRole('button', { name: '選択文から検索' }).click();
     await expect(page.locator('#search-terms')).toHaveValue(sourceTitle);
@@ -181,7 +191,11 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
     await waitForHealthy(server, baseUrl);
 
     await page.reload();
-    await page.locator('button[onclick="switchView(\'writing\')"]').click();
+    await page.locator('button[data-view="investigations"]').click();
+    await expect(page.locator('#investigation-workspace-list')).toContainText(workspaceResult.workspace.name);
+    await page.getByRole('button', { name: workspaceResult.workspace.name, exact: true }).click();
+    await page.getByRole('button', { name: '原稿', exact: true }).click();
+    await expect(page.locator('#document-title')).toHaveValue(title);
     await page.locator('#document-search').fill(title);
     await page.locator('#document-list .document-list-item', { hasText: title }).click();
     await expect(editor).toHaveValue(/\[\[citation:/);
@@ -214,6 +228,8 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
   } finally {
     if (server.exitCode === null && server.signalCode === null) await stopServer(server);
     for (const suffix of ['', '-wal', '-shm']) await fs.rm(dbPath + suffix, { force: true });
-    await fs.rm(isolatedDir, { recursive: true, force: true });
+    // Windows may briefly retain SQLite handles after the child server exits.
+    // Retry removal of this test-owned temporary directory without touching app data.
+    await fs.rm(isolatedDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });

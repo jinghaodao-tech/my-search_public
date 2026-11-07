@@ -44,6 +44,19 @@ function persistResearchDraft() {
   catch { setDocumentMessage('ブラウザー内に下書きを保存できません。内容を早めに保存してください。', true); }
 }
 
+function researchDocumentHasUnsavedChanges() {
+  if (!activeResearchDocument) return false;
+  return document.getElementById('document-title')?.value !== activeResearchDocument.title
+    || document.getElementById('document-markdown')?.value !== activeResearchDocument.markdown;
+}
+
+function preserveResearchDraftBeforeSwitch() {
+  if (!researchDocumentHasUnsavedChanges()) return true;
+  if (!confirm('原稿に未保存の変更があります。この端末に下書きを保存して切り替えますか？')) return false;
+  persistResearchDraft();
+  return true;
+}
+
 function clearResearchDraft(id) {
   try { localStorage.removeItem(researchDraftKey(id)); } catch { /* storage may be disabled */ }
   const banner = document.getElementById('document-draft');
@@ -214,17 +227,28 @@ function renderResearchDocumentList(rows) {
   }
 }
 
+const activeResearchDocumentStorageKey = 'my-search:active-research-document';
+
 async function loadResearchDocuments() {
   try {
     const query = document.getElementById('document-search')?.value.trim() ?? '';
     const result = await documentApi().get(`/api/documents${query ? `?q=${encodeURIComponent(query)}` : ''}`);
     researchDocumentRows = result.documents ?? [];
     renderResearchDocumentList(researchDocumentRows);
+    if (!activeResearchDocument) {
+      let rememberedId = null;
+      try { rememberedId = localStorage.getItem(activeResearchDocumentStorageKey); } catch { /* local storage may be disabled */ }
+      if (rememberedId && researchDocumentRows.some(row => row.id === rememberedId)) await openResearchDocument(rememberedId);
+    }
   } catch (error) { setDocumentMessage(error.message || '原稿一覧を読み込めませんでした', true); }
 }
 
 function setResearchDocument(documentValue) {
   activeResearchDocument = documentValue;
+  try {
+    if (documentValue?.id) localStorage.setItem(activeResearchDocumentStorageKey, documentValue.id);
+    else localStorage.removeItem(activeResearchDocumentStorageKey);
+  } catch { /* local storage may be disabled */ }
   document.getElementById('document-title').value = documentValue?.title ?? '';
   document.getElementById('document-markdown').value = documentValue?.markdown ?? '';
   document.getElementById('document-sources').textContent = '';
@@ -244,6 +268,7 @@ function setResearchDocument(documentValue) {
 }
 
 async function openResearchDocument(id) {
+  if (activeResearchDocument?.id !== id && !preserveResearchDraftBeforeSwitch()) return;
   try {
     const result = await documentApi().get(`/api/documents/${encodeURIComponent(id)}`);
     setResearchDocument(result.document);
@@ -251,6 +276,7 @@ async function openResearchDocument(id) {
 }
 
 async function newResearchDocument() {
+  if (!preserveResearchDraftBeforeSwitch()) return;
   const createButton = document.getElementById('document-new');
   const titleInput = document.getElementById('document-title');
   const markdownInput = document.getElementById('document-markdown');
@@ -261,6 +287,12 @@ async function newResearchDocument() {
   try {
     const result = await documentApi().post('/api/documents', { title: '新しい調査原稿', markdown: '' });
     setResearchDocument(result.document);
+    if (typeof currentView !== 'undefined' && currentView === 'investigations' && activeInvestigationWorkspace?.id) {
+      try {
+        const attached = await documentApi().post(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/documents`, { id: result.document.id });
+        setInvestigationWorkspace(attached.workspace);
+      } catch (error) { setDocumentMessage(`原稿は作成しましたが調査への関連付けに失敗しました: ${error.message}`, true); }
+    }
     await loadResearchDocuments();
     titleInput?.focus();
     titleInput?.select();
@@ -281,6 +313,9 @@ async function saveResearchDocument() {
     clearResearchDraft(activeResearchDocument.id);
     setResearchDocument(result.document);
     await loadResearchDocuments();
+    if (activeInvestigationWorkspace?.id && typeof openInvestigationWorkspace === 'function') {
+      await openInvestigationWorkspace(activeInvestigationWorkspace.id);
+    }
   } catch (error) { setDocumentMessage(error.message || '保存に失敗しました。再読込して競合を確認してください。', true); }
 }
 

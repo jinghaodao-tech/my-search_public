@@ -24,6 +24,16 @@ async function openApp(page: Page) {
   await expect(page.locator("#card-grid")).toBeVisible();
 }
 
+async function openLibraryView(page: Page, label: string) {
+  const menu = page.locator("#topbar .topbar-library");
+  await menu.locator("summary").click();
+  await menu.getByRole("button", { name: label, exact: true }).click();
+}
+
+async function openCandidateReview(page: Page) {
+  await openLibraryView(page, "収集した記事を確認");
+}
+
 async function releaseFixtureCard(request: APIRequestContext, id: string) {
   const response = await request.get(`/api/candidates/${id}`);
   if (!response.ok()) return;
@@ -171,8 +181,9 @@ test.describe("core user flows", () => {
     const updatedName = `E2E Group Updated ${id}`;
 
     await openApp(page);
-    await page.locator("#topbar .tab-group .topbar-more summary").click();
-    await page.getByRole("button", { name: "グルーピングボード" }).click();
+    await page.locator("#sidebar .global-card-views > summary").click();
+    await page.getByRole("button", { name: "全カードのグルーピング" }).click();
+    await expect(page.locator('#topbar [data-nav-group="library"]')).toHaveClass(/active/);
     await page.getByRole("button", { name: "グループ追加" }).click();
     await page.locator("#group-name").fill(groupName);
     await page.locator("#modal-group .btn-primary").click();
@@ -184,8 +195,8 @@ test.describe("core user flows", () => {
     expect(group?.id).toBeTruthy();
     await request.post(`/api/kj/groups/${group.id}/cards`, { data: { cardId: card.id } });
     await page.reload();
-    await page.locator("#topbar .tab-group .topbar-more summary").click();
-    await page.getByRole("button", { name: "グルーピングボード" }).click();
+    await page.locator("#sidebar .global-card-views > summary").click();
+    await page.getByRole("button", { name: "全カードのグルーピング" }).click();
     await expect(page.locator("#kj-canvas")).toContainText(card.title);
 
     page.once("dialog", dialog => dialog.accept(updatedName));
@@ -221,7 +232,9 @@ test.describe("core user flows", () => {
     expect(collected.ok()).toBeTruthy();
     await releaseFixtureCard(request, 'fixture-portfolio-search');
     await openApp(page);
-    await page.locator('button[onclick="switchView(\'candidates\')"]').click();
+    await openCandidateReview(page);
+    await expect(page.locator('#topbar [data-nav-group="library"]')).toHaveClass(/active/);
+    await expect(page.locator('#topbar .topbar-library [data-view="candidates"]')).toHaveClass(/active/);
     await expect(page.locator("#candidate-grid")).toContainText("Portfolio search architecture");
     const candidate = page.locator("#candidate-grid .candidate-card", { hasText: "Portfolio search architecture" });
     const review = candidate.getByRole('button', { name: 'レビュー済み', exact: true });
@@ -235,7 +248,7 @@ test.describe("core user flows", () => {
   await releaseFixtureCard(request, 'fixture-portfolio-ops');
   const title = "Portfolio operations and verification";
   await openApp(page);
-  await page.locator('button[onclick="switchView(\'candidates\')"]').click();
+  await openCandidateReview(page);
   const candidate = page.locator("#candidate-grid .candidate-card", { hasText: title });
   await expect(candidate).toBeVisible();
   const review = candidate.getByRole('button', { name: 'レビュー済み', exact: true });
@@ -248,7 +261,7 @@ test.describe("core user flows", () => {
   const saved = await saveResponse;
   expect(saved.status()).toBe(201);
   await expect(candidate).toContainText("保存済み");
-  await page.locator('button[onclick="switchView(\'cards\')"]').click();
+  await openLibraryView(page, "保存済み");
   await page.locator("#search-input").fill(title);
   await expect(page.locator("#card-grid")).toContainText(title);
   const cardsResponse = await request.get("/api/cards?q=" + encodeURIComponent(title));

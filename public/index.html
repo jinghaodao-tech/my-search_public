@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>カード検索システム</title>
+<title>my-search</title>
 <script src="vendor/vis-network.min.js"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -13,26 +13,24 @@
 
 <!-- トップバー -->
 <div id="topbar">
-  <h1>カード検索</h1>
-  <div class="tab-group">
-    <button class="tab active" data-view="cards" onclick="switchView('cards')">カード一覧</button>
-    <button class="tab" data-view="candidates" onclick="switchView('candidates')">候補レビュー</button>
-    <details class="topbar-more">
-      <summary>整理</summary>
-      <div class="topbar-more-menu tab-group">
-        <button class="tab" data-view="kj" onclick="switchView('kj');this.closest('details').open=false">グルーピングボード</button>
-        <button class="tab" data-view="zettel" onclick="switchView('zettel');this.closest('details').open=false">Zettelkasten</button>
+  <h1>my-search</h1>
+  <div class="tab-group main-nav">
+    <button class="tab" data-view="bm25" onclick="switchView('bm25')" title="登録したサイト・収集した記事・Webから探す">探す</button>
+    <details class="topbar-more topbar-library">
+      <summary class="tab active" data-nav-group="library">記事・メモ</summary>
+      <div class="topbar-more-menu topbar-library-menu">
+        <button class="tab active" data-view="cards" onclick="switchView('cards');this.closest('details').open=false">保存済み</button>
+        <button class="tab" data-view="candidates" onclick="switchView('candidates');this.closest('details').open=false">収集した記事を確認</button>
+        <div class="topbar-menu-separator" role="separator"></div>
+        <button class="btn btn-primary topbar-library-action" onclick="openReader();this.closest('details').open=false">読んでメモ</button>
       </div>
     </details>
-    <button class="tab" data-view="bm25" onclick="switchView('bm25')" title="登録したサイト・収集した記事・Webから探す">探す</button>
     <button class="tab" data-view="investigations" onclick="switchView('investigations')" title="保存資料を調査単位で集め、分類・比較する">調査</button>
-    <button class="tab" data-view="writing" onclick="switchView('writing')" title="保存資料を比較し、出典付き原稿を作る">書く</button>
   </div>
   <div class="spacer"></div>
   <button id="desktop-browser-open" class="btn btn-secondary btn-sm" hidden onclick="openDesktopBrowser()">内蔵ブラウザー</button>
-  <button class="btn btn-primary btn-sm" onclick="openReader()">読んでメモ</button>
   <details class="topbar-more topbar-admin">
-    <summary>管理</summary>
+    <summary>ツール・設定</summary>
     <div class="topbar-more-menu topbar-admin-menu">
       <button class="btn btn-secondary btn-sm" onclick="openSourceModal();this.closest('details').open=false">情報源を管理</button>
       <button class="btn btn-secondary btn-sm" onclick="openCSVModal();this.closest('details').open=false">データ取り込み</button>
@@ -43,11 +41,12 @@
 
 <section id="investigations-view" class="research-writing-view" aria-label="調査ワークスペース">
   <header class="writing-header">
-    <div><h2>調査ワークスペース</h2><p>原稿を作る前の資料集め、検索、分類、比較を保存します。カード本文は複製しません。</p></div>
+    <div><h2>調査ワークスペース</h2><p>資料の検索・閲覧・整理・比較から、出典付き原稿の編集までを同じ調査内で進めます。</p></div>
   </header>
   <div class="investigation-layout">
     <aside class="writing-list-panel investigation-list-panel">
       <button class="btn btn-primary btn-sm" type="button" onclick="createInvestigationWorkspace()">＋ 新しい調査</button>
+      <button class="btn btn-secondary btn-sm" type="button" onclick="openAllResearchDocuments()">すべての原稿</button>
       <div id="investigation-workspace-list" class="document-list" aria-live="polite"></div>
     </aside>
     <main class="investigation-main">
@@ -59,6 +58,12 @@
       </div>
       <p id="investigation-status" class="reader-note" aria-live="polite">調査を作成するか、既存の調査を選んでください。</p>
       <div id="investigation-content" hidden>
+        <nav class="investigation-tabs" aria-label="調査内の作業">
+          <button type="button" class="tab active" data-investigation-panel="materials" onclick="setInvestigationPanel('materials')">資料</button>
+          <button type="button" class="tab" data-investigation-panel="organize" onclick="setInvestigationPanel('organize')">整理</button>
+          <button type="button" class="tab" data-investigation-panel="compare" onclick="setInvestigationPanel('compare')">比較</button>
+          <button type="button" class="tab" data-investigation-panel="documents" onclick="setInvestigationPanel('documents')">原稿</button>
+        </nav>
         <section class="investigation-section">
           <h3>資料を探す</h3>
           <div class="document-source-search"><input id="investigation-source-query" type="search" placeholder="保存記事・メモを検索"><button class="btn btn-secondary btn-sm" type="button" onclick="searchInvestigationSources()">検索</button></div>
@@ -80,6 +85,8 @@
         </section>
         <section class="investigation-section">
           <h3>資料を比較</h3>
+          <p class="reader-note">比較する資料を選んでください（最大10件）。引用候補は保存本文の語句一致で抽出します。</p>
+          <div id="investigation-compare-source-selection" class="document-sources"></div>
           <div class="document-source-search"><input id="investigation-compare-purpose" maxlength="300" placeholder="比較したい論点"><button class="btn btn-secondary btn-sm" type="button" onclick="compareInvestigationSources()">保存本文から根拠候補</button></div>
           <p class="reader-note">オフラインの語句一致です。意味上の比較・妥当性は判定しません。引用を採用する前にReaderで原文を確認してください。</p>
           <div id="investigation-evidence" class="document-evidence-results"></div>
@@ -96,9 +103,9 @@
   </div>
 </section>
 
-<section id="research-writing-view" class="research-writing-view" aria-label="執筆ワークスペース">
+<section id="research-writing-view" class="research-writing-view" aria-label="調査内の原稿エディタ">
   <header class="writing-header">
-    <div><h2>調査して書く</h2><p>保存資料を選び、根拠を確認し、出典付きの原稿にまとめます。</p></div>
+    <div><h2>原稿</h2><p>調査に関連する原稿も、まだ調査に属さない原稿も同じエディタで編集できます。</p></div>
     <div class="writing-actions"><button id="document-new" class="btn btn-primary" onclick="newResearchDocument()">＋ 新しい原稿</button></div>
   </header>
   <div class="writing-layout">
@@ -232,17 +239,24 @@
           <button class="type-btn" onclick="filterType('article',this)">記事</button>
         </div>
       </div>
-      <div class="sidebar-section">
-        <h3>タグ <span id="tag-count" style="font-size:10px;font-weight:400"></span></h3>
+      <details class="sidebar-section advanced-tag-filter">
+        <summary>詳細フィルター（タグ）<span id="tag-count" class="tag-count"></span></summary>
+        <p class="reader-note">全文検索が基本です。タグで絞る場合だけ開いてください。</p>
         <div class="tag-tools">
-          <input type="text" id="tag-search" placeholder="タグを検索" oninput="renderTagCloud()" onkeydown="if(event.key==='Enter'){const t=visibleTags()[0];if(t)filterTag(t.tag)}">
+          <input type="text" id="tag-search" placeholder="タグ名を絞り込む" oninput="renderTagCloud()" onkeydown="if(event.key==='Enter'){const t=visibleTags()[0];if(t)filterTag(t.tag)}">
           <button class="type-btn" id="tag-sort-btn" onclick="toggleTagSort()">件数順</button>
         </div>
         <div class="tag-cloud" id="tag-cloud"></div>
         <button class="tag-more" id="tag-more" onclick="toggleAllTags()" style="display:none"></button>
-        <button class="tag-more" onclick="toggleTagTidy()">タグを整理</button>
-        <div id="tag-tidy" class="tag-tidy" hidden></div>
-      </div>
+        <details class="tag-tidy-details" ontoggle="if(this.open&&document.getElementById('tag-tidy').hidden)toggleTagTidy()"><summary>タグを整理</summary><div id="tag-tidy" class="tag-tidy" hidden></div></details>
+      </details>
+      <details class="sidebar-section sidebar-options global-card-views">
+        <summary>全カードの表示</summary>
+        <div class="global-card-view-actions">
+          <button class="btn btn-secondary btn-sm" data-view="kj" onclick="switchView('kj')">全カードのグルーピング</button>
+          <button class="btn btn-secondary btn-sm" data-view="zettel" onclick="switchView('zettel')">全カードの関係図</button>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -558,7 +572,11 @@
           <input type="text" id="reader-year" maxlength="20" placeholder="発行年">
           <input type="text" id="reader-site" maxlength="300" placeholder="誌名・書名">
         </div>
-        <input type="text" id="reader-tags" placeholder="タグ（スペース区切り）">
+        <details class="reader-tag-details">
+          <summary>詳細設定（タグ・任意）</summary>
+          <label for="reader-tags" class="reader-note">タグは任意です。スペースで区切ります。</label>
+          <input type="text" id="reader-tags" placeholder="例: 調査 メモ">
+        </details>
         <div class="reader-actions">
           <button class="btn btn-secondary btn-sm" id="reader-ai-tool-propose" onclick="proposeReaderToolForSelection()" title="選択段落からローカルAIが計算案を作り、安全性と本文の根拠を検証して一時プレビューします" hidden>選択箇所から計算案</button>
           <span id="reader-ai-tool-status" class="reader-note" role="status" aria-live="polite" hidden></span>

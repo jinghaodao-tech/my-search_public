@@ -246,7 +246,10 @@ function openReader(url = '', candidateId = null, fromSearch = false) {
 
 function setReaderEditorMode(plainCard) {
   readerPlainCardMode = Boolean(plainCard);
-  document.querySelector('#modal-reader .reader-modal')?.classList.toggle('reader-plain-mode', readerPlainCardMode);
+  const modal = document.querySelector('#modal-reader .reader-modal');
+  modal?.classList.toggle('reader-plain-mode', readerPlainCardMode);
+  modal?.classList.toggle('reader-reading-mode', !readerPlainCardMode);
+  updateReaderLayout();
   const del = document.getElementById('reader-delete-btn');
   if (del) del.hidden = !readerCardId;
   const save = document.getElementById('reader-save-btn');
@@ -261,6 +264,15 @@ function setReaderEditorMode(plainCard) {
       if (!readerPlainCardMode) loadReaderArticle();
     };
   }
+}
+
+function updateReaderLayout() {
+  const paragraphs = Array.isArray(readerArticle?.paragraphs) ? readerArticle.paragraphs : [];
+  const hasBody = readerArticle?.kind === 'pdf' || paragraphs.some(paragraph => {
+    const text = String(paragraph || '').trim();
+    return text && !PAGE_MARKER_LINE.test(text);
+  });
+  document.querySelector('#modal-reader .reader-modal')?.classList.toggle('reader-has-source', hasBody);
 }
 
 function openPlainCardEditor() {
@@ -440,6 +452,7 @@ async function loadReaderArticle() {
   const requestVersion = ++readerRequestVersion;
   const pane = document.getElementById('reader-article');
   readerArticle = null;
+  updateReaderLayout();
   pane.textContent = '本文を取得中...';
   try {
     const extracted = await api.post('/api/reader/extract', { url });
@@ -459,6 +472,7 @@ async function loadReaderArticle() {
   } catch (error) {
     if (requestVersion !== readerRequestVersion) return;
     readerArticle = null;
+    updateReaderLayout();
     pane.textContent = '';
     const message = document.createElement('p');
     message.className = 'reader-error';
@@ -470,6 +484,7 @@ async function loadReaderArticle() {
 function renderReaderArticle() {
   resetEvidence();
   closeReaderToolPanel(false);
+  updateReaderLayout();
   const pane = document.getElementById('reader-article');
   pane.hidden = false;
   document.getElementById('reader-original-pdf-view').hidden = true;
@@ -1036,6 +1051,7 @@ async function openReaderPdf(input) {
   } catch (error) {
     if (requestVersion !== readerRequestVersion) return;
     readerArticle = null;
+    updateReaderLayout();
     pane.textContent = '';
     const message = document.createElement('p');
     message.className = 'reader-error';
