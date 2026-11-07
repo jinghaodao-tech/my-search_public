@@ -66,11 +66,22 @@ test('Electron separates remote pages, allows two HTTPS tabs, and refuses unsafe
       if (electronProcess.exitCode !== null || electronProcess.signalCode !== null) resolve();
       else electronProcess.once('exit', () => resolve());
     });
-    await app.evaluate(electronApi => {
+    // Do not await the CDP response to app.quit(): renderer shutdown can close
+    // the debugging connection before that response reaches Playwright on Linux.
+    void app.evaluate(electronApi => {
       setImmediate(() => (electronApi as any).app.quit());
       return true;
-    });
-    await exited;
+    }).catch(() => undefined);
+    let shutdownTimer: NodeJS.Timeout | undefined;
+    const gracefulExit = await Promise.race([
+      exited.then(() => true),
+      new Promise<false>(resolve => { shutdownTimer = setTimeout(() => resolve(false), 15_000); }),
+    ]);
+    if (shutdownTimer) clearTimeout(shutdownTimer);
+    if (!gracefulExit && electronProcess.exitCode === null && electronProcess.signalCode === null) {
+      electronProcess.kill('SIGKILL');
+      await exited;
+    }
     await app.close();
   }
 });

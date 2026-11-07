@@ -769,7 +769,7 @@ function discardBrowserClip() {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('desktop-browser-open').hidden = !window.mySearchDesktop;
   const editor = document.getElementById('document-markdown');
-  document.getElementById('reader-research-citation-add')?.addEventListener('mousedown', event => {
+  const captureResearchCitationSelection = event => {
     pendingResearchCitationSelection = null;
     const selection = window.getSelection?.();
     const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
@@ -781,6 +781,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selection && !selection.isCollapsed && selection.toString().trim() && Number.isInteger(paragraphIndex)) {
       pendingResearchCitationSelection = { quote: selectedReaderText(), paragraphIndex };
       event.preventDefault();
+    }
+  };
+  const citationButton = document.getElementById('reader-research-citation-add');
+  citationButton?.addEventListener('pointerdown', captureResearchCitationSelection);
+  citationButton?.addEventListener('mousedown', captureResearchCitationSelection);
+  document.addEventListener('selectionchange', () => {
+    const selection = window.getSelection?.();
+    if (!selection || selection.isCollapsed || !selection.toString().trim()) return;
+    const range = selection.rangeCount ? selection.getRangeAt(0) : null;
+    const selectedNode = range?.startContainer.nodeType === Node.ELEMENT_NODE
+      ? range.startContainer
+      : range?.startContainer.parentElement;
+    const paragraph = selectedNode?.closest?.('#reader-article [data-index]');
+    const paragraphIndex = paragraph ? Number(paragraph.getAttribute('data-index')) : null;
+    if (Number.isInteger(paragraphIndex)) {
+      pendingResearchCitationSelection = { quote: selectedReaderText(), paragraphIndex };
     }
   });
   editor?.addEventListener('input', () => { renderDocumentPreview(); persistResearchDraft(); setDocumentMessage('未保存の変更があります。下書きはこのブラウザー内に保存しています。', true); });
