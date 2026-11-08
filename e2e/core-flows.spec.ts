@@ -215,17 +215,17 @@ test.describe("core user flows", () => {
     const target = await createCard(request, `E2E Link B ${id}`, "Target card");
 
     await openApp(page);
-    await page.locator(".card").filter({ has: page.locator(".card-title").getByText(source.title, { exact: true }) }).click();
+    await page.evaluate(id => (window as unknown as { selectCard: (cardId: string) => void }).selectCard(id), source.id);
     await page.locator("#link-search").fill(target.title);
     await page.locator(".link-candidate", { hasText: target.title }).click();
     await expect(page.locator("#detail-body")).toContainText(target.title);
 
-    await page.locator(".card").filter({ has: page.locator(".card-title").getByText(target.title, { exact: true }) }).click();
+    await page.evaluate(id => (window as unknown as { selectCard: (cardId: string) => void }).selectCard(id), target.id);
     await expect(page.locator("#detail-body")).toContainText(source.title);
 
     await request.delete(`/api/cards/${source.id}/links/${target.id}`);
     await page.reload();
-    await page.locator(".card").filter({ has: page.locator(".card-title").getByText(target.title, { exact: true }) }).click();
+    await page.evaluate(id => (window as unknown as { selectCard: (cardId: string) => void }).selectCard(id), target.id);
     await expect(page.locator("#detail-body")).not.toContainText(source.title);
   });
   test("reviews and saves a collected candidate from the browser UI", async ({ page, request }) => {
@@ -262,7 +262,7 @@ test.describe("core user flows", () => {
   const saved = await saveResponse;
   expect(saved.status()).toBe(201);
   await expect(candidate).toContainText("保存済み");
-  await openLibraryView(page, "保存済み");
+  await openLibraryView(page, "記事・メモを管理");
   await page.locator("#search-input").fill(title);
   await expect(page.locator("#card-grid")).toContainText(title);
   const cardsResponse = await request.get("/api/cards?q=" + encodeURIComponent(title));

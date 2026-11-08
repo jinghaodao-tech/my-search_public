@@ -248,6 +248,7 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
     await page.locator('#document-list .document-list-item', { hasText: title }).click();
     await expect(editor).toHaveValue(/\[\[citation:/);
     await expect(page.locator('#document-citations')).toContainText('verified');
+    await page.locator('[data-document-reference-tab="citations"]').click();
     await page.getByRole('button', { name: 'Readerで引用元へ' }).click();
     await expect(page.locator('#modal-reader')).toHaveClass(/active/);
     await expect(page.locator('#reader-article [data-index="0"]')).toContainText(quote);
