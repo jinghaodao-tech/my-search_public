@@ -968,12 +968,12 @@ async function openDocumentCitationSource(citation) {
   const opened = await openReaderForCard(citation.sourceCardId);
   if (!opened) return;
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    const target = document.querySelector(`#reader-article [data-index="${Number(citation.paragraphIndex)}"]`);
+    const target = document.querySelector(`#reader-article [data-index="${Number(citation.currentParagraphIndex ?? citation.paragraphIndex)}"]`);
     if (target) {
       target.scrollIntoView({ block: 'center', behavior: 'smooth' });
       target.classList.add('document-citation-focus');
       setTimeout(() => target.classList.remove('document-citation-focus'), 1800);
-      if (typeof showOriginalPdfAtParagraph === 'function') showOriginalPdfAtParagraph(Number(citation.paragraphIndex));
+      if (typeof showOriginalPdfAtParagraph === 'function') showOriginalPdfAtParagraph(Number(citation.currentParagraphIndex ?? citation.paragraphIndex));
     } else setDocumentMessage('保存本文の段落位置を表示できません。引用と出典情報は保持されています。', true);
   }));
 }
@@ -985,12 +985,25 @@ function renderDocumentCitations(citations = [], clips = []) {
   const title = document.createElement('h4'); title.textContent = '引用の状態'; host.append(title);
   for (const citation of citations) {
     const line = document.createElement('p');
-    line.textContent = `${citation.sourceTitle} · ${citation.pageLabel || `段落${citation.paragraphIndex + 1}`} · ${citation.verification} · ${citation.quote} `;
+    const currentIndex = Number.isInteger(citation.currentParagraphIndex) ? citation.currentParagraphIndex : citation.paragraphIndex;
+    line.textContent = `${citation.sourceTitle} · ${citation.pageLabel || `段落${citation.paragraphIndex + 1}`} · ${citation.verification}${citation.sourceRevisedElsewhere ? ' · 引用箇所以外に改訂あり' : ''} · ${citation.quote} `;
     line.className = citation.verification === 'verified' ? 'citation-verified' : 'citation-unverified';
+    if (citation.citedParagraph && citation.currentParagraph && citation.citedParagraph !== citation.currentParagraph) {
+      const comparison = document.createElement('details');
+      const summary = document.createElement('summary'); summary.textContent = '引用時と現在の段落を比較';
+      const cited = document.createElement('p'); cited.textContent = `引用時: ${citation.citedParagraph}`;
+      const current = document.createElement('p'); current.textContent = `現在: ${citation.currentParagraph}`;
+      comparison.append(summary, cited, current); line.append(comparison);
+    }
     if (citation.sourceCardId) {
       const open = document.createElement('button'); open.type = 'button'; open.className = 'btn btn-secondary btn-sm'; open.textContent = 'Readerで引用元へ';
       open.onclick = () => openDocumentCitationSource(citation);
       line.append(open);
+    }
+    if (citation.verification === 'quote_moved' && Number.isInteger(citation.currentParagraphIndex)) {
+      const relocate = document.createElement('button'); relocate.type = 'button'; relocate.className = 'btn btn-secondary btn-sm'; relocate.textContent = 'この段落に再結合';
+      relocate.onclick = () => relocateResearchCitation(citation, currentIndex);
+      line.append(relocate);
     }
     host.append(line);
   }
@@ -1002,6 +1015,27 @@ function renderDocumentCitations(citations = [], clips = []) {
     open.onclick = () => window.mySearchDesktop?.openBrowser(clip.sourceUrl);
     line.append(open); host.append(line);
   }
+}
+
+async function relocateResearchCitation(citation, paragraphIndex) {
+  if (!activeResearchDocument) { setDocumentMessage('先に原稿を開いてください。', true); return; }
+  if (isResearchDocumentDirty()) {
+    await saveResearchDocument();
+    if (isResearchDocumentDirty()) return;
+  }
+  const editor = document.getElementById('document-markdown');
+  const caret = captureResearchDocumentCaret();
+  try {
+    const result = await documentApi().post(`/api/documents/${encodeURIComponent(activeResearchDocument.id)}/citations/${encodeURIComponent(citation.id)}/relocate`, {
+      paragraphIndex, markdown: editor.value, version: activeResearchDocument.version,
+    });
+    clearResearchDraft(activeResearchDocument.id);
+    setResearchDocument(result.document);
+    editor.setSelectionRange(Math.min(caret.start, editor.value.length), Math.min(caret.end, editor.value.length), caret.direction);
+    captureResearchDocumentCaret();
+    await loadResearchDocuments();
+    setDocumentMessage('引用を確認した段落に再結合しました。以前の引用記録は履歴として保持されています。');
+  } catch (error) { setDocumentMessage(error.message || '引用を再結合できませんでした。原文と編集内容を確認してください。', true); }
 }
 
 function renderPendingBrowserClip() {

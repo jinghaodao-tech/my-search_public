@@ -13,6 +13,8 @@ import {
   locateUniqueReaderQuote,
   parseReaderCardBody,
 } from '../services/reader_service.js';
+import { verifyCitation } from '../services/citation_verification.js';
+import { legacyReaderToolsSourceHash, readerParagraphHash, readerToolsSourceHash, READER_SOURCE_HASH_VERSION } from '../services/reader_tools_service.js';
 
 const ARTICLE_HTML = `<!doctype html><html><head><title>BM25 を手で調整しない検索 - Example Blog</title>
 <meta property="og:site_name" content="Example Blog"></head><body>
@@ -200,11 +202,38 @@ describe('reader: API', () => {
 });
 
 describe('reader quote location verification', () => {
-  it('matches only an exact normalized quote in the expected paragraph and refuses repeats', () => {
+  it('matches an exact normalized quote, reports moved anchors, and refuses repeats', () => {
     expect(locateUniqueReaderQuote(' 引用\n本文 ', ['前段落', '引用 本文'], 1)).toEqual({ status: 'matched', paragraphIndex: 1 });
     expect(locateUniqueReaderQuote('引用 本文', ['引用 本文', '引用 本文'], 0)).toEqual({ status: 'ambiguous', paragraphIndex: null });
     expect(locateUniqueReaderQuote('別の言葉', ['引用 本文'], 0)).toEqual({ status: 'missing', paragraphIndex: null });
-    expect(locateUniqueReaderQuote('引用 本文', ['引用 本文'], 1)).toEqual({ status: 'missing', paragraphIndex: null });
+    expect(locateUniqueReaderQuote('引用 本文', ['前置き', '引用 本文'], 0)).toEqual({ status: 'moved', paragraphIndex: 1, expectedParagraphIndex: 0 });
+  });
+
+  it('distinguishes unchanged, revised, moved, missing, ambiguous, and legacy citation states', () => {
+    const quote = '根拠の文章がここにあります。';
+    const original = ['前段落です。', `前の説明です。${quote} 後ろの説明です。`, '別の段落です。'];
+    const citation = {
+      quoteText: quote, paragraphHash: readerParagraphHash(original[1]!), bodyHash: readerToolsSourceHash(original),
+      paragraphIndex: 1, hashVersion: READER_SOURCE_HASH_VERSION, sourceCardId: 'card-1',
+    };
+    type CitationOverrides = Omit<Partial<typeof citation>, 'paragraphHash' | 'sourceCardId'> & { paragraphHash?: string | null; sourceCardId?: string | null };
+    const verify = (currentParagraphs: string[] | null, overrides: CitationOverrides = {}) => verifyCitation({ citation: { ...citation, ...overrides }, currentParagraphs });
+    expect(verify(original)).toMatchObject({ verification: 'verified', sourceRevisedElsewhere: false, currentParagraphIndex: 1 });
+    expect(verify(['前段落です。', original[1]!, '別の段落です。編集。'])).toMatchObject({ verification: 'verified', sourceRevisedElsewhere: true });
+    expect(verify(['前段落です。', `追加された説明。${quote} 続きです。`, '別の段落です。'])).toMatchObject({ verification: 'paragraph_edited', currentParagraphIndex: 1 });
+    expect(verify(['新しい段落です。', ...original])).toMatchObject({ verification: 'quote_moved', currentParagraphIndex: 2 });
+    expect(verify([original[1]!, original[2]!, original[0]!])).toMatchObject({ verification: 'quote_moved', currentParagraphIndex: 0 });
+    expect(verify([original[0]!, original[2]!])).toMatchObject({ verification: 'quote_removed' });
+    expect(verify([original[0]!, original[1]!, `重複: ${quote}`])).toMatchObject({ verification: 'ambiguous' });
+    expect(verify(null)).toMatchObject({ verification: 'text_missing' });
+    expect(verify(original, { sourceCardId: null })).toMatchObject({ verification: 'source_missing' });
+    expect(verify(original, {
+      paragraphHash: null, hashVersion: READER_SOURCE_HASH_VERSION - 1, bodyHash: legacyReaderToolsSourceHash(['older body']),
+    })).toMatchObject({ verification: 'hash_version_stale' });
+    expect(verify(original, { paragraphHash: null, hashVersion: 1, bodyHash: legacyReaderToolsSourceHash(original) })).toMatchObject({ verification: 'verified' });
+    expect(verify(['前段落です。', original[1]!, '別の段落です。変更。'], {
+      paragraphHash: null, hashVersion: 1, bodyHash: 'legacy-body-that-is-not-current',
+    })).toMatchObject({ verification: 'hash_version_stale', currentParagraphIndex: 1 });
   });
 });
 

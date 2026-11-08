@@ -6,7 +6,8 @@ import { loadCardsByIds } from '../repositories/cards_repository.js';
 import { getReaderText } from '../repositories/reader_texts_repository.js';
 import { parseBody, sendError } from '../services/http_service.js';
 import { locateUniqueReaderQuote, parseReaderCardBody } from '../services/reader_service.js';
-import { readerToolsSourceHash } from '../services/reader_tools_service.js';
+import { readerParagraphHash, readerToolsSourceHash, READER_SOURCE_HASH_VERSION } from '../services/reader_tools_service.js';
+import { verifyCitation } from '../services/citation_verification.js';
 
 const createWorkspaceSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -44,27 +45,24 @@ const thoughtReferenceSchema = z.object({
 }).strict();
 
 type ThoughtRow = { id: string; title: string; body: string; kind: typeof thoughtKinds[number]; version: number; created_at: string; updated_at: string };
-type ThoughtReferenceRow = { id: string; thought_note_id: string; source_card_id: string | null; source_title: string; source_url: string | null; quote_text: string; source_hash: string; paragraph_index: number; created_at: string };
+type ThoughtReferenceRow = { id: string; thought_note_id: string; source_card_id: string | null; source_title: string; source_url: string | null; quote_text: string; source_hash: string; paragraph_hash: string | null; hash_version: number; paragraph_index: number; created_at: string };
 
 function loadThoughtReferences(thoughtNoteId: string) {
-  const rows = db.prepare(`SELECT id,thought_note_id,source_card_id,source_title,source_url,quote_text,source_hash,paragraph_index,created_at
+  const rows = db.prepare(`SELECT id,thought_note_id,source_card_id,source_title,source_url,quote_text,source_hash,paragraph_hash,hash_version,paragraph_index,created_at
     FROM thought_note_references WHERE thought_note_id=? ORDER BY created_at,id`).all(thoughtNoteId) as ThoughtReferenceRow[];
   return rows.map(row => {
     const card = row.source_card_id ? db.prepare('SELECT body FROM cards WHERE id=?').get(row.source_card_id) as { body: string | null } | undefined : undefined;
     const savedParagraphs = row.source_card_id ? getReaderText(row.source_card_id) : null;
     const paragraphs = savedParagraphs ?? (card ? parseReaderCardBody(card.body ?? '').paragraphs : []);
-    const hash = paragraphs.length ? readerToolsSourceHash(paragraphs) : null;
-    const anchor = row.source_card_id && hash === row.source_hash
-      ? locateUniqueReaderQuote(row.quote_text, paragraphs, row.paragraph_index)
-      : null;
-    const verification = !row.source_card_id ? 'source_missing'
-      : !paragraphs.length ? 'text_missing'
-        : hash !== row.source_hash ? 'source_changed'
-          : anchor?.status === 'matched' ? 'verified' : anchor?.status ?? 'missing';
+    const verification = verifyCitation({
+      citation: { quoteText: row.quote_text, paragraphHash: row.paragraph_hash, bodyHash: row.source_hash, paragraphIndex: row.paragraph_index, hashVersion: row.hash_version, sourceCardId: row.source_card_id },
+      currentParagraphs: paragraphs.length ? paragraphs : null,
+    });
     return {
       id: row.id, sourceCardId: row.source_card_id, sourceTitle: row.source_title, sourceUrl: row.source_url,
-      quote: row.quote_text, sourceHash: row.source_hash, paragraphIndex: row.paragraph_index,
-      createdAt: row.created_at, verification,
+      quote: row.quote_text, sourceHash: row.source_hash, paragraphHash: row.paragraph_hash, hashVersion: row.hash_version, paragraphIndex: row.paragraph_index,
+      currentParagraphIndex: verification.currentParagraphIndex, sourceRevisedElsewhere: verification.sourceRevisedElsewhere,
+      createdAt: row.created_at, verification: verification.verification,
     };
   });
 }
@@ -377,8 +375,8 @@ export function createInvestigationWorkspacesRouter() {
       sendError(req, res, anchor.status === 'ambiguous' ? 409 : 422, anchor.status === 'ambiguous' ? '同じ引用が複数箇所にあります。Readerで場所を確認してから追加してください。' : '引用文が保存済み原文に見つかりません'); return;
     }
     const id = randomUUID(); const now = new Date().toISOString();
-    db.prepare(`INSERT INTO thought_note_references(id,thought_note_id,source_card_id,source_title,source_url,quote_text,source_hash,paragraph_index,created_at)
-      VALUES(?,?,?,?,?,?,?,?,?)`).run(id, req.params.id, card.id, card.title, card.url, body.quote, readerToolsSourceHash(paragraphs), anchor.paragraphIndex, now);
+    db.prepare(`INSERT INTO thought_note_references(id,thought_note_id,source_card_id,source_title,source_url,quote_text,source_hash,paragraph_index,created_at,paragraph_hash,hash_version)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?)`).run(id, req.params.id, card.id, card.title, card.url, body.quote, readerToolsSourceHash(paragraphs), anchor.paragraphIndex, now, readerParagraphHash(paragraphs[anchor.paragraphIndex]), READER_SOURCE_HASH_VERSION);
     res.status(201).json({ reference: loadThoughtReferences(req.params.id).find(reference => reference.id === id) });
   });
 

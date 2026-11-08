@@ -4,6 +4,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { runMigrations } from '../db/migrate.js';
 import { app, database } from './helpers.js';
+import { getReaderTextRevision, saveReaderText } from '../repositories/reader_texts_repository.js';
 
 async function createSource(title: string, paragraphs: string[]) {
   const response = await request(app).post('/api/reader/save').send({
@@ -14,6 +15,65 @@ async function createSource(title: string, paragraphs: string[]) {
 }
 
 describe('research documents', () => {
+  it('keeps citations verified when an uncited paragraph changes and retains each quoted revision', async () => {
+    const suffix = randomUUID();
+    const paragraphs = Array.from({ length: 11 }, (_, index) => `引用用の段落${index}です。`);
+    const source = await createSource(`Unrelated revision ${suffix}`, paragraphs);
+    const created = await request(app).post('/api/documents').send({ title: `10 citations ${suffix}`, markdown: '' });
+    let document = created.body.document;
+    for (let index = 0; index < 10; index += 1) {
+      const cited = await request(app).post(`/api/documents/${document.id}/citations`).send({
+        sourceCardId: source.id, paragraphIndex: index, quote: paragraphs[index], title: document.title,
+        markdown: document.markdown, version: document.version, insertAt: document.markdown.length,
+      });
+      expect(cited.status).toBe(201);
+      document = cited.body.document;
+    }
+    const revisionTwo = [...paragraphs.slice(0, 10), '引用していない段落だけを変更しました。'];
+    saveReaderText(source.id, revisionTwo);
+    saveReaderText(source.id, revisionTwo);
+    expect((database.db.prepare('SELECT COUNT(*) AS count FROM reader_text_revisions WHERE card_id=?').get(source.id) as { count: number }).count).toBe(2);
+    saveReaderText(source.id, [...paragraphs.slice(0, 10), '未引用段落を2回目に変更しました。']);
+    saveReaderText(source.id, [...paragraphs.slice(0, 10), '未引用段落を3回目に変更しました。']);
+    const loaded = await request(app).get(`/api/documents/${document.id}`);
+    expect(loaded.status).toBe(200);
+    expect(loaded.body.document.citations).toHaveLength(10);
+    expect(loaded.body.document.citations.every((citation: { verification: string; sourceRevisedElsewhere: boolean }) => citation.verification === 'verified' && citation.sourceRevisedElsewhere)).toBe(true);
+    expect(getReaderTextRevision(source.id, 1)).toEqual(paragraphs);
+    expect(getReaderTextRevision(source.id, 4)?.[10]).toBe('未引用段落を3回目に変更しました。');
+  });
+
+  it('detects moved quotes without changing the old anchor and relocates only on explicit confirmation', async () => {
+    const suffix = randomUUID();
+    const quote = '移動した引用を正確に再結合します。';
+    const original = ['前段落。', quote, '後段落。'];
+    const source = await createSource(`Moved citation ${suffix}`, original);
+    const created = await request(app).post('/api/documents').send({ title: `Relocation ${suffix}`, markdown: '記述。' });
+    const cited = await request(app).post(`/api/documents/${created.body.document.id}/citations`).send({
+      sourceCardId: source.id, paragraphIndex: 1, quote, title: created.body.document.title,
+      markdown: created.body.document.markdown, version: created.body.document.version, insertAt: created.body.document.markdown.length,
+    });
+    expect(cited.status).toBe(201);
+    const oldCitationId = cited.body.citationId as string;
+    saveReaderText(source.id, ['追加された前段落。', ...original]);
+    const changed = await request(app).get(`/api/documents/${created.body.document.id}`);
+    expect(changed.body.document.citations[0]).toMatchObject({ verification: 'quote_moved', paragraphIndex: 1, currentParagraphIndex: 2, citedParagraph: quote, currentParagraph: quote });
+    const before = database.db.prepare('SELECT paragraph_index FROM document_citations WHERE id=?').get(oldCitationId) as { paragraph_index: number };
+    expect(before.paragraph_index).toBe(1);
+
+    const relocated = await request(app).post(`/api/documents/${created.body.document.id}/citations/${oldCitationId}/relocate`).send({
+      paragraphIndex: 2, markdown: changed.body.document.markdown, version: changed.body.document.version,
+    });
+    expect(relocated.status).toBe(201);
+    expect(relocated.body.citationId).not.toBe(oldCitationId);
+    expect(relocated.body.document.citations).toHaveLength(1);
+    expect(relocated.body.document.citations[0]).toMatchObject({ paragraphIndex: 2, sourceRevision: 2, verification: 'verified' });
+    expect(database.db.prepare('SELECT paragraph_index FROM document_citations WHERE id=?').get(oldCitationId)).toEqual({ paragraph_index: 1 });
+    expect(database.db.prepare('SELECT supersedes_id FROM document_citations WHERE id=?').get(relocated.body.citationId)).toEqual({ supersedes_id: oldCitationId });
+    expect(getReaderTextRevision(source.id, 1)).toEqual(original);
+    expect(getReaderTextRevision(source.id, 2)).toEqual(['追加された前段落。', ...original]);
+  });
+
   it('creates a document, stores an anchored citation, exports it, searches it, and finds its source backlink', async () => {
     const suffix = randomUUID();
     const quote = '元資料にある確認済みの一文です。';
