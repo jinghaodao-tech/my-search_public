@@ -38,12 +38,13 @@ for (const operation of ['#detail-panel', 'switchView()', 'loadCandidates()', 'r
 for (const standardLabel of ['| 編集 |', '| 読んでメモ |', '| 保存 |', '| 情報源を管理 |', '| データ取り込み |', '| Markdown出力 |', '| 削除 |']) {
   if (!guidelines.includes(standardLabel)) fail(`UI standard label is missing from docs/ui-guidelines.md: ${standardLabel}`);
 }
-for (const editRoute of ['title="タイトル・本文・メモ・出典を編集"', 'button[title="編集"]', '#modal-reader']) {
-  if (!editorTest.includes(editRoute)) fail(`card editing route is missing from Playwright coverage: ${editRoute}`);
+for (const editRoute of ["page.locator('.card'", "await expect(page.locator('#modal-reader')).toHaveClass(/active/)", '#reader-memo']) {
+  if (!editorTest.includes(editRoute)) fail(`shared card editing flow is missing from Playwright coverage: ${editRoute}`);
 }
 for (const duplicateRoute of ['読んで編集', '本文と一緒に開く']) {
-  if (!editorTest.includes(`{ name: '${duplicateRoute}', exact: true })).toHaveCount(0)`)) fail(`Playwright must assert the duplicate detail route is absent: ${duplicateRoute}`);
+  forbidText(html + cards, duplicateRoute, `duplicate detail editing route remains: ${duplicateRoute}`);
 }
+requireText(editorTest, "await expect(page.locator('#reader-edit-btn')).toHaveCount(0)", 'Playwright must assert that no duplicate Reader edit entry is present.');
 for (const cardKind of ["kind: 'article'", "kind: 'pdf'", 'memo creation']) {
   if (!editorTest.includes(cardKind)) fail(`card editor Playwright coverage is missing ${cardKind}.`);
 }
@@ -53,9 +54,9 @@ for (const viewportWidth of ['width: 1280', 'width: 390']) {
 for (const obsolete of ['submitEdit(', 'confirmDelete(', 'mepSave(', 'mepDelete(']) {
   forbidText(cards + reader, obsolete, `separate card-edit handler remains: ${obsolete}`);
 }
-requireText(cards, 'function openEditModal(id) { return openReaderForCard(id); }', 'card edit entry must open the shared editor.');
-requireText(cards, 'openEditModal(${jsArg(card.id)})', 'the card-list pencil must remain a shortcut to the shared editor.');
-requireText(html, 'id="reader-edit-btn" onclick="openEditModal(currentCardId)"', 'the detail editor must use the same entry function as the card-list pencil.');
+requireText(editorTest, "await page.locator('.card'", 'selecting a saved card must open the shared editor.');
+requireText(editorTest, "await expect(page.locator('#modal-reader')).toHaveClass(/active/)", 'the shared editor must be asserted as the card editing destination.');
+if (html.includes('id="reader-edit-btn"') || cards.includes('openEditModal(')) fail('a duplicate card edit entry remains outside the shared Reader flow.');
 for (const obsolete of ['読んで編集', '本文と一緒に開く']) {
   forbidText(html + cards, obsolete, `duplicate detail editor entry remains: ${obsolete}`);
 }

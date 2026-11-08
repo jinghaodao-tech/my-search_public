@@ -11,6 +11,7 @@ const MAX_MARKDOWN = 200_000;
 const createDocumentSchema = z.object({ title: z.string().trim().min(1).max(200), markdown: z.string().max(MAX_MARKDOWN).default('') }).strict();
 const updateDocumentSchema = createDocumentSchema.extend({ version: z.number().int().positive() }).strict();
 const addSourceSchema = z.object({ sourceCardId: z.string().trim().min(1).max(200) }).strict();
+const addThoughtNoteSchema = z.object({ thoughtNoteId: z.string().trim().min(1).max(200) }).strict();
 const addCitationSchema = z.object({
   sourceCardId: z.string().trim().min(1).max(200),
   paragraphIndex: z.number().int().min(0).max(50_000),
@@ -55,6 +56,9 @@ function loadDocument(id: string) {
   const citations = db.prepare('SELECT id,source_card_id,source_title,source_url,quote_text,source_hash,paragraph_index,page_label,created_at FROM document_citations WHERE document_id=? ORDER BY created_at,id').all(id) as CitationRow[];
   const sources = db.prepare('SELECT id,source_card_id,source_title,source_url,added_at FROM document_sources WHERE document_id=? ORDER BY added_at,id').all(id) as SourceRow[];
   const clips = db.prepare('SELECT id,clip_text,source_title,source_url,created_at FROM document_clips WHERE document_id=? ORDER BY created_at,id').all(id) as Array<{ id: string; clip_text: string; source_title: string; source_url: string; created_at: string }>;
+  const thoughtNotes = db.prepare(`SELECT n.id,n.title,n.body,n.kind,n.version,link.added_at AS addedAt
+    FROM document_thought_notes link JOIN thought_notes n ON n.id=link.thought_note_id
+    WHERE link.document_id=? ORDER BY link.added_at,n.id`).all(id);
   return {
     id: row.id, title: row.title, markdown, version: row.version, createdAt: row.created_at, updatedAt: row.updated_at,
     citations: citations.map(citation => {
@@ -74,6 +78,7 @@ function loadDocument(id: string) {
     }),
     sources: sources.map(source => ({ id: source.id, sourceCardId: source.source_card_id, title: source.source_title, url: source.source_url, addedAt: source.added_at, missing: !source.source_card_id })),
     clips: clips.map(clip => ({ id: clip.id, text: clip.clip_text, sourceTitle: clip.source_title, sourceUrl: clip.source_url, createdAt: clip.created_at, verification: 'unverified_clip' })),
+    thoughtNotes,
   };
 }
 
@@ -159,6 +164,23 @@ export function createDocumentsRouter() {
 
   router.delete('/documents/:id/sources/:sourceCardId', (req, res) => {
     db.prepare('DELETE FROM document_sources WHERE document_id=? AND source_card_id=?').run(req.params.id, req.params.sourceCardId);
+    const document = loadDocument(req.params.id);
+    if (!document) { sendError(req, res, 404, '原稿が見つかりません', undefined, 'request_failed'); return; }
+    res.json({ document });
+  });
+
+  router.post('/documents/:id/thought-notes', (req, res) => {
+    const body = parseBody(addThoughtNoteSchema, req, res);
+    if (!body) return;
+    if (!db.prepare('SELECT 1 FROM documents WHERE id=?').get(req.params.id)) { sendError(req, res, 404, '原稿が見つかりません', undefined, 'request_failed'); return; }
+    if (!db.prepare('SELECT 1 FROM thought_notes WHERE id=?').get(body.thoughtNoteId)) { sendError(req, res, 404, '思考メモが見つかりません', undefined, 'request_failed'); return; }
+    db.prepare('INSERT OR IGNORE INTO document_thought_notes(document_id,thought_note_id,added_at) VALUES(?,?,?)')
+      .run(req.params.id, body.thoughtNoteId, new Date().toISOString());
+    res.json({ document: loadDocument(req.params.id) });
+  });
+
+  router.delete('/documents/:id/thought-notes/:thoughtNoteId', (req, res) => {
+    db.prepare('DELETE FROM document_thought_notes WHERE document_id=? AND thought_note_id=?').run(req.params.id, req.params.thoughtNoteId);
     const document = loadDocument(req.params.id);
     if (!document) { sendError(req, res, 404, '原稿が見つかりません', undefined, 'request_failed'); return; }
     res.json({ document });

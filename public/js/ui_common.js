@@ -23,7 +23,7 @@ function updateColorStrip(stripId,selected,onSelect){
 //  モーダル
 // ════════════════════════════════════════
 function openModal(id){document.getElementById(id).classList.add('active')}
-function dismissModal(modal){modal.classList.remove('active');if(modal.id==='modal-reader'&&typeof clearLastReaderSession==='function')clearLastReaderSession()}
+function dismissModal(modal){if(modal.id==='modal-reader'&&modal.dataset.readerEmbedded==='true'&&typeof saveEmbeddedReaderPosition==='function')saveEmbeddedReaderPosition();modal.classList.remove('active');if(modal.id==='modal-reader'){if(typeof clearLastReaderSession==='function')clearLastReaderSession();if(modal.dataset.readerEmbedded==='true'&&typeof restoreReaderModalHome==='function')restoreReaderModalHome()}}
 function closeModal(id){const modal=document.getElementById(id);if(modal)dismissModal(modal)}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)dismissModal(m)}));
 

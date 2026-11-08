@@ -29,7 +29,7 @@ function renderCardGrid() {
         <span class="card-type-badge ${typeCls}">${typeMap[card.type]??card.type}</span>
         <div class="card-actions">
           ${restoreButton}
-          <button class="btn-icon btn-sm" onclick="event.stopPropagation();openEditModal(${jsArg(card.id)})" title="編集">✏️</button>
+          <button class="btn-icon btn-sm" onclick="event.stopPropagation();selectCard(${jsArg(card.id)})" title="詳細" aria-label="${esc(card.title)} の詳細">ⓘ</button>
           <button class="btn-icon btn-sm needs-ai" onclick="event.stopPropagation();summarizeOne(${jsArg(card.id)})" title="AI要約">⚡</button>
         </div>
       </div>
@@ -54,7 +54,7 @@ function toggleMultiSelect() {
 
 function cardClick(id) {
   if (!multiSelectMode) {
-    selectCard(id);
+    void openReaderForCard(id);
     return;
   }
   if (selectedCards.has(id)) selectedCards.delete(id);
@@ -308,12 +308,11 @@ async function unlinkCard(id1,id2) {
 }
 
 // ════════════════════════════════════════
-//  新規カード・編集・削除
+//  新規カード・削除
 // ════════════════════════════════════════
 function openNewCardModal() {
   openPlainCardEditor();
 }
-function openEditModal(id) { return openReaderForCard(id); }
 
 // ════════════════════════════════════════
 document.addEventListener('click', event => {

@@ -22,9 +22,9 @@ test('tag search and editing are optional advanced actions and preserve existing
   await page.goto('/');
   await expect(page.locator('#topbar h1')).toHaveText('my-search');
   await expect(page).toHaveTitle('my-search');
-  await expect(page.locator('#topbar > .tab-group > button[data-view]')).toHaveText(['探す', '調査']);
+  await expect(page.locator('#topbar > .tab-group > button')).toHaveText(['探す', '読む・メモ', '調査']);
   await expect(page.locator('#topbar > .tab-group > details > summary')).toHaveText('記事・メモ');
-  for (const selector of ['#topbar .main-nav > button[data-view="bm25"]', '#topbar .topbar-library > summary', '#topbar .main-nav > button[data-view="investigations"]']) {
+  for (const selector of ['#topbar .main-nav > button[data-view="bm25"]', '#topbar .main-nav > button[onclick="openReader()"]', '#topbar .topbar-library > summary', '#topbar .main-nav > button[data-view="investigations"]']) {
     const box = await page.locator(selector).boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(64);
   }
@@ -32,7 +32,7 @@ test('tag search and editing are optional advanced actions and preserve existing
   await expect(page.locator('#topbar [data-view="writing"]')).toHaveCount(0);
   await expect(page.locator('#topbar .topbar-library')).toContainText('保存済み');
   await expect(page.locator('#topbar .topbar-library')).toContainText('収集した記事を確認');
-  await expect(page.locator('#topbar .topbar-library')).toContainText('読んでメモ');
+  await expect(page.locator('#topbar .main-nav')).toContainText('読む・メモ');
   await expect(page.locator('#bm25-config-header').getByRole('button', { name: '候補レビュー' })).toHaveCount(0);
   await openLibraryView(page, '収集した記事を確認');
   await expect(page.locator('#candidate-view')).toHaveClass(/active/);

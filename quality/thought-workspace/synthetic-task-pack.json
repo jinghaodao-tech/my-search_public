@@ -1,0 +1,73 @@
+{
+  "dataset_id": "thought-workspace-comparison-synthetic-v1",
+  "status": "synthetic-pilot-stimuli-not-human-results",
+  "warning": "以下は架空の短い教材で、UI/採点票の予行用。参加者データ、実利用の検索記録、効果証拠ではない。利用者評価の分母に算入しない。",
+  "forms": [
+    {
+      "task_id": "E1-refind-relations-A",
+      "experiment": "E1 idea and relation discovery",
+      "prompt": "次の断片から、利用者があとで説明できる関係やまとまりを作ってください。関係が分からない断片は未分類のまま残して構いません。資料にない事実は足さないでください。",
+      "items": [
+        { "id": "I1", "text": "保存記事の本文後半にしか出ない語は、タイトル検索では見つからないことがある。" },
+        { "id": "I2", "text": "Reader本文を索引対象にすると、本文後半の語から記事候補へ戻れる。" },
+        { "id": "I3", "text": "形態素解析の辞書にない固有語は、分割の仕方によって一致しない場合がある。" },
+        { "id": "I4", "text": "文字n-gramは未登録語の一部表記を拾う一方、短い断片の誤一致も起こりうる。" },
+        { "id": "I5", "text": "検索のHit@10は、正解を10位以内に一つでも返したタスク割合を表す。" },
+        { "id": "I6", "text": "同じ記事を探す複数の言い換え質問は、評価分割時に同じ記事グループにまとめる。" }
+      ],
+      "reference_rubric": {
+        "supported_relations": [
+          { "items": ["I1", "I2"], "meaning": "Reader本文索引がタイトルだけの検索漏れを補う" },
+          { "items": ["I3", "I4"], "meaning": "辞書依存の漏れとn-gramの誤一致のトレードオフ" },
+          { "items": ["I5", "I6"], "meaning": "評価指標と分割単位の定義" }
+        ],
+        "scoring": "関係ごとに 0=なし, 1=関係だけ示す, 2=関係と理由を説明。誤関係は別途件数と説明を記録。ひとつの唯一の配置は採点しない。"
+      }
+    },
+    {
+      "task_id": "E2-source-comparison-A",
+      "experiment": "E2 compare multiple sources",
+      "prompt": "資料A〜Cを比べ、共通点、違い、成立条件、まだ言えないことを整理し、短い結論を出典IDつきで記録してください。",
+      "sources": [
+        { "id": "S-A", "text": "合成試験A: 1,000件の固定データ、形態素FTS5、10個の日本語クエリ。p95は120ms。正解上位10件率は7/10。" },
+        { "id": "S-B", "text": "合成試験B: 同じ1,000件の固定データ、文字n-gram FTS5、10個の同じクエリ。p95は180ms。正解上位10件率は8/10。" },
+        { "id": "S-C", "text": "合成試験C: 10万件の別データ、同じn-gram設定を調整しないまま実行。p95は720ms。検索文の難易度と正解ラベルはA/Bと異なる。" }
+      ],
+      "reference_rubric": {
+        "expected_points": [
+          { "point": "A/Bは同じ小規模コーパスとクエリで、Aが速くBが1件多くHit@10", "sources": ["S-A", "S-B"] },
+          { "point": "10問の比率だけから一般的品質差や有意差は結論できない", "sources": ["S-A", "S-B"] },
+          { "point": "Cは規模・クエリ・ラベルが異なるためA/Bの比較に混ぜられない", "sources": ["S-C"] },
+          { "point": "Cの720msは当該条件の値で、未調整の大規模時性能として扱う", "sources": ["S-C"] }
+        ],
+        "scoring": "各点 0=欠落, 1=一部/曖昧, 2=正確に説明。結論文の各経験的主張に出典IDがあるか別採点。"
+      }
+    },
+    {
+      "task_id": "E3-claim-evaluation-A",
+      "experiment": "E3 test a claim and decision",
+      "prompt": "主張『n-gram検索は常に形態素検索より優れている』を、下の資料だけで検討してください。支持、反例、前提、未解決事項を分け、暫定判断と理由を残してください。",
+      "sources": [
+        { "id": "S-D", "text": "合成試験D: 固定した固有語クエリ12件で、形態素検索の正解上位10件率は8/12、n-gramは10/12だった。p95は形態素90ms、n-gram150ms。" },
+        { "id": "S-E", "text": "合成試験E: 日常表現クエリ12件で、形態素検索の正解上位10件率は11/12、n-gramは9/12だった。p95は形態素100ms、n-gram155ms。" },
+        { "id": "S-F", "text": "どちらの試験も各方式12クエリで、実利用者・大規模データ・長期更新を含まない。" }
+      ],
+      "reference_rubric": {
+        "expected_points": [
+          { "point": "S-Dは固有語条件でn-gramのHit@10が2件多い", "sources": ["S-D"] },
+          { "point": "S-Eは日常表現条件で形態素のHit@10が2件多い", "sources": ["S-E"] },
+          { "point": "観測結果は条件に依存し、『常に優れる』という一般化を支持しない", "sources": ["S-D", "S-E"] },
+          { "point": "小標本と対象範囲の限界を判断に含める", "sources": ["S-F"] }
+        ],
+        "scoring": "各項目を正確さと出典対応で別々に0/1採点。反対条件の見落とし、根拠なしの一般化、条件の取り違えを別カウント。"
+      }
+    }
+  ],
+  "administration": {
+    "do_not_present_reference_rubric_to_participants": true,
+    "do_not_reuse_identical_task_after_exposure": true,
+    "participant_order": "各実験で方式順を無作為化/均衡化し、フォームの難易度差は予備評価後に固定する。",
+    "ai_conditions": "AIなし・人間先行・AI先行は別条件として記録する。AI先行用の固定モデル出力と、現行画面での提示方法は未準備。出力と提示が用意できるまで本比較は未実施扱い。",
+    "privacy": "実参加者のメモ、発話、識別情報を公開fixtureへ追加しない。隔離したローカル評価記録を使用する。"
+  }
+}
