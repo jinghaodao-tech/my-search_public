@@ -48,6 +48,7 @@ async function createCardViaUi(page: Page, title: string, body: string, tags = "
   await expect(page.locator("#modal-reader .reader-modal")).toHaveClass(/reader-plain-mode/);
   await page.locator("#reader-edit-title").fill(title);
   await page.locator("#reader-memo").fill(body);
+  await page.locator('#modal-reader .reader-tag-details > summary').click();
   await page.locator("#reader-tags").fill(tags);
   await page.locator("#reader-save-btn").click();
   await expect(page.locator("#modal-reader")).not.toHaveClass(/active/);

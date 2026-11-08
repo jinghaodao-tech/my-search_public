@@ -158,8 +158,7 @@ test('writing toolbar formats selected text and lines, updates preview, and rest
 
 test('a user-selected local PDF can switch between extracted text and the original page', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#topbar .topbar-library > summary').click();
-  await page.locator('#topbar .topbar-library').getByRole('button', { name: '読んでメモ', exact: true }).click();
+  await page.locator('#topbar .main-nav').getByRole('button', { name: '読む・メモ', exact: true }).click();
   const readerModal = page.locator('#modal-reader .reader-modal');
   await expect(readerModal).not.toHaveClass(/reader-has-source/);
   await expect(page.locator('.reader-right')).toBeHidden();

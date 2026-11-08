@@ -116,7 +116,7 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
 
     await page.goto(baseUrl);
     await page.locator('.card', { hasText: sourceTitle }).click();
-    await page.locator('#reader-edit-btn').click();
+    await expect(page.locator('#modal-reader')).toHaveClass(/active/);
     await page.locator('#reader-article [data-index="0"]').evaluate((element: Element) => {
       const range = document.createRange(); range.selectNodeContents(element);
       const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range);
@@ -142,14 +142,14 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
 
     await page.locator('button[data-view="investigations"]').click();
     await page.getByRole('button', { name: workspaceResult.workspace.name, exact: true }).click();
-    await page.getByRole('button', { name: '原稿', exact: true }).click();
+    await page.locator('[data-context-action="documents"]').click();
     await page.getByRole('button', { name: '＋ 新しい原稿' }).click();
     const title = `サーバー再起動後に復旧する調査原稿 ${suffix}`;
     const editor = page.locator('#document-markdown');
     await page.locator('#document-title').fill(title);
     await editor.fill(`## 出典確認\n\n${sourceTitle}\n`);
     await page.locator('#document-source-search').fill(sourceTitle);
-    await page.getByRole('button', { name: '検索', exact: true }).click();
+    await page.locator('#research-writing-view .document-source-search').getByRole('button', { name: '検索', exact: true }).click();
     await page.locator('#document-source-results .document-source-row', { hasText: sourceTitle })
       .getByRole('button', { name: '資料に追加' }).click();
     await page.getByRole('button', { name: '保存', exact: true }).click();
@@ -186,6 +186,42 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
     expect(before.document.citations).toHaveLength(1);
     expect(before.document.citations[0]).toMatchObject({ verification: 'verified', paragraphIndex: 0 });
 
+    const thought = await jsonRequest<{ thought: { id: string; version: number } }>(baseUrl, '/api/thought-notes', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: `再起動後も残る思考 ${suffix}`, body: '原文を確認してから根拠として使う。', kind: 'hypothesis' }),
+    });
+    const otherThought = await jsonRequest<{ thought: { id: string } }>(baseUrl, '/api/thought-notes', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: `比較する思考 ${suffix}`, body: '条件をそろえて引用元を確認する。', kind: 'free' }),
+    });
+    await jsonRequest(baseUrl, `/api/workspaces/${workspaceResult.workspace.id}/thought-notes`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ thoughtNoteId: thought.thought.id }),
+    });
+    await jsonRequest(baseUrl, `/api/workspaces/${workspaceResult.workspace.id}/thought-notes`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ thoughtNoteId: otherThought.thought.id }),
+    });
+    const thoughtGroup = await jsonRequest<{ groupId: string }>(baseUrl, `/api/workspaces/${workspaceResult.workspace.id}/groups`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: '確認待ち', position: 0 }),
+    });
+    await jsonRequest(baseUrl, `/api/workspaces/${workspaceResult.workspace.id}/thought-notes/${thought.thought.id}`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ groupId: thoughtGroup.groupId, position: 4, x: 220, y: 140 }),
+    });
+    await jsonRequest(baseUrl, `/api/thought-notes/${thought.thought.id}/references`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceCardId: saved.card.id, quote }),
+    });
+    await jsonRequest(baseUrl, `/api/workspaces/${workspaceResult.workspace.id}/thought-links`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceThoughtId: thought.thought.id, targetThoughtId: otherThought.thought.id, description: '同じ引用元を確認する' }),
+    });
+    await jsonRequest(baseUrl, `/api/documents/${documentId}/thought-notes`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ thoughtNoteId: thought.thought.id }),
+    });
+    await jsonRequest(baseUrl, `/api/workspaces/${workspaceResult.workspace.id}/state`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ state: { lastView: 'thoughts', thoughtNoteId: thought.thought.id, thoughtCompare: { noteIds: [thought.thought.id, otherThought.thought.id], criteria: ['主張'], values: {} } } }),
+    });
+    await jsonRequest(baseUrl, `/api/thought-notes/${thought.thought.id}`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: `再起動後も残る思考 ${suffix}`, body: '更新後も旧版を履歴に残す。原文を確認してから根拠として使う。', kind: 'hypothesis', version: thought.thought.version }),
+    });
+
     await stopServer(server);
     server = launchServer(port, dbPath, false);
     await waitForHealthy(server, baseUrl);
@@ -194,7 +230,19 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
     await page.locator('button[data-view="investigations"]').click();
     await expect(page.locator('#investigation-workspace-list')).toContainText(workspaceResult.workspace.name);
     await page.getByRole('button', { name: workspaceResult.workspace.name, exact: true }).click();
-    await page.getByRole('button', { name: '原稿', exact: true }).click();
+    const reopenedThoughts = await jsonRequest<{ workspace: { thoughts: Array<{ id: string; groupId: string | null; position: number; x: number; y: number; references: Array<{ verification: string; paragraphIndex: number }> }>; thoughtLinks: Array<{ description: string }> } }>(baseUrl, `/api/workspaces/${workspaceResult.workspace.id}`);
+    expect(reopenedThoughts.workspace.thoughts.find(row => row.id === thought.thought.id)).toMatchObject({ groupId: thoughtGroup.groupId, position: 4, x: 220, y: 140, references: [{ verification: 'verified', paragraphIndex: 0 }] });
+    expect(reopenedThoughts.workspace.thoughtLinks).toMatchObject([{ description: '同じ引用元を確認する' }]);
+    const reopenedRevisions = await jsonRequest<{ revisions: Array<{ version: number; body: string }> }>(baseUrl, `/api/thought-notes/${thought.thought.id}/revisions`);
+    expect(reopenedRevisions.revisions).toMatchObject([{ version: 1, body: '原文を確認してから根拠として使う。' }]);
+    const reopenedDocument = await jsonRequest<{ document: { thoughtNotes: Array<{ id: string }> } }>(baseUrl, `/api/documents/${documentId}`);
+    expect(reopenedDocument.document.thoughtNotes.map(row => row.id)).toContain(thought.thought.id);
+    await page.locator('[data-context-action="thoughts"]').click();
+    await page.locator('#investigation-thought-search').fill(`再起動後も残る思考 ${suffix}`);
+    await page.locator('.thought-search-row').getByRole('button', { name: 'メモを検索', exact: true }).click();
+    await page.locator('#investigation-thought-list').getByRole('button', { name: new RegExp(`思考メモを開く: 再起動後も残る思考 ${suffix}`) }).click();
+    await expect(page.locator('#thought-edit-body')).toHaveValue(/更新後も旧版を履歴に残す/);
+    await page.locator('[data-context-action="documents"]').click();
     await expect(page.locator('#document-title')).toHaveValue(title);
     await page.locator('#document-search').fill(title);
     await page.locator('#document-list .document-list-item', { hasText: title }).click();
@@ -227,9 +275,8 @@ test('saved-card quote and memo refinding plus integrated citations survive an a
     expect(backlinks.documents.some(row => row.id === documentId && row.citation_id === before.document.citations[0]!.id)).toBe(true);
   } finally {
     if (server.exitCode === null && server.signalCode === null) await stopServer(server);
-    for (const suffix of ['', '-wal', '-shm']) await fs.rm(dbPath + suffix, { force: true });
+    // Retry removal recursively: Node only applies maxRetries for recursive rm.
     // Windows may briefly retain SQLite handles after the child server exits.
-    // Retry removal of this test-owned temporary directory without touching app data.
-    await fs.rm(isolatedDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    await fs.rm(isolatedDir, { recursive: true, force: true, maxRetries: 50, retryDelay: 200 });
   }
 });

@@ -11,25 +11,20 @@ async function openApp(page: Page) {
 }
 
 async function openCardEditor(page: Page, title: string) {
-  if (await page.locator('#detail-panel').isVisible()) await page.locator('#detail-header button[title="閉じる"]').click();
   await page.locator('.card', { has: page.getByText(title, { exact: true }) }).click();
-  await expect(page.locator('#detail-header button[title="タイトル・本文・メモ・出典を編集"]')).toHaveCount(1);
-  await expect(page.getByRole('button', { name: '読んで編集', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '本文と一緒に開く', exact: true })).toHaveCount(0);
-  await page.locator('#detail-header button[title="タイトル・本文・メモ・出典を編集"]').click();
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
 }
 
-async function openCardEditorFromList(page: Page, id: string) {
-  if (await page.locator('#detail-panel').isVisible()) await page.locator('#detail-header button[title="閉じる"]').click();
-  const card = page.locator(`#card-${id}`);
-  if ((await page.evaluate(() => window.innerWidth)) <= 768) {
-    await card.click();
-    await page.locator('#detail-header button[title="タイトル・本文・メモ・出典を編集"]').click();
-  } else {
-    await card.hover();
-    await card.locator('button[title="編集"]').click();
+async function openReaderTagSettings(page: Page) {
+  const details = page.locator('#modal-reader .reader-tag-details');
+  if (!(await details.evaluate(element => (element as HTMLDetailsElement).open))) {
+    await details.locator('summary').click();
   }
+}
+
+async function openCardEditorFromList(page: Page, id: string) {
+  const card = page.locator(`#card-${id}`);
+  await card.click();
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
 }
 
@@ -51,6 +46,25 @@ async function readerCard(request: APIRequestContext, input: {
   return saved.card as { id: string; title: string };
 }
 
+test('a saved card opens the shared Reader directly while detail remains an optional separate action', async ({ page, request }) => {
+  const title = `Open card ${stamp()}`;
+  const response = await request.post('/api/cards', { data: { title, body: 'メモ本文', tags: [], type: 'memo' } });
+  expect(response.ok()).toBeTruthy();
+  const saved = await response.json() as { id: string };
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openApp(page);
+  const card = page.locator(`#card-${saved.id}`);
+  await card.getByRole('button', { name: `${title} の詳細` }).click();
+  await expect(page.locator('#detail-panel')).toBeVisible();
+  await expect(page.locator('#modal-reader')).not.toHaveClass(/active/);
+  await page.locator('#detail-header button[title="閉じる"]').click();
+  await card.click();
+  await expect(page.locator('#modal-reader')).toHaveClass(/active/);
+  await expect(page.locator('#reader-edit-title')).toHaveValue(title);
+  await expect(page.locator('#reader-memo')).toHaveValue('メモ本文');
+  await expect(page.locator('#reader-edit-btn')).toHaveCount(0);
+});
+
 test('memo creation and edit use the same editor on desktop and mobile', async ({ page }) => {
   await mkdir(screenshotDir, { recursive: true });
   for (const viewport of [
@@ -65,6 +79,7 @@ test('memo creation and edit use the same editor on desktop and mobile', async (
     await page.locator('#reader-edit-title').fill(title);
     await page.locator('#reader-memo').fill('メモ本文は保存形式を維持する。');
     await page.locator('#reader-url').fill('https://example.test/memo');
+    await openReaderTagSettings(page);
     await page.locator('#reader-tags').fill('統合 確認');
     await page.screenshot({ path: path.join(screenshotDir, `${viewport.name}-memo-editor.png`), fullPage: true });
     await page.locator('#reader-save-btn').click();
@@ -76,6 +91,7 @@ test('memo creation and edit use the same editor on desktop and mobile', async (
     await expect(page.locator('#reader-memo')).toHaveValue('メモ本文は保存形式を維持する。');
     await page.locator('#reader-edit-title').fill(`${title} updated`);
     await page.locator('#reader-memo').fill('更新後のメモ本文。');
+    await openReaderTagSettings(page);
     await page.locator('#reader-tags').fill('更新タグ');
     await page.screenshot({ path: path.join(screenshotDir, `${viewport.name}-memo-edit.png`), fullPage: true });
     await page.locator('#reader-save-btn').click();
@@ -83,6 +99,7 @@ test('memo creation and edit use the same editor on desktop and mobile', async (
     await openCardEditor(page, `${title} updated`);
     await expect(page.locator('#reader-edit-title')).toHaveValue(`${title} updated`);
     await expect(page.locator('#reader-memo')).toHaveValue('更新後のメモ本文。');
+    await openReaderTagSettings(page);
     await expect(page.locator('#reader-tags')).toHaveValue('更新タグ');
     await page.locator('#modal-reader').getByRole('button', { name: '閉じる', exact: true }).click();
   }
@@ -123,6 +140,7 @@ test('article and PDF use the same responsive editor and retain original source/
       await expect(page.locator('#reader-memo')).toHaveValue(item.memo);
       await page.locator('#reader-edit-title').fill(`${item.title} updated ${viewport.name}`);
       await page.locator('#reader-memo').fill(`${item.memo}\n\n編集したメモ`);
+      await openReaderTagSettings(page);
       await page.locator('#reader-tags').fill('出典確認済み');
       await page.locator('#reader-card-color-strip .color-dot[data-color="#FF6B6B"]').click();
       if (item.kind === 'pdf') await page.locator('#reader-card-color-strip .color-dot[data-color=""]').click();
@@ -152,7 +170,7 @@ test('article and PDF use the same responsive editor and retain original source/
   }
 });
 
-test('desktop list pencil and mobile detail edit open the shared editor for every card type', async ({ page, request }) => {
+test('opening a card uses the shared Reader on desktop and mobile for every card type', async ({ page, request }) => {
   test.setTimeout(90_000);
   await mkdir(screenshotDir, { recursive: true });
   const memoTitle = `Quick memo ${stamp()}`;
@@ -190,7 +208,7 @@ test('desktop list pencil and mobile detail edit open the shared editor for ever
       else await expect(editor).not.toHaveClass(/reader-plain-mode/);
       await expect(page.locator('#reader-edit-title')).toHaveValue(card.title);
       if (card.kind !== 'memo') await expect(page.locator('#reader-article')).toContainText(card.kind === 'pdf' ? 'カード一覧から開くPDF原文' : 'カード一覧から開く記事');
-      await page.screenshot({ path: path.join(screenshotDir, `${viewport.name}-list-pencil-${card.kind}.png`), fullPage: true });
+      await page.screenshot({ path: path.join(screenshotDir, `${viewport.name}-card-reader-${card.kind}.png`), fullPage: true });
       await page.locator('#modal-reader').getByRole('button', { name: '閉じる', exact: true }).click();
     }
   }

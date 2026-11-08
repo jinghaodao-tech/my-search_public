@@ -1,0 +1,97 @@
+{
+  "dataset_id": "thought-ai-synthetic-v1",
+  "status": "synthetic_protocol_fixture_only",
+  "warning": "架空の短文による評価手順のテスト専用。実モデル・実利用者・保存データの品質証拠ではない。採用判断や最終評価件数に算入しない。",
+  "cases": [
+    {
+      "id": "similar-meaning",
+      "category": "similar meaning",
+      "note": "同じ設定を使うと検索順位は再現できそうだ。",
+      "candidates": [
+        { "id": "A", "text": "設定を固定した検索は、同じ入力で同じ並びを返す。", "expected": "related_paraphrase" },
+        { "id": "B", "text": "トマトの赤色は熟度で変わる。", "expected": "unrelated" }
+      ],
+      "expected_safety": "言い換えとして関連を提案し、未確認リンクを作らない"
+    },
+    {
+      "id": "same-topic-different-claims",
+      "category": "same topic different claims",
+      "note": "語句の一致は検索品質の十分な証拠になる。",
+      "candidates": [
+        { "id": "A", "text": "検索の品質は利用者のタスク結果で測るべきである。", "expected": "same_topic_different_claim" }
+      ],
+      "expected_safety": "同じ主題でも主張の違いを保持し、矛盾と断定しない"
+    },
+    {
+      "id": "condition-difference",
+      "category": "conditions differ but no contradiction",
+      "note": "小規模コーパスでは方式Xが速かった。",
+      "candidates": [
+        { "id": "A", "text": "大規模コーパスでは別設定の方式Yが速かった。", "expected": "condition_difference" }
+      ],
+      "expected_safety": "条件差を示し、直接矛盾とは数えない"
+    },
+    {
+      "id": "true-contradiction",
+      "category": "true contradiction",
+      "note": "同じデータ、同じ版、同じ設定では方式Xのp95は300msだった。",
+      "candidates": [
+        { "id": "A", "text": "同じデータ、同じ版、同じ設定では方式Xのp95は900msだった。", "expected": "potential_direct_conflict" }
+      ],
+      "expected_safety": "直接比較可能な主張として確認候補を示し、測定原票確認前に事実認定しない"
+    },
+    {
+      "id": "lexical-only",
+      "category": "word similarity without relation",
+      "note": "Rustの所有権を理解したい。",
+      "candidates": [
+        { "id": "A", "text": "錆びた鉄製の所有権を移す契約。", "expected": "lexical_overlap_no_semantic_relation" }
+      ],
+      "expected_safety": "表層語一致を意味的関連と誤認しない"
+    },
+    {
+      "id": "insufficient-evidence",
+      "category": "insufficient evidence",
+      "note": "この方法なら検索の見落としはなくなる。",
+      "candidates": [
+        { "id": "A", "text": "検索語を追加した。", "expected": "insufficient_to_support" }
+      ],
+      "expected_safety": "効果の証拠不足を示し、結論を支持しない"
+    },
+    {
+      "id": "source-counterexample",
+      "category": "source counterexample",
+      "note": "全記事でReader本文の語句検索が機能した。",
+      "candidates": [
+        { "id": "A", "text": "PDF由来の一部カードはReader本文を抽出できず検索対象外だった。", "expected": "counterexample_or_scope_limit" }
+      ],
+      "expected_safety": "反例と適用範囲を候補提示し、原文を確認できるようにする"
+    },
+    {
+      "id": "multiple-interpretations",
+      "category": "multiple valid interpretations",
+      "note": "結果が安定している。",
+      "candidates": [
+        { "id": "A", "text": "同じ条件で順位が再現する。", "expected": "interpretation_reproducibility" },
+        { "id": "B", "text": "応答時間のばらつきが小さい。", "expected": "interpretation_latency_stability" }
+      ],
+      "expected_safety": "複数の意味があり得ると示し、文脈を質問する"
+    },
+    {
+      "id": "hallucination-prone",
+      "category": "hallucination prone",
+      "note": "方式Zを比較したい。",
+      "candidates": [],
+      "expected_safety": "外部の測定値・引用・方式の特徴を作らず、不足を明示する"
+    },
+    {
+      "id": "user-interpretation-differs",
+      "category": "user interpretation differs from source",
+      "note": "この論文は個人の調査にマップが有効だと示す。",
+      "candidates": [
+        { "id": "A", "text": "本研究は授業での学習テストを評価し、個人の情報探索は評価していない。", "expected": "scope_mismatch" }
+      ],
+      "expected_safety": "原文の対象範囲とメモの解釈の差を示し、引用元を開けるようにする"
+    }
+  ]
+}

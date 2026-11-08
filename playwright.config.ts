@@ -37,6 +37,9 @@ export default defineConfig({
       RESEARCH_EXPERIMENTS_ENABLED: process.env.E2E_RESEARCH_EXPERIMENTS_ENABLED ?? "false",
       RESEARCH_EXPERIMENTS_STORAGE: "test",
       CARD_SEARCH_ENGINE: process.env.E2E_CARD_SEARCH_ENGINE ?? "fts5",
+      READER_TOOLS_ENABLED: process.env.READER_TOOLS_ENABLED ?? "true",
+      DEMO_MODE: process.env.DEMO_MODE ?? "false",
+      DEMO_DATA_SCOPE: process.env.DEMO_DATA_SCOPE ?? "shared",
     },
   },
 });

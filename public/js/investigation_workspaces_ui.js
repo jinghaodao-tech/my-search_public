@@ -6,29 +6,63 @@ let investigationSearchDebounce = null;
 let investigationCompareDebounce = null;
 let activeInvestigationPanel = 'materials';
 let activeInvestigationOrganizeView = 'board';
+let thoughtSearchResults = [];
+let selectedThoughtNote = null;
+let thoughtEditorDirty = false;
+let activeThoughtView = 'list';
+let thoughtNetwork = null;
+let thoughtCompareTimer = null;
+let thoughtAIController = null;
+let thoughtAIRequestId = 0;
+let thoughtComparisonHome = null;
+
+function mountThoughtComparisonForWritingPanel(embedded) {
+  const tableHost = document.getElementById('investigation-thought-comparison-table');
+  const referenceHost = document.getElementById('thought-comparison-reference');
+  if (!tableHost || !referenceHost) return;
+  if (!thoughtComparisonHome) {
+    thoughtComparisonHome = document.createComment('thought-comparison-home');
+    tableHost.parentNode?.insertBefore(thoughtComparisonHome, tableHost);
+  }
+  if (embedded) referenceHost.append(tableHost);
+  else if (thoughtComparisonHome.parentNode) thoughtComparisonHome.parentNode.insertBefore(tableHost, thoughtComparisonHome.nextSibling);
+}
 
 function initializeInvestigationPanels() {
   const content = document.getElementById('investigation-content');
   if (!content || content.dataset.integrated === 'true') return;
   const nav = content.querySelector('.investigation-tabs');
-  const sections = [...content.querySelectorAll(':scope > .investigation-section')];
-  if (!nav || sections.length < 5) return;
-  const panels = Object.fromEntries(['materials', 'organize', 'compare', 'documents'].map(name => {
-    const panel = document.createElement('div'); panel.id = `investigation-panel-${name}`; panel.className = 'investigation-panel';
-    content.append(panel); return [name, panel];
-  }));
+  const thoughtSection = content.querySelector(':scope > [data-thought-section]');
+  const sections = [...content.querySelectorAll(':scope > .investigation-section')].filter(section => section !== thoughtSection);
+  if (sections.length < 5) return;
+  const workbench = document.createElement('div'); workbench.className = 'investigation-workbench';
+  const sourceRail = document.createElement('aside'); sourceRail.id = 'investigation-source-rail'; sourceRail.className = 'investigation-workbench-sources'; sourceRail.setAttribute('aria-label', 'この調査の情報源');
+  const thoughtCanvas = document.createElement('main'); thoughtCanvas.id = 'investigation-thought-canvas'; thoughtCanvas.className = 'investigation-workbench-thoughts'; thoughtCanvas.setAttribute('aria-label', '思考メモ');
+  const contextPanel = document.createElement('aside'); contextPanel.id = 'investigation-context-panel'; contextPanel.className = 'investigation-workbench-context'; contextPanel.setAttribute('aria-label', '選択対象の作業');
+  const contextThought = document.createElement('section'); contextThought.id = 'investigation-context-thoughts'; contextThought.dataset.investigationContext = 'thoughts';
+  const contextCompare = document.createElement('section'); contextCompare.id = 'investigation-context-compare'; contextCompare.dataset.investigationContext = 'compare';
+  const contextDocuments = document.createElement('section'); contextDocuments.id = 'investigation-context-documents'; contextDocuments.dataset.investigationContext = 'documents';
+  contextPanel.append(contextThought, contextCompare, contextDocuments);
+  const thoughtEmpty = document.createElement('p'); thoughtEmpty.id = 'thought-editor-empty'; thoughtEmpty.className = 'thought-editor-empty';
+  thoughtEmpty.textContent = '中央の思考メモを選ぶと、ここで編集し、出典・関係・変更履歴を確認できます。';
+  contextThought.append(thoughtEmpty);
+  workbench.append(sourceRail, thoughtCanvas, contextPanel);
+  content.append(workbench);
   const [sourceSearch, sourceList, savedSearch, compare, documents] = sections;
-  panels.materials.append(sourceSearch);
-  for (const selector of ['h3', '.reader-note', '#investigation-sources']) {
-    const node = sourceList.querySelector(selector); if (node) panels.materials.append(node);
-  }
-  panels.materials.append(savedSearch);
-  panels.compare.append(compare);
-  panels.documents.append(documents);
+  sourceRail.append(sourceSearch, sourceList, savedSearch);
+  if (thoughtSection) thoughtCanvas.append(thoughtSection);
+  const thoughtEditor = document.getElementById('investigation-thought-editor');
+  if (thoughtEditor) contextThought.append(thoughtEditor);
+  contextCompare.append(compare);
+  contextDocuments.append(documents);
   documents.dataset.workspaceRequired = 'true';
+  const associations = document.createElement('details'); associations.className = 'investigation-document-associations';
+  const associationSummary = document.createElement('summary'); associationSummary.textContent = 'この調査の原稿・保存検索'; associations.append(associationSummary);
+  while (documents.firstChild) associations.append(documents.firstChild);
+  documents.append(associations);
 
-  const organizeSection = document.createElement('section'); organizeSection.className = 'investigation-section';
-  const heading = document.createElement('h3'); heading.textContent = '同じ資料を整理'; organizeSection.append(heading);
+  const organizeSection = document.createElement('details'); organizeSection.className = 'investigation-source-details';
+  const detailsHeading = document.createElement('summary'); detailsHeading.textContent = '資料の分類・リンク'; organizeSection.append(detailsHeading);
   const layoutSwitch = document.createElement('div'); layoutSwitch.className = 'investigation-layout-switch';
   for (const [view, label] of [['list', '一覧'], ['board', 'ボード'], ['graph', '関係図']]) {
     const button = investigationButton(label, () => setInvestigationOrganizeView(view));
@@ -36,37 +70,46 @@ function initializeInvestigationPanels() {
   }
   organizeSection.append(layoutSwitch);
   const list = document.createElement('div'); list.id = 'investigation-organize-list'; list.dataset.organizeView = 'list'; organizeSection.append(list);
-  for (const id of ['investigation-group-name']) { const node = document.getElementById(id); if (node) organizeSection.append(node.closest('.investigation-group-create')); }
+  const groupCreate = document.getElementById('investigation-group-name')?.closest('.investigation-group-create'); if (groupCreate) organizeSection.append(groupCreate);
   for (const [id, view] of [['investigation-groups', 'board'], ['investigation-graph', 'graph']]) {
     const node = document.getElementById(id); if (node) { node.dataset.organizeView = view; organizeSection.append(node); }
   }
-  panels.organize.append(organizeSection);
+  sourceList.append(organizeSection);
 
   const editor = document.getElementById('research-writing-view');
-  const editorHost = document.createElement('div'); editorHost.id = 'investigation-document-editor-host'; panels.documents.append(editorHost);
-  if (editor) { editor.classList.add('embedded'); editor.setAttribute('aria-label', '調査内の原稿エディタ'); editorHost.append(editor); }
-  sourceList.remove();
+  if (editor) { editor.classList.add('embedded'); editor.setAttribute('aria-label', '調査内の原稿エディタ'); contextDocuments.append(editor); }
+  nav?.remove();
   content.dataset.integrated = 'true';
   setInvestigationPanel(activeInvestigationPanel, { persist: false });
   setInvestigationOrganizeView(activeInvestigationOrganizeView, false);
 }
 
 function setInvestigationPanel(panel, options = {}) {
-  if (!['materials', 'organize', 'compare', 'documents'].includes(panel)) return;
+  if (!['materials', 'thoughts', 'organize', 'compare', 'documents'].includes(panel)) return;
   if (!activeInvestigationWorkspace && panel !== 'documents') return;
   const editor = document.getElementById('research-writing-view');
   if (activeInvestigationPanel === 'documents' && panel !== 'documents' && typeof persistResearchDraft === 'function') persistResearchDraft();
-  activeInvestigationPanel = panel;
+  if (activeInvestigationPanel === 'thoughts' && panel !== 'thoughts' && thoughtEditorDirty) void saveThoughtNote();
+  const requestedPanel = panel;
+  if (panel === 'organize') { setThoughtView('map'); panel = 'thoughts'; }
+  const context = panel === 'compare' ? 'compare' : panel === 'documents' ? 'documents' : 'thoughts';
+  activeInvestigationPanel = panel === 'materials' ? 'thoughts' : panel;
+  mountThoughtComparisonForWritingPanel(context === 'documents');
   const content = document.getElementById('investigation-content');
-  if (content) content.hidden = !activeInvestigationWorkspace && panel !== 'documents';
-  document.querySelectorAll('[data-investigation-panel]').forEach(button => { button.disabled = !activeInvestigationWorkspace && button.dataset.investigationPanel !== 'documents'; });
-  document.querySelectorAll('[data-workspace-required="true"]').forEach(node => { node.hidden = !activeInvestigationWorkspace; });
-  for (const node of document.querySelectorAll('[id^="investigation-panel-"]')) {
-    if (node.classList.contains('investigation-panel')) node.hidden = node.id !== `investigation-panel-${panel}`;
-  }
-  document.querySelectorAll('[data-investigation-panel]').forEach(button => button.classList.toggle('active', button.dataset.investigationPanel === panel));
-  editor?.classList.toggle('active', panel === 'documents');
-  if (panel === 'documents' && typeof loadResearchDocuments === 'function') void loadResearchDocuments();
+  if (content) content.hidden = !activeInvestigationWorkspace && context !== 'documents';
+  document.querySelectorAll('[data-investigation-context]').forEach(section => { section.hidden = section.dataset.investigationContext !== context; });
+  const focusedContext = context === 'documents' || context === 'compare';
+  document.getElementById('investigation-source-rail')?.toggleAttribute('hidden', !activeInvestigationWorkspace || focusedContext);
+  document.getElementById('investigation-thought-canvas')?.toggleAttribute('hidden', !activeInvestigationWorkspace || focusedContext);
+  const workbench = document.querySelector('.investigation-workbench');
+  workbench?.classList.toggle('documents-only', context === 'documents');
+  workbench?.classList.toggle('comparison-focus', context === 'compare');
+  document.querySelectorAll('[data-context-action]').forEach(button => button.classList.toggle('active', button.dataset.contextAction === context));
+  editor?.classList.toggle('active', context === 'documents');
+  if (context === 'documents' && typeof loadResearchDocuments === 'function') void loadResearchDocuments();
+  if (context === 'thoughts') { void searchThoughtNotes(); renderThoughtEditorSections(); renderThoughtComparison(); }
+  if (context === 'compare') renderThoughtComparison();
+  if (requestedPanel === 'materials') document.getElementById('investigation-source-query')?.focus({ preventScroll: true });
   if (options.persist !== false && activeInvestigationWorkspace) void saveInvestigationState({ activePanel: panel });
 }
 
@@ -124,12 +167,16 @@ function renderInvestigationWorkspaceList() {
 }
 
 function setInvestigationWorkspace(workspace) {
+  const previousWorkspaceId = activeInvestigationWorkspace?.id ?? null;
+  const workspaceChanged = previousWorkspaceId !== (workspace?.id ?? null);
   activeInvestigationWorkspace = workspace;
+  if (workspaceChanged) { selectedThoughtNote = null; thoughtEditorDirty = false; }
   const enabled = Boolean(workspace);
   for (const id of ['investigation-name', 'investigation-purpose', 'investigation-save', 'investigation-delete']) document.getElementById(id).disabled = !enabled;
-  document.getElementById('investigation-content').hidden = !enabled && activeInvestigationPanel !== 'documents';
-  document.querySelectorAll('[data-investigation-panel]').forEach(button => { button.disabled = !enabled && button.dataset.investigationPanel !== 'documents'; });
+  document.getElementById('investigation-content').hidden = !enabled && !['documents', 'thoughts'].includes(activeInvestigationPanel);
+  document.querySelectorAll('[data-investigation-panel]').forEach(button => { button.disabled = !enabled && !['documents', 'thoughts'].includes(button.dataset.investigationPanel); });
   document.querySelectorAll('[data-workspace-required="true"]').forEach(node => { node.hidden = !enabled; });
+  document.querySelectorAll('[data-thought-workspace-only]').forEach(node => { node.hidden = !enabled; });
   document.getElementById('investigation-name').value = workspace?.name ?? '';
   document.getElementById('investigation-purpose').value = workspace?.purpose ?? '';
   document.getElementById('investigation-search-query').value = workspace?.state?.searchQuery ?? '';
@@ -137,9 +184,11 @@ function setInvestigationWorkspace(workspace) {
   activeInvestigationPanel = window.mySearchOpenDocumentsOnEnter ? 'documents' : (workspace?.state?.activePanel ?? activeInvestigationPanel);
   window.mySearchOpenDocumentsOnEnter = false;
   activeInvestigationOrganizeView = workspace?.state?.organizeView ?? activeInvestigationOrganizeView;
+  activeThoughtView = workspace?.state?.thoughtView ?? activeThoughtView;
   initializeInvestigationPanels();
   setInvestigationPanel(activeInvestigationPanel, { persist: false });
   setInvestigationOrganizeView(activeInvestigationOrganizeView, false);
+  setThoughtView(activeThoughtView, false);
   renderInvestigationWorkspaceList();
   if (!workspace) return;
   renderInvestigationSources();
@@ -148,7 +197,12 @@ function setInvestigationWorkspace(workspace) {
   renderInvestigationCompareSelection();
   renderInvestigationDocuments();
   renderInvestigationSavedSearches();
+  renderThoughtNoteList();
+  renderThoughtEditorSections();
+  renderThoughtComparison();
   void loadInvestigationGraph();
+  const rememberedThoughtId = workspace?.state?.thoughtNoteId;
+  if (workspaceChanged && rememberedThoughtId) void openThoughtNote(rememberedThoughtId, { keepContext: true });
   investigationSearchConfig = null;
 }
 
@@ -170,6 +224,7 @@ async function loadInvestigationWorkspaces(preferredId = null) {
 }
 
 async function openInvestigationWorkspace(id) {
+  if (thoughtEditorDirty && !(await saveThoughtNote())) return;
   try {
     const result = await api.get(`/api/workspaces/${encodeURIComponent(id)}`);
     try { localStorage.setItem('my-search:active-investigation-workspace', id); } catch { /* local storage may be disabled */ }
@@ -178,7 +233,9 @@ async function openInvestigationWorkspace(id) {
   } catch (error) { investigationStatus(error.message || '調査を開けませんでした。', true); }
 }
 
-function openAllResearchDocuments() {
+async function openAllResearchDocuments() {
+  if (thoughtEditorDirty && !(await saveThoughtNote())) return;
+  if (activeResearchDocument && !preserveResearchDraftBeforeSwitch()) return;
   setInvestigationWorkspace(null);
   setInvestigationPanel('documents', { persist: false });
   investigationStatus('すべての原稿を表示しています。原稿は調査へ関連付けずに編集できます。');
@@ -210,6 +267,7 @@ async function saveInvestigationWorkspace() {
 
 async function deleteInvestigationWorkspace() {
   if (!activeInvestigationWorkspace || !confirm(`「${activeInvestigationWorkspace.name}」の調査だけを削除しますか？保存記事・原稿・検索条件は削除されません。`)) return;
+  if (thoughtEditorDirty && !(await saveThoughtNote())) return;
   const oldId = activeInvestigationWorkspace.id;
   try {
     await api.del(`/api/workspaces/${encodeURIComponent(oldId)}`);
@@ -579,7 +637,660 @@ async function rerunInvestigationSearch(id) {
   } catch (error) { investigationStatus(error.message || '保存検索を再実行できませんでした。', true); }
 }
 
+function thoughtKindLabel(kind) {
+  return ({ free: '自由メモ', question: '疑問', hypothesis: '仮説', interpretation: '解釈', evidence: '根拠', counterargument: '反論候補', decision: '判断' })[kind] ?? '自由メモ';
+}
+
+function thoughtText(tag, text, className = '') {
+  const node = document.createElement(tag); if (className) node.className = className; node.textContent = text; return node;
+}
+
+function thoughtDraftKey(id) { return `my-search:thought-draft:${id}`; }
+
+function persistThoughtDraft() {
+  if (!selectedThoughtNote || !thoughtEditorDirty) return;
+  try {
+    localStorage.setItem(thoughtDraftKey(selectedThoughtNote.id), JSON.stringify({
+      version: selectedThoughtNote.version,
+      title: document.getElementById('thought-edit-title').value,
+      body: document.getElementById('thought-edit-body').value,
+      kind: document.getElementById('thought-edit-kind').value,
+      savedAt: new Date().toISOString(),
+    }));
+  } catch { /* browser storage can be disabled or full; server save remains available */ }
+}
+
+function setThoughtView(view, persist = true) {
+  if (!['list', 'map'].includes(view)) return;
+  activeThoughtView = view;
+  document.querySelectorAll('[data-thought-view]').forEach(node => { node.hidden = node.dataset.thoughtView !== view; });
+  document.querySelectorAll('[data-thought-view-button]').forEach(button => button.classList.toggle('active', button.dataset.thoughtViewButton === view));
+  document.querySelectorAll('[data-thought-view-controls]').forEach(node => { node.hidden = node.dataset.thoughtViewControls !== view; });
+  if (view === 'map' && activeInvestigationWorkspace) void loadThoughtMap();
+  else if (view === 'map') {
+    const host = document.getElementById('investigation-thought-map');
+    if (host) host.textContent = '関係マップは調査ごとに表示されます。調査を開くと、同じ思考メモを関係付けて配置できます。';
+  }
+  if (persist && activeInvestigationWorkspace) void saveInvestigationState({ thoughtView: view });
+}
+
+async function searchThoughtNotes() {
+  const query = document.getElementById('investigation-thought-search')?.value.trim() ?? '';
+  const host = document.getElementById('investigation-thought-list');
+  if (!host) return;
+  try {
+    const result = await api.get(`/api/thought-notes${query ? `?q=${encodeURIComponent(query)}` : ''}`);
+    thoughtSearchResults = result.thoughts ?? [];
+    renderThoughtNoteList();
+  } catch (error) { host.textContent = error.message || '思考メモを検索できませんでした。'; }
+}
+
+function renderThoughtNoteList() {
+  const host = document.getElementById('investigation-thought-list'); if (!host) return;
+  host.replaceChildren();
+  const workspace = activeInvestigationWorkspace;
+  const attached = workspace?.thoughts ?? [];
+  const rows = new Map();
+  for (const note of [...attached, ...thoughtSearchResults]) rows.set(note.id, note);
+  if (!rows.size) { host.textContent = '思考メモはまだありません。形式を決めずに上から書き始められます。'; return; }
+  for (const note of rows.values()) {
+    const membership = attached.find(row => row.id === note.id);
+    const item = document.createElement('article'); item.className = 'thought-note-item';
+    item.classList.toggle('active', selectedThoughtNote?.id === note.id);
+    const select = investigationButton(note.title || note.body.slice(0, 72) || '無題の思考メモ', () => void openThoughtNote(note.id), 'thought-note-select');
+    select.setAttribute('aria-label', `思考メモを開く: ${note.title || note.body.slice(0, 72)}`);
+    const summary = thoughtText('small', `${thoughtKindLabel(note.kind)} · ${new Date(note.updatedAt ?? note.updated_at).toLocaleDateString()}`, 'thought-note-meta');
+    item.append(select, summary);
+    if (workspace && membership) {
+      const compare = document.createElement('label'); compare.className = 'thought-compare-check';
+      const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = Boolean(workspace.state?.thoughtCompare?.noteIds?.includes(note.id));
+      checkbox.setAttribute('aria-label', `${note.title || note.body.slice(0, 40)}を比較に含める`);
+      checkbox.onchange = () => setThoughtComparisonNote(note.id, checkbox.checked);
+      compare.append(checkbox, thoughtText('span', '比較')); item.append(compare);
+      const group = document.createElement('select'); group.setAttribute('aria-label', `${note.title || '思考メモ'}の調査内分類`);
+      const none = document.createElement('option'); none.value = ''; none.textContent = '未分類'; group.append(none);
+      for (const row of workspace.groups ?? []) { const option = document.createElement('option'); option.value = row.id; option.textContent = row.name; group.append(option); }
+      group.value = membership.groupId ?? ''; group.onchange = () => void updateThoughtPlacement(note.id, { groupId: group.value || null }); item.append(group);
+    } else if (workspace) {
+      item.append(investigationButton('この調査に追加', () => void attachThoughtNote(note.id)));
+    }
+    host.append(item);
+  }
+  const selectedCount = workspace?.state?.thoughtCompare?.noteIds?.filter(id => attached.some(note => note.id === id)).length ?? 0;
+  const compareButton = document.querySelector('[data-context-action="compare"][data-workspace-required="true"]');
+  if (compareButton) compareButton.textContent = selectedCount ? `選択したメモを比較 (${selectedCount})` : '選択したメモを比較';
+}
+
+function openSelectedThoughtComparison() {
+  const ids = activeInvestigationWorkspace?.state?.thoughtCompare?.noteIds?.filter(id => activeInvestigationWorkspace.thoughts.some(note => note.id === id)) ?? [];
+  if (ids.length < 2) { investigationStatus('比較する思考メモを2件以上選んでください。', true); return; }
+  setInvestigationPanel('compare');
+}
+
+async function createThoughtNote() {
+  const title = document.getElementById('thought-new-title').value.trim();
+  const body = document.getElementById('thought-new-body').value;
+  if (!title && !body.trim()) { investigationStatus('思い出したことを短くても入力してください。', true); return; }
+  try {
+    const result = await api.post('/api/thought-notes', { title, body, kind: document.getElementById('thought-new-kind').value });
+    if (activeInvestigationWorkspace) {
+      const attached = await api.post(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-notes`, { thoughtNoteId: result.thought.id });
+      setInvestigationWorkspace(attached.workspace);
+    }
+    document.getElementById('thought-new-title').value = '';
+    document.getElementById('thought-new-body').value = '';
+    await searchThoughtNotes();
+    await openThoughtNote(result.thought.id);
+    investigationStatus('思考メモを保存しました。分類や関係はあとから変更できます。');
+  } catch (error) { investigationStatus(error.message || '思考メモを作成できませんでした。', true); }
+}
+
+async function attachThoughtNote(id) {
+  if (!activeInvestigationWorkspace) return;
+  try {
+    const result = await api.post(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-notes`, { thoughtNoteId: id });
+    setInvestigationWorkspace(result.workspace); await openThoughtNote(id);
+    investigationStatus('既存の思考メモをこの調査に関連付けました。本文は複製していません。');
+  } catch (error) { investigationStatus(error.message || '思考メモを追加できませんでした。', true); }
+}
+
+async function openThoughtNote(id, options = {}) {
+  if (!options.keepContext && activeInvestigationWorkspace && activeInvestigationPanel !== 'thoughts') setInvestigationPanel('thoughts');
+  if (thoughtEditorDirty && !(await saveThoughtNote())) return;
+  try {
+    const result = await api.get(`/api/thought-notes/${encodeURIComponent(id)}`);
+    selectedThoughtNote = result.thought; thoughtEditorDirty = false;
+    if (activeInvestigationWorkspace) void saveInvestigationState({ thoughtNoteId: id });
+    const selectedLabel = document.getElementById('investigation-context-selection');
+    if (selectedLabel) selectedLabel.textContent = `選択中: ${selectedThoughtNote.title || selectedThoughtNote.body.slice(0, 60) || '無題の思考メモ'}`;
+    cancelThoughtAI(); document.getElementById('thought-ai-result')?.replaceChildren();
+    document.getElementById('investigation-thought-editor').hidden = false;
+    const emptyState = document.getElementById('thought-editor-empty'); if (emptyState) emptyState.hidden = true;
+    document.getElementById('thought-edit-title').value = selectedThoughtNote.title;
+    document.getElementById('thought-edit-kind').value = selectedThoughtNote.kind;
+    document.getElementById('thought-edit-body').value = selectedThoughtNote.body;
+    document.getElementById('thought-editor-status').textContent = selectedThoughtNote.title || selectedThoughtNote.body.slice(0, 50) || '思考メモ';
+    document.getElementById('thought-version-label').textContent = `版 ${selectedThoughtNote.version}`;
+    try {
+      const rawDraft = localStorage.getItem(thoughtDraftKey(id));
+      const draft = rawDraft ? JSON.parse(rawDraft) : null;
+      if (draft && draft.version === selectedThoughtNote.version) {
+        document.getElementById('thought-edit-title').value = draft.title ?? selectedThoughtNote.title;
+        document.getElementById('thought-edit-kind').value = draft.kind ?? selectedThoughtNote.kind;
+        document.getElementById('thought-edit-body').value = draft.body ?? selectedThoughtNote.body;
+        const differs = draft.title !== selectedThoughtNote.title || draft.body !== selectedThoughtNote.body || draft.kind !== selectedThoughtNote.kind;
+        thoughtEditorDirty = differs;
+        if (differs) document.getElementById('thought-version-label').textContent = '未保存の変更を復元';
+      }
+    } catch { /* retain server copy if a local draft is unreadable */ }
+    document.getElementById('thought-history').replaceChildren();
+    renderThoughtNoteList(); renderThoughtEditorSections();
+  } catch (error) { investigationStatus(error.message || '思考メモを開けませんでした。', true); }
+}
+
+async function saveThoughtNote() {
+  if (!selectedThoughtNote) return true;
+  if (!thoughtEditorDirty) return true;
+  const title = document.getElementById('thought-edit-title').value;
+  const body = document.getElementById('thought-edit-body').value;
+  const kind = document.getElementById('thought-edit-kind').value;
+  if (!title.trim() && !body.trim()) { investigationStatus('タイトルか本文のどちらかを残してください。', true); return false; }
+  try {
+    const result = await api.put(`/api/thought-notes/${encodeURIComponent(selectedThoughtNote.id)}`, { title, body, kind, version: selectedThoughtNote.version });
+    selectedThoughtNote = result.thought; thoughtEditorDirty = false;
+    try { localStorage.removeItem(thoughtDraftKey(selectedThoughtNote.id)); } catch { /* ignore unavailable browser storage */ }
+    thoughtSearchResults = thoughtSearchResults.map(note => note.id === selectedThoughtNote.id ? selectedThoughtNote : note);
+    document.getElementById('thought-editor-status').textContent = title.trim() || body.slice(0, 50);
+    document.getElementById('thought-version-label').textContent = `版 ${selectedThoughtNote.version} · 保存済み`;
+    const workspaceNote = activeInvestigationWorkspace?.thoughts?.find(note => note.id === selectedThoughtNote.id);
+    if (workspaceNote) Object.assign(workspaceNote, { title: selectedThoughtNote.title, body: selectedThoughtNote.body, kind, version: selectedThoughtNote.version, updatedAt: selectedThoughtNote.updatedAt });
+    renderThoughtNoteList();
+    return true;
+  } catch (error) { investigationStatus(error.message || '思考メモを保存できませんでした。', true); return false; }
+}
+
+function renderThoughtEditorSections() {
+  const editor = document.getElementById('investigation-thought-editor'); if (!editor) return;
+  const note = selectedThoughtNote;
+  editor.hidden = !note;
+  const workspace = activeInvestigationWorkspace;
+  document.querySelectorAll('[data-thought-document-only]').forEach(node => { node.hidden = !(typeof activeResearchDocument !== 'undefined' && activeResearchDocument); });
+  const group = document.getElementById('thought-edit-group');
+  if (group) {
+    const value = workspace?.thoughts?.find(row => row.id === note?.id)?.groupId ?? '';
+    group.replaceChildren(); const none = document.createElement('option'); none.value = ''; none.textContent = '未分類'; group.append(none);
+    for (const item of workspace?.groups ?? []) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; group.append(option); }
+    group.value = value; group.onchange = () => note && void updateThoughtPlacement(note.id, { groupId: group.value || null });
+  }
+  const source = document.getElementById('thought-reference-source');
+  if (source) {
+    const previous = source.value; source.replaceChildren();
+    for (const item of workspace?.sources ?? []) { const option = document.createElement('option'); option.value = item.card.id; option.textContent = item.card.title; source.append(option); }
+    if ([...source.options].some(option => option.value === previous)) source.value = previous;
+  }
+  renderThoughtReferences(); renderThoughtLinks(); void refreshThoughtAIStatus();
+}
+
+async function refreshThoughtAIStatus() {
+  const status = document.getElementById('thought-ai-status'); const prepare = document.getElementById('thought-ai-prepare');
+  if (!status || !prepare) return;
+  if (typeof localAi === 'undefined') { status.textContent = '端末内AI機能が読み込まれていません。AIなしのメモ・関係・比較は利用できます。'; prepare.hidden = true; return; }
+  try {
+    const availability = await localAi.availability('prompt');
+    status.textContent = availability === 'available' ? 'Chromeの端末内Prompt AIを利用できます。入力は外部へ送信しません。'
+      : availability === 'unavailable' ? 'このブラウザーでは端末内AIを利用できません。AIなしの機能はそのまま使えます。'
+        : `端末内AIモデルの状態: ${availability}。準備後に利用できます。`;
+    prepare.hidden = !['downloadable', 'downloading'].includes(availability);
+  } catch { status.textContent = '端末内AIの状態を確認できません。AIなしの機能は利用できます。'; prepare.hidden = true; }
+}
+
+async function prepareThoughtAI() {
+  if (typeof localAi === 'undefined') return;
+  const button = document.getElementById('thought-ai-prepare'); const status = document.getElementById('thought-ai-status');
+  button.disabled = true; status.textContent = 'Chrome端末内AIを準備しています。初回はモデル取得が必要です…';
+  try {
+    await localAi.prepare('prompt', loaded => { status.textContent = `端末内AIモデルを準備中… ${Math.round(loaded * 100)}%`; });
+    status.textContent = 'Chromeの端末内Prompt AIを利用できます。入力は外部へ送信しません。'; button.hidden = true;
+  } catch (error) { status.textContent = `モデルを準備できませんでした: ${error.message || error}`; }
+  finally { button.disabled = false; }
+}
+
+function cancelThoughtAI() {
+  thoughtAIRequestId += 1;
+  thoughtAIController?.abort(); thoughtAIController = null;
+  const button = document.getElementById('thought-ai-cancel'); if (button) button.disabled = true;
+}
+
+async function runThoughtAI(kind) {
+  if (!selectedThoughtNote) return;
+  const host = document.getElementById('thought-ai-result'); const cancel = document.getElementById('thought-ai-cancel');
+  if (typeof localAi === 'undefined') { host.textContent = '端末内AI機能がありません。AIなしで操作を続けられます。'; return; }
+  if (!(await saveThoughtNote())) return;
+  const originalId = selectedThoughtNote.id;
+  const baseVersion = selectedThoughtNote.version; const baseTitle = selectedThoughtNote.title; const baseBody = selectedThoughtNote.body; const baseKind = selectedThoughtNote.kind;
+  const ready = await localAi.isReady('prompt');
+  if (!ready) { host.textContent = '端末内AIモデルが利用可能ではありません。上の「端末内AIを準備」または別のブラウザーを確認してください。モデルなしの生成結果は表示しません。'; void refreshThoughtAIStatus(); return; }
+  if (selectedThoughtNote?.id !== originalId) return;
+  cancelThoughtAI();
+  const controller = new AbortController(); thoughtAIController = controller; const requestId = ++thoughtAIRequestId;
+  cancel.disabled = false; host.textContent = '端末内AIに検討候補を依頼しています…';
+  try {
+    const wantsSourceCandidates = kind === 'related' || kind === 'evidence';
+    let pool = activeInvestigationWorkspace?.thoughts ?? thoughtSearchResults;
+    let thoughtSearchScope = null;
+    if (kind === 'related') {
+      const retrievalText = `${selectedThoughtNote.title} ${selectedThoughtNote.body}`.slice(0, 700);
+      const noteMatches = await api.get(`/api/thought-notes?q=${encodeURIComponent(retrievalText)}&mode=related`);
+      thoughtSearchScope = noteMatches.scope ?? null;
+      pool = noteMatches.thoughts ?? [];
+    }
+    const chosenIds = activeInvestigationWorkspace?.state?.thoughtCompare?.noteIds ?? [];
+    const candidates = (kind === 'relations'
+      ? pool.filter(note => chosenIds.includes(note.id))
+      : kind === 'related' ? pool.filter(note => note.id !== originalId) : []).filter(note => note.id !== originalId).slice(0, kind === 'relations' ? 3 : 8);
+    if (kind === 'relations' && !chosenIds.includes(originalId)) throw new Error('現在のメモも一覧の「比較」で選んでください。');
+    const refs = selectedThoughtNote.references ?? [];
+    let sourceCandidates = []; let sourceSearchScope = null;
+    if (wantsSourceCandidates) {
+      const retrievalText = `${selectedThoughtNote.title} ${selectedThoughtNote.body}`.slice(0, 700);
+      const analyzed = await api.post('/api/search/terms', { text: retrievalText });
+      const keywords = (analyzed.keywords ?? []).slice(0, 12);
+      if (keywords.length) {
+        const config = { label: '思考メモの保存資料候補', description: '', k1: 1.5, b: 0.75, lambda: 0, contextBonus: 1.5, keywords };
+        const result = await api.post('/api/cards/search', {
+          config, options: { dedupThreshold: 1, archiveScoreThreshold: 0, resultLimit: 12 },
+          filters: { excludedTerms: [], sources: [], status: 'all' },
+        });
+        sourceSearchScope = result.scope ?? null;
+        sourceCandidates = (result.active ?? []).filter(item => item.article.id !== selectedThoughtNote.sourceCardId).slice(0, 8).map(item => ({
+          id: item.article.id, sourceCardId: item.article.id, title: item.article.title,
+          excerpt: String(item.snippet || item.article.summary || item.article.body || '').slice(0, 500),
+          searchMethod: item.scoreSources?.method ?? 'saved-card-search',
+        }));
+      }
+    }
+    if (kind === 'related' && !candidates.length && !sourceCandidates.length) throw new Error('語句検索で関連メモ・保存資料候補が見つかりませんでした。検索語を短くして再試行できます。');
+    if (kind === 'relations' && !candidates.length) throw new Error('比較対象に選んだ別の思考メモがありません。');
+    if (kind === 'evidence' && !refs.some(reference => reference.verification === 'verified') && !sourceCandidates.length) throw new Error('照合済み引用も保存資料候補もありません。先に調査内の資料を検索してください。');
+    const result = await localAi.assistThought(kind, selectedThoughtNote, candidates, refs, { signal: controller.signal, sources: sourceCandidates });
+    if (requestId !== thoughtAIRequestId || controller.signal.aborted || selectedThoughtNote?.id !== originalId) return;
+    if (selectedThoughtNote.version !== baseVersion || document.getElementById('thought-edit-title').value !== baseTitle || document.getElementById('thought-edit-body').value !== baseBody || document.getElementById('thought-edit-kind').value !== baseKind) {
+      host.textContent = '処理中にメモが変更されたため、古い提案を破棄しました。最新の内容で再実行してください。'; return;
+    }
+    host.replaceChildren();
+    host.append(thoughtText('strong', '端末内AIの提案 · 未検証 · 未保存', 'thought-ai-result-label'));
+    host.append(thoughtText('p', `入力: メモ1件、関連メモ${result.includedNotes}件、保存資料の語句検索候補${result.includedSources}件、原文照合済み引用${result.includedReferences}件。保存資料は意味一致・引用位置とも未確認です${result.truncated ? '（入力上限により一部のみ）' : ''}`, 'reader-note'));
+    if (wantsSourceCandidates) {
+      const scopeText = [
+        thoughtSearchScope ? `思考メモ: 全メモの部分語句検索で${thoughtSearchScope.matchedCount}件一致、最大${thoughtSearchScope.maxCandidates}件を取得` : '',
+        sourceSearchScope ? `保存記事・Reader: ${sourceSearchScope.searchedCount ?? '?'}件を検索対象、${sourceSearchScope.readerTextCandidateCount ?? 0}件がReader本文語句一致、候補を最大8件AIへ渡した` : '保存記事・Reader: 検索語を抽出できず未検索',
+        'いずれも語句検索で、意味検索・網羅性判定ではありません。',
+      ].filter(Boolean).join(' ');
+      host.append(thoughtText('p', `検索範囲: ${scopeText}`, 'reader-note'));
+    }
+    host.append(thoughtText('pre', result.text || 'モデルから提案が返りませんでした。', 'thought-ai-result-text'));
+    if (candidates.length) {
+      host.append(thoughtText('strong', 'AIへ渡した関連候補（原文）'));
+      candidates.forEach((candidate, index) => {
+        const row = document.createElement('article'); row.className = 'thought-reference';
+        row.append(thoughtText('strong', `候補${index + 1} · ${candidate.title || 'タイトルなし'}`));
+        row.append(thoughtText('p', candidate.body.slice(0, 500)));
+        row.append(investigationButton('候補メモを開く', () => void openThoughtNote(candidate.id)));
+        host.append(row);
+      });
+    }
+    if (kind === 'evidence') {
+      host.append(thoughtText('strong', 'AIへ渡した原文（保存資料）'));
+      refs.filter(reference => reference.verification === 'verified').slice(0, 8).forEach(reference => {
+        const row = document.createElement('article'); row.className = 'thought-reference';
+        row.append(thoughtText('strong', reference.sourceTitle)); row.append(thoughtText('blockquote', `“${reference.quote}”`));
+        if (reference.sourceCardId) row.append(investigationButton('Readerで照合', async () => { if (await openReaderForCard(reference.sourceCardId)) jumpToParagraph(reference.paragraphIndex); }));
+        host.append(row);
+      });
+    }
+    if (sourceCandidates.length) {
+      host.append(thoughtText('strong', '保存記事・Reader本文の検索候補（語句一致。AIの関連提案と原文照合は別工程）'));
+      sourceCandidates.forEach(candidate => {
+        const row = document.createElement('article'); row.className = 'thought-reference';
+        row.append(thoughtText('strong', candidate.title), thoughtText('blockquote', candidate.excerpt || '検索結果の抜粋はありません。'));
+        row.append(thoughtText('p', `取得元: 保存記事検索 · ${candidate.searchMethod}`));
+        row.append(investigationButton('Readerで原文確認', async () => { if (await openReaderForCard(candidate.sourceCardId)) await saveInvestigationState({ thoughtNoteId: selectedThoughtNote.id }); }));
+        row.append(investigationButton('出典引用を追加', async () => {
+          const quoteInput = document.getElementById('thought-reference-quote');
+          const sourceSelect = document.getElementById('thought-reference-source');
+          if (sourceSelect) {
+            if (![...sourceSelect.options].some(option => option.value === candidate.sourceCardId)) {
+              const option = document.createElement('option'); option.value = candidate.sourceCardId; option.textContent = `${candidate.title} · 検索候補`; sourceSelect.append(option);
+            }
+            sourceSelect.value = candidate.sourceCardId;
+          }
+          if (quoteInput) { quoteInput.value = candidate.excerpt; quoteInput.focus(); }
+          investigationStatus('検索抜粋を引用欄へ入れました。Readerで原文を確認し、必要なら引用範囲を調整してから「出典引用を追加」を押してください。');
+        }));
+        host.append(row);
+      });
+    }
+  } catch (error) {
+    if (requestId === thoughtAIRequestId && !controller.signal.aborted) host.textContent = error.message || '端末内AIを実行できませんでした。';
+  } finally {
+    if (requestId === thoughtAIRequestId) { thoughtAIController = null; cancel.disabled = true; }
+  }
+}
+
+async function addThoughtNoteToActiveDocument() {
+  if (!selectedThoughtNote || typeof activeResearchDocument === 'undefined' || !activeResearchDocument) {
+    investigationStatus('先に「原稿」タブで原稿を開いてください。', true); return;
+  }
+  if (!(await saveThoughtNote())) return;
+  try {
+    const result = await api.post(`/api/documents/${encodeURIComponent(activeResearchDocument.id)}/thought-notes`, { thoughtNoteId: selectedThoughtNote.id });
+    activeResearchDocument = result.document;
+    renderDocumentThoughtNotes(result.document.thoughtNotes ?? []);
+    investigationStatus('原稿から思考メモを参照できるようにしました。本文は複製していません。');
+  } catch (error) { investigationStatus(error.message || '原稿への思考メモ参照を追加できませんでした。', true); }
+}
+
+function renderThoughtReferences() {
+  const host = document.getElementById('thought-reference-list'); if (!host) return;
+  host.replaceChildren();
+  for (const reference of selectedThoughtNote?.references ?? []) {
+    const row = document.createElement('article'); row.className = 'thought-reference';
+    const verificationLabel = ({ verified: '原文照合済み', ambiguous: '一致箇所が複数', missing: '引用が見つからない', source_changed: '原文変更・未確認', source_missing: '出典カードなし', text_missing: '保存本文なし' })[reference.verification] ?? '未確認';
+    const heading = thoughtText('strong', `${reference.sourceTitle} · ${verificationLabel}`);
+    const quote = thoughtText('blockquote', `“${reference.quote}”`);
+    const actions = document.createElement('div'); actions.className = 'thought-editor-actions';
+    if (reference.sourceCardId) actions.append(investigationButton('Readerで照合', async () => { if (!(await saveThoughtNote())) return; if (await openReaderForCard(reference.sourceCardId)) jumpToParagraph(reference.paragraphIndex); }));
+    actions.append(investigationButton('参照を外す', async () => {
+      try { await api.del(`/api/thought-notes/${encodeURIComponent(selectedThoughtNote.id)}/references/${encodeURIComponent(reference.id)}`); await openThoughtNote(selectedThoughtNote.id); }
+      catch (error) { investigationStatus(error.message || '出典参照を外せませんでした。', true); }
+    }));
+    row.append(heading, quote, actions); host.append(row);
+  }
+  if (!host.childElementCount) host.textContent = '引用を追加すると、原文変更や位置の曖昧さもここで確認できます。';
+}
+
+async function addThoughtReference() {
+  if (!selectedThoughtNote) return;
+  const sourceCardId = document.getElementById('thought-reference-source').value;
+  const quote = document.getElementById('thought-reference-quote').value;
+  if (!sourceCardId || !quote.trim()) { investigationStatus('資料と本文中の引用文を選んでください。', true); return; }
+  try {
+    await api.post(`/api/thought-notes/${encodeURIComponent(selectedThoughtNote.id)}/references`, { sourceCardId, quote });
+    document.getElementById('thought-reference-quote').value = '';
+    await openThoughtNote(selectedThoughtNote.id);
+    investigationStatus('引用文字列を保存済み原文と照合して関連付けました。');
+  } catch (error) { investigationStatus(error.message || '引用を照合できませんでした。', true); }
+}
+
+function renderThoughtLinks() {
+  const list = document.getElementById('thought-link-list'); const target = document.getElementById('thought-link-target');
+  if (!list || !target) return;
+  list.replaceChildren(); target.replaceChildren();
+  const notes = activeInvestigationWorkspace?.thoughts ?? [];
+  for (const note of notes) if (note.id !== selectedThoughtNote?.id) {
+    const option = document.createElement('option'); option.value = note.id; option.textContent = note.title || note.body.slice(0, 60); target.append(option);
+  }
+  const links = (activeInvestigationWorkspace?.thoughtLinks ?? []).filter(link => link.sourceThoughtId === selectedThoughtNote?.id || link.targetThoughtId === selectedThoughtNote?.id);
+  for (const link of links) {
+    const outgoing = link.sourceThoughtId === selectedThoughtNote.id;
+    const related = notes.find(note => note.id === (outgoing ? link.targetThoughtId : link.sourceThoughtId));
+    const row = document.createElement('div'); row.className = 'thought-link-row';
+    const open = investigationButton(`${outgoing ? '→' : '←'} ${related?.title || related?.body.slice(0, 60) || '関連メモ'}`, () => related && void openThoughtNote(related.id));
+    open.className = 'thought-link-target';
+    const description = document.createElement('input'); description.maxLength = 300; description.value = link.description; description.setAttribute('aria-label', '関係の説明（任意）');
+    const save = investigationButton('説明を保存', async () => {
+      try { const result = await api.put(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-links/${encodeURIComponent(link.id)}`, { description: description.value }); setInvestigationWorkspace(result.workspace); }
+      catch (error) { investigationStatus(error.message || '関係を更新できませんでした。', true); }
+    });
+    const remove = investigationButton('関係を外す', async () => {
+      try { const result = await api.del(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-links/${encodeURIComponent(link.id)}`); setInvestigationWorkspace(result.workspace); }
+      catch (error) { investigationStatus(error.message || '関係を外せませんでした。', true); }
+    });
+    row.append(open, description, save, remove); list.append(row);
+  }
+  if (!links.length) list.textContent = notes.length > 1 ? 'まだ関係はありません。相手を選び、意味を言葉にするのは任意です。' : '関係を作るには、先に別の思考メモをこの調査へ追加してください。';
+}
+
+async function createThoughtLink() {
+  if (!activeInvestigationWorkspace || !selectedThoughtNote) return;
+  const targetThoughtId = document.getElementById('thought-link-target').value;
+  if (!targetThoughtId) { investigationStatus('関連付ける思考メモを選んでください。', true); return; }
+  try {
+    const result = await api.post(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-links`, {
+      sourceThoughtId: selectedThoughtNote.id, targetThoughtId, description: document.getElementById('thought-link-description').value,
+    });
+    document.getElementById('thought-link-description').value = '';
+    setInvestigationWorkspace(result.workspace); investigationStatus('人が作成した関係をこの調査に保存しました。');
+  } catch (error) { investigationStatus(error.message || '関係を追加できませんでした。', true); }
+}
+
+async function updateThoughtPlacement(id, patch) {
+  if (!activeInvestigationWorkspace) return;
+  try {
+    const result = await api.put(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-notes/${encodeURIComponent(id)}`, {
+      groupId: patch.groupId ?? activeInvestigationWorkspace.thoughts.find(note => note.id === id)?.groupId ?? null,
+      ...(patch.position !== undefined ? { position: patch.position } : {}),
+      ...(patch.x !== undefined ? { x: patch.x } : {}), ...(patch.y !== undefined ? { y: patch.y } : {}),
+    });
+    activeInvestigationWorkspace.thoughts = result.workspace.thoughts;
+    renderThoughtNoteList(); renderThoughtEditorSections(); renderThoughtComparison();
+  } catch (error) { investigationStatus(error.message || '調査内の配置を更新できませんでした。', true); }
+}
+
+async function moveThoughtNote(delta) {
+  const notes = activeInvestigationWorkspace?.thoughts ?? [];
+  const index = notes.findIndex(note => note.id === selectedThoughtNote?.id); const next = index + delta;
+  if (index < 0 || next < 0 || next >= notes.length) return;
+  await updateThoughtPlacement(notes[index].id, { groupId: notes[index].groupId, position: notes[next].position });
+  await updateThoughtPlacement(notes[next].id, { groupId: notes[next].groupId, position: notes[index].position });
+}
+
+async function detachThoughtNote() {
+  if (!activeInvestigationWorkspace || !selectedThoughtNote || !(await saveThoughtNote())) return;
+  try {
+    const workspaceId = activeInvestigationWorkspace.id;
+    await api.del(`/api/workspaces/${encodeURIComponent(workspaceId)}/thought-notes/${encodeURIComponent(selectedThoughtNote.id)}`);
+    const result = await api.get(`/api/workspaces/${encodeURIComponent(workspaceId)}`); setInvestigationWorkspace(result.workspace);
+    investigationStatus('この調査から関連を外しました。思考メモ自体と他の調査での利用は残っています。');
+  } catch (error) { investigationStatus(error.message || 'この調査から外せませんでした。', true); }
+}
+
+async function deleteThoughtNote() {
+  if (!selectedThoughtNote || !confirm('この思考メモ、変更履歴、すべての調査との関連を削除しますか？')) return;
+  if (!(await saveThoughtNote())) return;
+  try {
+    await api.del(`/api/thought-notes/${encodeURIComponent(selectedThoughtNote.id)}`);
+    selectedThoughtNote = null; thoughtEditorDirty = false; document.getElementById('investigation-thought-editor').hidden = true;
+    const emptyState = document.getElementById('thought-editor-empty'); if (emptyState) emptyState.hidden = false;
+    if (activeInvestigationWorkspace) await saveInvestigationState({ thoughtNoteId: null });
+    await searchThoughtNotes();
+    if (activeInvestigationWorkspace) { const result = await api.get(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}`); setInvestigationWorkspace(result.workspace); }
+  } catch (error) { investigationStatus(error.message || '思考メモを削除できませんでした。', true); }
+}
+
+async function loadThoughtHistory() {
+  if (!selectedThoughtNote) return;
+  const host = document.getElementById('thought-history'); host.replaceChildren();
+  try {
+    const result = await api.get(`/api/thought-notes/${encodeURIComponent(selectedThoughtNote.id)}/revisions`);
+    if (!result.revisions.length) { host.textContent = '変更履歴はまだありません。'; return; }
+    for (const revision of result.revisions) {
+      const card = document.createElement('article'); card.className = 'thought-history-item';
+      card.append(thoughtText('strong', `版 ${revision.version} · ${new Date(revision.savedAt).toLocaleString()}`));
+      card.append(thoughtText('p', revision.title || '（タイトルなし）'));
+      card.append(thoughtText('pre', revision.body));
+      card.append(investigationButton('この版から復元', async () => {
+        if (!(await saveThoughtNote())) return;
+        try {
+          const updated = await api.put(`/api/thought-notes/${encodeURIComponent(selectedThoughtNote.id)}`, { title: revision.title, body: revision.body, kind: revision.kind, version: selectedThoughtNote.version });
+          selectedThoughtNote = updated.thought; thoughtEditorDirty = false;
+          document.getElementById('thought-edit-title').value = updated.thought.title; document.getElementById('thought-edit-body').value = updated.thought.body; document.getElementById('thought-edit-kind').value = updated.thought.kind;
+          document.getElementById('thought-version-label').textContent = `版 ${updated.thought.version} · 復元済み`; renderThoughtNoteList();
+          investigationStatus('過去の版を新しい版として復元しました。');
+        } catch (error) { investigationStatus(error.message || '過去の版を復元できませんでした。', true); }
+      }));
+      host.append(card);
+    }
+  } catch (error) { host.textContent = error.message || '変更履歴を読み込めませんでした。'; }
+}
+
+async function loadThoughtMap() {
+  const host = document.getElementById('investigation-thought-map');
+  if (!host || !activeInvestigationWorkspace) return;
+  if (thoughtNetwork) { thoughtNetwork.destroy(); thoughtNetwork = null; }
+  try {
+    const result = await api.get(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-map`);
+    if (!result.nodes.length) { host.textContent = 'この調査に思考メモを追加すると、関係マップが表示されます。'; return; }
+    if (!window.vis?.Network) { host.textContent = '関係マップを読み込めませんでした。一覧は利用できます。'; return; }
+    host.replaceChildren();
+    const nodes = new vis.DataSet(result.nodes.map(node => ({ ...node, shape: 'box', font: { color: '#e2e8f0', size: 14 }, color: { background: '#252836', border: '#6c8aff' }, borderWidth: 1 })));
+    const edges = new vis.DataSet(result.edges.map(edge => ({ ...edge, label: edge.label || '関係（説明なし）', title: edge.label || '関係の説明は未記入です', color: { color: '#6c8aff', highlight: '#a78bfa' }, font: { color: '#cbd5e1', size: 11, background: '#161821' }, smooth: { type: 'continuous' } })));
+    thoughtNetwork = new vis.Network(host, { nodes, edges }, {
+      physics: { enabled: false },
+      interaction: { hover: true, tooltipDelay: 150, navigationButtons: true, keyboard: { enabled: true }, multiselect: true },
+      edges: { arrows: { to: { enabled: true, scaleFactor: 0.7 } } },
+      manipulation: {
+        enabled: true,
+        addNode: false,
+        deleteNode: false,
+        addEdge: (edge, callback) => {
+          const description = prompt('この2つの考えを結ぶ説明（任意）', '');
+          if (description === null) { callback(null); return; }
+          void api.post(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-links`, {
+            sourceThoughtId: String(edge.from), targetThoughtId: String(edge.to), description,
+          }).then(result => {
+            const linkId = result.linkId ?? result.workspace?.thoughtLinks?.at(-1)?.id;
+            callback({ ...edge, id: linkId, label: description || '関係（説明なし）', title: description || '関係の説明は未記入です', arrows: 'to' });
+            setInvestigationWorkspace(result.workspace);
+          }).catch(error => { callback(null); investigationStatus(error.message || '関係を作成できませんでした。', true); });
+        },
+        editEdge: (edge, callback) => {
+          const linkId = edge.id;
+          const current = result.edges.find(item => item.id === linkId)?.label ?? '';
+          const description = prompt('関係の説明（空欄にすると説明なし）', current);
+          if (description === null) { callback(null); return; }
+          void api.put(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-links/${encodeURIComponent(linkId)}`, { description }).then(updated => {
+            callback({ ...edge, label: description || '関係（説明なし）', title: description || '関係の説明は未記入です' });
+            setInvestigationWorkspace(updated.workspace);
+          }).catch(error => { callback(null); investigationStatus(error.message || '関係を更新できませんでした。', true); });
+        },
+        deleteEdge: (edge, callback) => {
+          const selected = Array.isArray(edge.edges) ? edge.edges : [edge.id];
+          const remove = async () => {
+            let workspace = activeInvestigationWorkspace;
+            for (const id of selected) {
+              const removed = await api.del(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-links/${encodeURIComponent(id)}`);
+              workspace = removed.workspace;
+            }
+            callback({ edges: selected }); setInvestigationWorkspace(workspace);
+          };
+          void remove().catch(error => { callback(null); investigationStatus(error.message || '関係を削除できませんでした。', true); });
+        },
+      },
+    });
+    thoughtNetwork.on('click', ({ nodes: selected }) => { if (selected.length === 1) void openThoughtNote(selected[0]); });
+    thoughtNetwork.on('dragEnd', ({ nodes: moved }) => {
+      for (const id of moved) { const position = thoughtNetwork.getPositions([id])[id]; if (position) void updateThoughtPlacement(id, { x: position.x, y: position.y }); }
+    });
+  } catch (error) { host.textContent = error.message || '関係マップを読み込めませんでした。'; }
+}
+
+function beginThoughtLinkCreation() {
+  if (!thoughtNetwork) { investigationStatus('先に関係マップを開いてください。', true); return; }
+  thoughtNetwork.addEdgeMode();
+  investigationStatus('マップ上で始点と終点のメモを選び、関係の説明を入力してください。');
+}
+
+function thoughtCompareState() {
+  return activeInvestigationWorkspace?.state?.thoughtCompare ?? { noteIds: [], criteria: ['主張', '条件', '懸念', '未確認'], values: {}, reflection: '' };
+}
+
+function setThoughtComparisonNote(id, checked) {
+  if (!activeInvestigationWorkspace) return;
+  const current = thoughtCompareState(); const ids = [...(current.noteIds ?? [])];
+  if (checked && !ids.includes(id)) {
+    if (ids.length >= 4) { investigationStatus('思考メモの比較は一度に4件までです。', true); renderThoughtNoteList(); return; }
+    ids.push(id);
+  } else if (!checked) { const at = ids.indexOf(id); if (at >= 0) ids.splice(at, 1); }
+  activeInvestigationWorkspace.state = { ...activeInvestigationWorkspace.state, thoughtCompare: { ...current, noteIds: ids } };
+  void saveInvestigationState({ thoughtCompare: activeInvestigationWorkspace.state.thoughtCompare }); renderThoughtComparison();
+}
+
+function renderThoughtComparison() {
+  const host = document.getElementById('investigation-thought-comparison-table'); if (!host) return;
+  host.replaceChildren();
+  const workspace = activeInvestigationWorkspace;
+  const criteriaInput = document.getElementById('thought-compare-criteria');
+  if (!workspace) { host.textContent = '調査を開くと、この調査の思考メモを比較できます。'; return; }
+  const state = thoughtCompareState(); const ids = (state.noteIds ?? []).filter(id => workspace.thoughts.some(note => note.id === id));
+  const reflection = document.getElementById('thought-compare-reflection');
+  if (reflection && document.activeElement !== reflection) reflection.value = state.reflection ?? '';
+  const criteria = [...new Set((state.criteria ?? []).map(value => String(value).trim()).filter(Boolean))].slice(0, 12);
+  if (!criteria.length) criteria.push('主張', '条件', '懸念', '未確認');
+  if (document.activeElement !== criteriaInput) criteriaInput.value = criteria.join('\n');
+  if (!ids.length) { host.textContent = '一覧の「比較」にチェックを入れてください。'; return; }
+  const selected = ids.map(id => workspace.thoughts.find(note => note.id === id)).filter(Boolean);
+  const table = document.createElement('table'); table.className = 'thought-comparison-grid';
+  const thead = document.createElement('thead'); const header = document.createElement('tr'); header.append(thoughtText('th', '論点'));
+  for (const note of selected) header.append(thoughtText('th', note.title || note.body.slice(0, 48)));
+  thead.append(header); table.append(thead); const tbody = document.createElement('tbody');
+  const values = { ...(state.values ?? {}) };
+  criteria.forEach((criterion, rowIndex) => {
+    const row = document.createElement('tr'); row.append(thoughtText('th', criterion));
+    for (const note of selected) {
+      const cell = document.createElement('td'); const input = document.createElement('textarea'); input.rows = 3;
+      const key = `${note.id}:criterion:${encodeURIComponent(criterion)}`; input.value = values[key] ?? values[`${note.id}:${rowIndex}`] ?? ''; input.setAttribute('aria-label', `${note.title || '思考メモ'}の${criterion}`);
+      input.oninput = () => {
+        values[key] = input.value; clearTimeout(thoughtCompareTimer);
+        thoughtCompareTimer = setTimeout(() => { if (!activeInvestigationWorkspace) return; void saveInvestigationState({ thoughtCompare: { ...thoughtCompareState(), noteIds: ids, criteria, values } }); }, 400);
+      };
+      cell.append(input); row.append(cell);
+    }
+    tbody.append(row);
+  });
+  table.append(tbody); host.append(table);
+}
+
+async function createThoughtFromComparison() {
+  if (!activeInvestigationWorkspace) return;
+  const state = thoughtCompareState();
+  const reflection = document.getElementById('thought-compare-reflection')?.value.trim() ?? '';
+  const ids = (state.noteIds ?? []).filter(id => activeInvestigationWorkspace.thoughts.some(note => note.id === id));
+  if (ids.length < 2) { investigationStatus('比較からメモを作るには、思考メモを2件以上選んでください。', true); return; }
+  if (!reflection) { investigationStatus('比較して気付いたことを入力してください。', true); return; }
+  try {
+    await saveInvestigationState({ thoughtCompare: { ...state, reflection } });
+    const result = await api.post('/api/thought-notes', { title: '比較からの気付き', body: reflection, kind: 'interpretation' });
+    const attached = await api.post(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-notes`, { thoughtNoteId: result.thought.id });
+    activeInvestigationWorkspace = attached.workspace;
+    for (const sourceThoughtId of ids) {
+      const linked = await api.post(`/api/workspaces/${encodeURIComponent(activeInvestigationWorkspace.id)}/thought-links`, { sourceThoughtId, targetThoughtId: result.thought.id, description: '比較から生まれた気付き' });
+      activeInvestigationWorkspace = linked.workspace;
+    }
+    selectedThoughtNote = result.thought; thoughtEditorDirty = false;
+    await searchThoughtNotes(); setInvestigationWorkspace(activeInvestigationWorkspace); await openThoughtNote(result.thought.id);
+    investigationStatus('比較から思考メモを作成し、比較対象との関係を保存しました。');
+  } catch (error) { investigationStatus(error.message || '比較から思考メモを作成できませんでした。', true); }
+}
+
+document.getElementById('thought-edit-title')?.addEventListener('input', () => { thoughtEditorDirty = true; persistThoughtDraft(); document.getElementById('thought-version-label').textContent = '未保存の変更'; });
+document.getElementById('thought-edit-kind')?.addEventListener('change', () => { thoughtEditorDirty = true; persistThoughtDraft(); document.getElementById('thought-version-label').textContent = '未保存の変更'; });
+document.getElementById('thought-edit-body')?.addEventListener('input', () => { thoughtEditorDirty = true; persistThoughtDraft(); document.getElementById('thought-version-label').textContent = '未保存の変更'; });
+document.getElementById('thought-compare-criteria')?.addEventListener('input', () => {
+  if (!activeInvestigationWorkspace) return;
+  const criteria = [...new Set(document.getElementById('thought-compare-criteria').value.split('\n').map(value => value.trim()).filter(Boolean))].slice(0, 12);
+  clearTimeout(thoughtCompareTimer);
+  thoughtCompareTimer = setTimeout(() => { void saveInvestigationState({ thoughtCompare: { ...thoughtCompareState(), criteria } }); renderThoughtComparison(); }, 400);
+});
+document.getElementById('thought-compare-reflection')?.addEventListener('input', () => {
+  if (!activeInvestigationWorkspace) return;
+  const reflection = document.getElementById('thought-compare-reflection').value;
+  clearTimeout(thoughtCompareTimer);
+  thoughtCompareTimer = setTimeout(() => { void saveInvestigationState({ thoughtCompare: { ...thoughtCompareState(), reflection } }); }, 400);
+});
+
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('investigation-thought-search')?.addEventListener('keydown', event => { if (event.key === 'Enter') searchThoughtNotes(); });
   document.getElementById('investigation-search-query')?.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.isComposing) runInvestigationSearch(); });
   document.getElementById('investigation-source-query')?.addEventListener('keydown', event => { if (event.key === 'Enter') searchInvestigationSources(); });
   document.getElementById('investigation-search-query')?.addEventListener('input', () => {
