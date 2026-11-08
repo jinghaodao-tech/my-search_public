@@ -3,7 +3,9 @@
     "argv": [
       "C:\\Program Files\\nodejs\\node.exe",
       "C:\\Users\\jingh\\my-search-app_public\\node_modules\\@playwright\\test\\cli.js",
-      "test"
+      "test",
+      "--grep-invert",
+      "opt-in local lab records synthetic consented events and permits deletion|separated and integrated E6 workflows complete the same synthetic task with the same source and calculator|E0 refind and resume tasks run their declared phase sequences and report completion separately|Electron separates remote pages, allows two HTTPS tabs, and refuses unsafe destinations"
     ],
     "configFile": "C:\\Users\\jingh\\my-search-app_public\\playwright.config.ts",
     "rootDir": "C:/Users/jingh/my-search-app_public/e2e",
@@ -47,7 +49,7 @@
       [
         "json",
         {
-          "outputFile": "C:\\Users\\jingh\\my-search-app_public\\artifacts\\e2e-tests.json"
+          "outputFile": "C:\\Users\\jingh\\my-search-app_public\\artifacts\\e2e-tests-default.json"
         }
       ]
     ],
@@ -63,19 +65,556 @@
     "workers": 1,
     "webServer": {
       "command": "npx tsx scripts/start_e2e_server.ts",
-      "url": "http://127.0.0.1:3100",
+      "url": "http://127.0.0.1:3202",
       "reuseExistingServer": false,
       "timeout": 120000,
       "env": {
-        "PORT": "3100",
-        "DB_PATH": "data/e2e-test.db",
+        "PORT": "3202",
+        "DB_PATH": "C:\\Users\\jingh\\AppData\\Local\\Temp\\my-search-e2e-57bef7a9ac114190b380b76a4f3dc624.db",
         "MOCK_AI_SUMMARY": "true",
         "IMPORT_RATE_LIMIT": "1000",
-        "E2E_RESET_DB": "true"
+        "E2E_RESET_DB": "true",
+        "RESEARCH_EXPERIMENTS_ENABLED": "false",
+        "RESEARCH_EXPERIMENTS_STORAGE": "test",
+        "CARD_SEARCH_ENGINE": "fts5"
       }
     }
   },
   "suites": [
+    {
+      "title": "card-editor-consolidation.spec.ts",
+      "file": "card-editor-consolidation.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "memo creation and edit use the same editor on desktop and mobile",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3938,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:24.942Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6e0888b1be3dc15c5ab0-8439824c5c45def7b246",
+          "file": "card-editor-consolidation.spec.ts",
+          "line": 54,
+          "column": 1
+        },
+        {
+          "title": "article and PDF use the same responsive editor and retain original source/citation metadata",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5013,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:29.152Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6e0888b1be3dc15c5ab0-800d27ab1857a591d551",
+          "file": "card-editor-consolidation.spec.ts",
+          "line": 91,
+          "column": 1
+        },
+        {
+          "title": "desktop list pencil and mobile detail edit open the shared editor for every card type",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5018,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:34.186Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6e0888b1be3dc15c5ab0-ae4176624dffdaf229b7",
+          "file": "card-editor-consolidation.spec.ts",
+          "line": 155,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "card-list-search.spec.ts",
+      "file": "card-list-search.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "searches full-width numeric queries from the saved-card list",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1030,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:39.237Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fb5d9f949954892197a3-72012b9d25cec96f9dba",
+          "file": "card-list-search.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "contextual-automation.spec.ts",
+      "file": "contextual-automation.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "F1 opens only verified snippet positions and preserves the saved-card search list",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1635,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:40.313Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-8b9d1c36d1d34ee47814",
+          "file": "contextual-automation.spec.ts",
+          "line": 32,
+          "column": 1
+        },
+        {
+          "title": "F2 distinguishes a saved-card search API failure from zero results and retries unchanged terms",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1152,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:41.965Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-dcd380b9a5c845cd5bf6",
+          "file": "contextual-automation.spec.ts",
+          "line": 69,
+          "column": 1
+        },
+        {
+          "title": "F2 gives a retry path for collected-search API errors without changing scope or query",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1117,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:43.140Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-a5a04ac3eb728277f162",
+          "file": "contextual-automation.spec.ts",
+          "line": 89,
+          "column": 1
+        },
+        {
+          "title": "F2 records one display event for a saved-card no-result hint",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1694,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:44.275Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-3f435d69a47df7e84c4c",
+          "file": "contextual-automation.spec.ts",
+          "line": 113,
+          "column": 1
+        },
+        {
+          "title": "search-term AI suggestions are cancelled when the user changes the query",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1991,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:45.992Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-abab337b9ee7b79e0574",
+          "file": "contextual-automation.spec.ts",
+          "line": 129,
+          "column": 1
+        },
+        {
+          "title": "F3 appends a source-linked quote to the selected memo and keeps it exportable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1281,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:47.998Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-775d7ee533b8b932d99d",
+          "file": "contextual-automation.spec.ts",
+          "line": 175,
+          "column": 1
+        },
+        {
+          "title": "F4 offers a recoverable local draft and removes it when explicitly discarded",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2519,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:49.315Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-b4f09a95fb1b8d731a7f",
+          "file": "contextual-automation.spec.ts",
+          "line": 205,
+          "column": 1
+        },
+        {
+          "title": "F5 is opt-in, validates a local model proposal, and does not persist the ephemeral tool",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2484,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:51.853Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-e9301b89c7699dae0a77",
+          "file": "contextual-automation.spec.ts",
+          "line": 229,
+          "column": 1
+        },
+        {
+          "title": "F6 first shows exact source passages without AI, then runs the mock only after an explicit action",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1301,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:54.355Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-ab019c9db8b82185f9b8",
+          "file": "contextual-automation.spec.ts",
+          "line": 292,
+          "column": 1
+        },
+        {
+          "title": "contextual study recording requires consent, exports locally, and excludes user content",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2148,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:55.679Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-1221a76a4a1a57976a23",
+          "file": "contextual-automation.spec.ts",
+          "line": 315,
+          "column": 1
+        },
+        {
+          "title": "turning contextual features off hides only assistance and keeps ordinary search, Reader and saved data",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2087,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:54:57.844Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4fd10d5e1408a8e9ab95-dbf0ed01d4983bf982e3",
+          "file": "contextual-automation.spec.ts",
+          "line": 354,
+          "column": 1
+        }
+      ]
+    },
     {
       "title": "core-flows.spec.ts",
       "file": "core-flows.spec.ts",
@@ -98,12 +637,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1229,
+                  "duration": 1122,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-18T14:08:20.491Z",
+                  "startTime": "2026-11-07T07:55:08.811Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -113,7 +652,7 @@
           ],
           "id": "28695e5e3430c54ac89e-c953235c413a7cb10027",
           "file": "core-flows.spec.ts",
-          "line": 168,
+          "line": 232,
           "column": 4
         },
         {
@@ -132,12 +671,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 111,
+                  "duration": 77,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-18T14:08:21.746Z",
+                  "startTime": "2026-11-07T07:55:09.949Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -147,7 +686,7 @@
           ],
           "id": "28695e5e3430c54ac89e-2b01bacefebb228b677e",
           "file": "core-flows.spec.ts",
-          "line": 198,
+          "line": 262,
           "column": 1
         },
         {
@@ -166,12 +705,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 680,
+                  "duration": 666,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-18T14:08:21.876Z",
+                  "startTime": "2026-11-07T07:55:10.039Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -181,7 +720,7 @@
           ],
           "id": "28695e5e3430c54ac89e-322c2e34eafaf135e729",
           "file": "core-flows.spec.ts",
-          "line": 223,
+          "line": 287,
           "column": 1
         }
       ],
@@ -189,7 +728,7 @@
         {
           "title": "core user flows",
           "file": "core-flows.spec.ts",
-          "line": 46,
+          "line": 47,
           "column": 6,
           "specs": [
             {
@@ -208,12 +747,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1799,
+                      "duration": 939,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-10-18T14:08:11.691Z",
+                      "startTime": "2026-11-07T07:54:59.974Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -223,7 +762,7 @@
               ],
               "id": "28695e5e3430c54ac89e-f7d5e32b2db393e5068c",
               "file": "core-flows.spec.ts",
-              "line": 47,
+              "line": 48,
               "column": 3
             },
             {
@@ -242,12 +781,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1126,
+                      "duration": 1312,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-10-18T14:08:13.852Z",
+                      "startTime": "2026-11-07T07:55:00.931Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -257,7 +796,41 @@
               ],
               "id": "28695e5e3430c54ac89e-964a58f5c8e553828db4",
               "file": "core-flows.spec.ts",
-              "line": 52,
+              "line": 53,
+              "column": 3
+            },
+            {
+              "title": "keeps distinct FAQ cards in saved-card search unless deduplication is selected",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1158,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-07T07:55:02.260Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "28695e5e3430c54ac89e-50f598a3477474244b38",
+              "file": "core-flows.spec.ts",
+              "line": 100,
               "column": 3
             },
             {
@@ -276,12 +849,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1358,
+                      "duration": 1356,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-10-18T14:08:15.003Z",
+                      "startTime": "2026-11-07T07:55:03.439Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -291,7 +864,7 @@
               ],
               "id": "28695e5e3430c54ac89e-9f81e74a455e2543fa07",
               "file": "core-flows.spec.ts",
-              "line": 83,
+              "line": 145,
               "column": 3
             },
             {
@@ -310,12 +883,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1490,
+                      "duration": 1458,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-10-18T14:08:16.382Z",
+                      "startTime": "2026-11-07T07:55:04.813Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -325,7 +898,7 @@
               ],
               "id": "28695e5e3430c54ac89e-1d50b9c353e5215fbee0",
               "file": "core-flows.spec.ts",
-              "line": 105,
+              "line": 167,
               "column": 3
             },
             {
@@ -344,12 +917,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1456,
+                      "duration": 1480,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-10-18T14:08:17.904Z",
+                      "startTime": "2026-11-07T07:55:06.288Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -359,7 +932,7 @@
               ],
               "id": "28695e5e3430c54ac89e-a64a6d46a43c84e79ce3",
               "file": "core-flows.spec.ts",
-              "line": 136,
+              "line": 200,
               "column": 3
             },
             {
@@ -378,12 +951,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1096,
+                      "duration": 1005,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-10-18T14:08:19.379Z",
+                      "startTime": "2026-11-07T07:55:07.787Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -393,10 +966,1134 @@
               ],
               "id": "28695e5e3430c54ac89e-f345682b82cb180da97d",
               "file": "core-flows.spec.ts",
-              "line": 155,
+              "line": 219,
               "column": 3
             }
           ]
+        }
+      ]
+    },
+    {
+      "title": "integrated-restart.spec.ts",
+      "file": "integrated-restart.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "saved-card quote and memo refinding plus integrated citations survive an actual server restart",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15109,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:10.735Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5800a80f7de4a50e8cb2-0ab071d7bc6ff4f0b5ed",
+          "file": "integrated-restart.spec.ts",
+          "line": 88,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "integrated-workspace.spec.ts",
+      "file": "integrated-workspace.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "one workspace can compare three saved sources, insert a verified citation, resume, search, and export",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3867,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:25.879Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c8dc25e45bfba6f38065-ce223d5bb5f0eb857051",
+          "file": "integrated-workspace.spec.ts",
+          "line": 13,
+          "column": 1
+        },
+        {
+          "title": "writing toolbar formats selected text and lines, updates preview, and restores the saved Markdown",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1658,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:29.763Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c8dc25e45bfba6f38065-df669b8e9488f9bc141b",
+          "file": "integrated-workspace.spec.ts",
+          "line": 125,
+          "column": 1
+        },
+        {
+          "title": "a user-selected local PDF can switch between extracted text and the original page",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2600,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:31.439Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c8dc25e45bfba6f38065-29fe52cb8af788db43f8",
+          "file": "integrated-workspace.spec.ts",
+          "line": 154,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "investigation-workspaces.spec.ts",
+      "file": "investigation-workspaces.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "organizes shared sources, searches, compares, attaches existing work, and resumes on mobile",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2337,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:34.066Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7f629fa38fbcf9d3ad2f-ebf5f82734319e903212",
+          "file": "investigation-workspaces.spec.ts",
+          "line": 13,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "reader-tools.spec.ts",
+      "file": "reader-tools.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "uses inline calculator and comparison from source, then saves and restores input state",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1972,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:36.448Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-4f4db07d898bfe8c3973",
+          "file": "reader-tools.spec.ts",
+          "line": 33,
+          "column": 1
+        },
+        {
+          "title": "ordinary article stays unchanged and text selection remains available for quoting",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 925,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:38.438Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-0226832fad11a568a742",
+          "file": "reader-tools.spec.ts",
+          "line": 82,
+          "column": 1
+        },
+        {
+          "title": "searches a saved article, opens its linked memo in Reader, and saves a source-linked quote to the same card",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1360,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:39.379Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-a13556c5f2627b215c23",
+          "file": "reader-tools.spec.ts",
+          "line": 96,
+          "column": 1
+        },
+        {
+          "title": "completes search, Reader tools, memo save, interruption, resume and source trace in one flow",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2318,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:40.755Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-dc82ff8ab79a264a8aa8",
+          "file": "reader-tools.spec.ts",
+          "line": 133,
+          "column": 1
+        },
+        {
+          "title": "keeps a saved article and memo readable when its original URL is offline",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1012,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:43.088Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-1a9a3eaa137cd01f3e04",
+          "file": "reader-tools.spec.ts",
+          "line": 194,
+          "column": 1
+        },
+        {
+          "title": "keeps saved-card search, Reader and memo updates available with AI and Reader tools disabled",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1335,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:44.114Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-1c92cff85b3dbc7f6f69",
+          "file": "reader-tools.spec.ts",
+          "line": 217,
+          "column": 1
+        },
+        {
+          "title": "resumes the active saved article and reading position after reload without creating another card",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1773,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:45.466Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-5774e4467cda71d19556",
+          "file": "reader-tools.spec.ts",
+          "line": 245,
+          "column": 1
+        },
+        {
+          "title": "reopening and saving the same logical article updates one card instead of duplicating it",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1323,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:47.258Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-87b8798f312bd06a2710",
+          "file": "reader-tools.spec.ts",
+          "line": 278,
+          "column": 1
+        },
+        {
+          "title": "shows a source-change warning and preserves saved tool values while memo edits continue",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1411,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:48.596Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-9d350ecedf58a3eb3c6f",
+          "file": "reader-tools.spec.ts",
+          "line": 302,
+          "column": 1
+        },
+        {
+          "title": "keeps a duplicate source quote and refuses to guess its Reader location",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1024,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:50.027Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-0c41d41ae44f91f66ce4",
+          "file": "reader-tools.spec.ts",
+          "line": 351,
+          "column": 1
+        },
+        {
+          "title": "discards corrupt last-session cache without changing a saved memo or tool state",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1010,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:51.075Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-a8fb9ed86bba7cfdb46d",
+          "file": "reader-tools.spec.ts",
+          "line": 377,
+          "column": 1
+        },
+        {
+          "title": "falls back to the top when the saved reading paragraph no longer exists",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 834,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:52.103Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-55ea1daa178838d5032c",
+          "file": "reader-tools.spec.ts",
+          "line": 404,
+          "column": 1
+        },
+        {
+          "title": "article-provided HTML-like labels stay inert in Reader and tool UI",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1048,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:52.953Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-4d32bc9a72aa2400cbe1",
+          "file": "reader-tools.spec.ts",
+          "line": 424,
+          "column": 1
+        },
+        {
+          "title": "failed save keeps the Reader open with its memo and tool inputs available for retry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1233,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:54.017Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-926e099f75aa80bed6e4",
+          "file": "reader-tools.spec.ts",
+          "line": 445,
+          "column": 1
+        },
+        {
+          "title": "article fetch failure falls back to manual reading and normal card saving",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1289,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:55.265Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-df8002b0b9047e12af69",
+          "file": "reader-tools.spec.ts",
+          "line": 462,
+          "column": 1
+        },
+        {
+          "title": "administration actions remain reachable from the compact top bar",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1033,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:56.571Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-60985cdd610d4dcef342",
+          "file": "reader-tools.spec.ts",
+          "line": 483,
+          "column": 1
+        },
+        {
+          "title": "touch opens an applicable tool from its source paragraph",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 880,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:57.621Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-1d1e64719ad8e499b931",
+          "file": "reader-tools.spec.ts",
+          "line": 495,
+          "column": 1
+        },
+        {
+          "title": "internal feature flag hides tools and preserves ordinary Reader",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "run with READER_TOOLS_ENABLED=false",
+                  "location": {
+                    "file": "C:\\Users\\jingh\\my-search-app_public\\e2e\\reader-tools.spec.ts",
+                    "line": 513,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 127,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:58.516Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "run with READER_TOOLS_ENABLED=false",
+                      "location": {
+                        "file": "C:\\Users\\jingh\\my-search-app_public\\e2e\\reader-tools.spec.ts",
+                        "line": 513,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-2407977334670a315085",
+          "file": "reader-tools.spec.ts",
+          "line": 512,
+          "column": 1
+        },
+        {
+          "title": "demo sample supports the full saved-article, tool, memo and resume flow",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "run against the isolated demo database",
+                  "location": {
+                    "file": "C:\\Users\\jingh\\my-search-app_public\\e2e\\reader-tools.spec.ts",
+                    "line": 528,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 129,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:58.659Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "run against the isolated demo database",
+                      "location": {
+                        "file": "C:\\Users\\jingh\\my-search-app_public\\e2e\\reader-tools.spec.ts",
+                        "line": 528,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-a84b4a5eba37c61ef035",
+          "file": "reader-tools.spec.ts",
+          "line": 527,
+          "column": 1
+        },
+        {
+          "title": "narrow viewport keeps primary navigation and Reader controls within the screen",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1105,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:58.803Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1d8ce078a0ad31962ebd-f47f3e18a03bd9e5d932",
+          "file": "reader-tools.spec.ts",
+          "line": 572,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "refind-study.spec.ts",
+      "file": "refind-study.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "shows voluntary study consent and allows withdrawal before any search is recorded",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1008,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:55:59.941Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1bc23a52de47348f0509-ef240a9129d1487b1a89",
+          "file": "refind-study.spec.ts",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "captures an opted-in natural search from the saved-card list and confirms its target there",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1403,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:56:00.962Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1bc23a52de47348f0509-2b4d8120b7cbe8a5d1a6",
+          "file": "refind-study.spec.ts",
+          "line": 32,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "research-experiment-disabled.spec.ts",
+      "file": "research-experiment-disabled.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "research lab and measurement API stay unavailable with the default-off flag",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 289,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:56:02.401Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "94b3aaf5fecd21f006fb-db12f24309f487475120",
+          "file": "research-experiment-disabled.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "research-experiment-toggle.spec.ts",
+      "file": "research-experiment-toggle.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "OFF→ON→OFF leaves copied DB content and normal page/list/search responses unchanged",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15396,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:56:02.753Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "96144f78a4c3d17308a9-1e0d3b4352117562b98a",
+          "file": "research-experiment-toggle.spec.ts",
+          "line": 94,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "saved-reader-search.spec.ts",
+      "file": "saved-reader-search.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "finds a phrase only in the saved Reader tail from both search screens and opens its source paragraph",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1530,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:56:18.181Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cca42fab9e095450196d-aad6bef864f2f8d9669e",
+          "file": "saved-reader-search.spec.ts",
+          "line": 5,
+          "column": 1
         }
       ]
     },
@@ -422,12 +2119,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1772,
+                  "duration": 1794,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-18T14:08:22.613Z",
+                  "startTime": "2026-11-07T07:56:19.747Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -441,14 +2138,216 @@
           "column": 1
         }
       ]
+    },
+    {
+      "title": "ui-surface-audit.spec.ts",
+      "file": "ui-surface-audit.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "primary views and shared operational modals are reachable and consistent",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4359,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:56:21.579Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "899e7907262194046625-ea135c27b6d108b345e8",
+          "file": "ui-surface-audit.spec.ts",
+          "line": 7,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "research-experiment-enabled.spec.ts",
+      "file": "research-experiment-enabled.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "opt-in local lab records synthetic consented events and permits deletion",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 602,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:56:36.709Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "6dc31b31d88b66cf1885-86f1bb6b1e4fdd73b368",
+          "file": "research-experiment-enabled.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "research-experiment-workflows.spec.ts",
+      "file": "research-experiment-workflows.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "separated and integrated E6 workflows complete the same synthetic task with the same source and calculator",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 12679,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:56:37.626Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "43206d6c9719c8a1e4d5-f57601ba78e7cb010977",
+          "file": "research-experiment-workflows.spec.ts",
+          "line": 6,
+          "column": 1
+        },
+        {
+          "title": "E0 refind and resume tasks run their declared phase sequences and report completion separately",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1912,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:56:50.323Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "43206d6c9719c8a1e4d5-a5010c44832abd2ec09e",
+          "file": "research-experiment-workflows.spec.ts",
+          "line": 163,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "desktop-workspace.spec.ts",
+      "file": "desktop-workspace.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Electron separates remote pages, allows two HTTPS tabs, and refuses unsafe destinations",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 112642,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-07T07:57:03.145Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "79ffb3356d47e10cc7c6-6fdf73bbb996c893278f",
+          "file": "desktop-workspace.spec.ts",
+          "line": 5,
+          "column": 1
+        }
+      ]
     }
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-10-18T14:08:04.395Z",
-    "duration": 22568.380999999998,
-    "expected": 10,
-    "skipped": 0,
+    "startTime": "2026-11-07T07:54:16.305Z",
+    "duration": 155477.761,
+    "expected": 58,
+    "skipped": 2,
     "unexpected": 0,
     "flaky": 0
   }

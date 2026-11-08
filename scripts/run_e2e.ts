@@ -11,8 +11,14 @@ const enabledExperimentTests = [
   'E0 refind and resume tasks run their declared phase sequences and report completion separately',
 ].join('|');
 const desktopTests = 'Electron separates remote pages, allows two HTTPS tabs, and refuses unsafe destinations';
+const readerToolsDisabledTest = 'internal feature flag hides tools and preserves ordinary Reader';
+const demoModeTest = 'demo sample supports the full saved-article, tool, memo and resume flow';
+const conditionallyRunTests = [enabledExperimentTests, desktopTests, readerToolsDisabledTest, demoModeTest].join('|');
 
-function runSuite(name: string, grep: string[] = [], researchExperimentsEnabled = false) {
+function runSuite(name: string, grep: string[] = [], options: {
+  researchExperimentsEnabled?: boolean;
+  env?: Record<string, string>;
+} = {}) {
   const reportPath = path.join(artifactsDir, `e2e-tests-${name}.json`);
   const result = spawnSync(process.execPath, [
     playwrightCli,
@@ -23,31 +29,33 @@ function runSuite(name: string, grep: string[] = [], researchExperimentsEnabled 
     env: {
       ...process.env,
       E2E_JSON_OUTPUT_FILE: reportPath,
-      E2E_RESEARCH_EXPERIMENTS_ENABLED: String(researchExperimentsEnabled),
+      E2E_RESEARCH_EXPERIMENTS_ENABLED: String(options.researchExperimentsEnabled ?? false),
+      ...options.env,
     },
   });
   if (result.error) throw result.error;
   return { status: result.status ?? 1, reportPath };
 }
 
-const defaultSuite = runSuite('default', ['--grep-invert', `${enabledExperimentTests}|${desktopTests}`]);
-const enabledSuite = runSuite('research-enabled', ['--grep', enabledExperimentTests], true);
+// Run Electron before the long Chromium suites to avoid resource pressure from
+// dozens of browser tests affecting native app startup on Windows runners.
 const desktopSuite = runSuite('desktop', ['--grep', desktopTests]);
+const defaultSuite = runSuite('default', ['--grep-invert', conditionallyRunTests]);
+const enabledSuite = runSuite('research-enabled', ['--grep', enabledExperimentTests], { researchExperimentsEnabled: true });
+const readerToolsDisabledSuite = runSuite('reader-tools-disabled', ['--grep', readerToolsDisabledTest], { env: { READER_TOOLS_ENABLED: 'false' } });
+const demoSuite = runSuite('demo-mode', ['--grep', demoModeTest], { env: { DEMO_MODE: 'true', DEMO_DATA_SCOPE: 'local' } });
 
 const readReport = (filePath: string) => JSON.parse(fs.readFileSync(filePath, 'utf-8')) as Record<string, any>;
-const defaultReport = readReport(defaultSuite.reportPath);
-const enabledReport = readReport(enabledSuite.reportPath);
-const desktopReport = readReport(desktopSuite.reportPath);
+const reports = [defaultSuite, enabledSuite, readerToolsDisabledSuite, demoSuite, desktopSuite].map(suite => readReport(suite.reportPath));
 const numericStats = ['expected', 'skipped', 'unexpected', 'flaky', 'duration'];
-const stats = Object.fromEntries(numericStats.map((key) => [
-  key,
-  Number(defaultReport.stats?.[key] ?? 0) + Number(enabledReport.stats?.[key] ?? 0),
+const stats = Object.fromEntries(numericStats.map(key => [key,
+  reports.reduce((total, report) => total + Number(report.stats?.[key] ?? 0), 0),
 ]));
 const mergedReport = {
-  ...defaultReport,
-  stats: { ...defaultReport.stats, ...stats },
-  suites: [...(defaultReport.suites ?? []), ...(enabledReport.suites ?? []), ...(desktopReport.suites ?? [])],
+  ...reports[0],
+  stats: { ...reports[0].stats, ...stats },
+  suites: reports.flatMap(report => report.suites ?? []),
 };
 fs.writeFileSync(path.join(artifactsDir, 'e2e-tests.json'), JSON.stringify(mergedReport, null, 2), 'utf-8');
 
-process.exit(defaultSuite.status || enabledSuite.status || desktopSuite.status);
+process.exit(defaultSuite.status || enabledSuite.status || readerToolsDisabledSuite.status || demoSuite.status || desktopSuite.status);

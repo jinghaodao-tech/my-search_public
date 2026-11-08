@@ -353,6 +353,81 @@ const migrations: Migration[] = [
       PRIMARY KEY(workspace_id, saved_search_id)
     );
   ` },
+  { id: '031_create_thinking_workspace', sql: `
+    CREATE TABLE IF NOT EXISTS thought_notes (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL DEFAULT '' CHECK(length(title) <= 200),
+      body TEXT NOT NULL DEFAULT '' CHECK(length(body) <= 20000),
+      kind TEXT NOT NULL DEFAULT 'free' CHECK(kind IN ('free','question','hypothesis','interpretation','evidence','counterargument','decision')),
+      version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      CHECK(length(trim(title)) > 0 OR length(trim(body)) > 0)
+    );
+    CREATE INDEX IF NOT EXISTS idx_thought_notes_updated ON thought_notes(updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS thought_note_revisions (
+      thought_note_id TEXT NOT NULL REFERENCES thought_notes(id) ON DELETE CASCADE,
+      version INTEGER NOT NULL CHECK(version > 0),
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      saved_at TEXT NOT NULL,
+      PRIMARY KEY(thought_note_id, version)
+    );
+
+    CREATE TABLE IF NOT EXISTS investigation_workspace_thoughts (
+      workspace_id TEXT NOT NULL REFERENCES investigation_workspaces(id) ON DELETE CASCADE,
+      thought_note_id TEXT NOT NULL REFERENCES thought_notes(id) ON DELETE CASCADE,
+      group_id TEXT,
+      position INTEGER NOT NULL DEFAULT 0,
+      position_x REAL NOT NULL DEFAULT 0,
+      position_y REAL NOT NULL DEFAULT 0,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY(workspace_id, thought_note_id),
+      FOREIGN KEY(workspace_id, group_id) REFERENCES investigation_workspace_groups(workspace_id, id) ON DELETE RESTRICT
+    );
+    CREATE INDEX IF NOT EXISTS idx_workspace_thoughts_order ON investigation_workspace_thoughts(workspace_id,group_id,position);
+
+    CREATE TABLE IF NOT EXISTS investigation_workspace_thought_links (
+      workspace_id TEXT NOT NULL REFERENCES investigation_workspaces(id) ON DELETE CASCADE,
+      id TEXT NOT NULL,
+      source_thought_id TEXT NOT NULL,
+      target_thought_id TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '' CHECK(length(description) <= 300),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY(workspace_id, id),
+      UNIQUE(workspace_id, source_thought_id, target_thought_id),
+      CHECK(source_thought_id <> target_thought_id),
+      FOREIGN KEY(workspace_id, source_thought_id) REFERENCES investigation_workspace_thoughts(workspace_id, thought_note_id) ON DELETE CASCADE,
+      FOREIGN KEY(workspace_id, target_thought_id) REFERENCES investigation_workspace_thoughts(workspace_id, thought_note_id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_workspace_thought_links_source ON investigation_workspace_thought_links(workspace_id,source_thought_id);
+
+    CREATE TABLE IF NOT EXISTS thought_note_references (
+      id TEXT PRIMARY KEY,
+      thought_note_id TEXT NOT NULL REFERENCES thought_notes(id) ON DELETE CASCADE,
+      source_card_id TEXT REFERENCES cards(id) ON DELETE SET NULL,
+      source_title TEXT NOT NULL,
+      source_url TEXT,
+      quote_text TEXT NOT NULL CHECK(length(quote_text) BETWEEN 1 AND 3000),
+      source_hash TEXT NOT NULL,
+      paragraph_index INTEGER NOT NULL CHECK(paragraph_index >= 0),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_thought_note_references_note ON thought_note_references(thought_note_id,created_at);
+    CREATE INDEX IF NOT EXISTS idx_thought_note_references_source ON thought_note_references(source_card_id);
+  ` },
+  { id: '032_link_thought_notes_to_documents', sql: `
+    CREATE TABLE IF NOT EXISTS document_thought_notes (
+      document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      thought_note_id TEXT NOT NULL REFERENCES thought_notes(id) ON DELETE CASCADE,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY(document_id, thought_note_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_document_thought_notes_note ON document_thought_notes(thought_note_id,document_id);
+  ` },
 ];
 
 function columns(db: Database.Database, table: string): Set<string> {

@@ -4,6 +4,58 @@
 let readerArticle = null;
 let readerCandidateId = null;
 let readerCardId = null; // set when an existing card is opened for editing
+const documentReferenceReaderPositions = new Map();
+
+function restoreReaderModalHome() {
+  const modal = document.getElementById('modal-reader');
+  const home = document.getElementById('reader-modal-home');
+  if (!modal || !home?.parentNode) return;
+  modal.dataset.readerEmbedded = 'false';
+  home.parentNode.insertBefore(modal, home.nextSibling);
+}
+
+function mountReaderForCurrentContext() {
+  const modal = document.getElementById('modal-reader');
+  const host = document.getElementById('document-reader-host');
+  const inline = typeof isResearchDocumentWorkspaceActive === 'function' && isResearchDocumentWorkspaceActive() && host;
+  if (inline) {
+    host.append(modal);
+    modal.dataset.readerEmbedded = 'true';
+  } else restoreReaderModalHome();
+}
+
+function saveEmbeddedReaderPosition(cardId = readerCardId) {
+  if (!cardId || document.getElementById('modal-reader')?.dataset.readerEmbedded !== 'true') return;
+  const left = document.querySelector('#modal-reader .reader-left');
+  const originalCanvas = document.querySelector('#modal-reader .reader-original-pdf-canvas-wrap');
+  const pageInput = document.getElementById('reader-original-pdf-page');
+  const position = {
+    articleTop: left?.scrollTop ?? 0,
+    pdfTop: originalCanvas?.scrollTop ?? 0,
+    pdfPage: Number(pageInput?.value) || 1,
+  };
+  documentReferenceReaderPositions.set(cardId, position);
+  try { sessionStorage.setItem(`my-search:reader-position:${cardId}`, JSON.stringify(position)); } catch { /* session storage may be disabled */ }
+}
+
+function restoreEmbeddedReaderPosition(cardId) {
+  let saved = documentReferenceReaderPositions.get(cardId);
+  if (!saved) {
+    try { saved = JSON.parse(sessionStorage.getItem(`my-search:reader-position:${cardId}`) || 'null'); } catch { /* stored state may be invalid */ }
+  }
+  if (!saved) return;
+  requestAnimationFrame(() => {
+    const left = document.querySelector('#modal-reader .reader-left');
+    const originalCanvas = document.querySelector('#modal-reader .reader-original-pdf-canvas-wrap');
+    if (left) left.scrollTop = saved.articleTop;
+    if (originalCanvas) originalCanvas.scrollTop = saved.pdfTop;
+    const pageInput = document.getElementById('reader-original-pdf-page');
+    if (pageInput && saved.pdfPage > 1 && typeof goToOriginalPdfPage === 'function' && typeof readerOriginalPdfDocument !== 'undefined' && readerOriginalPdfDocument) {
+      pageInput.value = String(saved.pdfPage);
+      goToOriginalPdfPage();
+    }
+  });
+}
 let readerPlainCardMode = false; // ordinary cards share this editor but keep their existing card-body format
 let readerEditorColor = null;
 let readerEditorColorTouched = false;
@@ -201,6 +253,7 @@ async function restoreLastReaderSession() {
 }
 
 function openReader(url = '', candidateId = null, fromSearch = false) {
+  mountReaderForCurrentContext();
   invalidateContextualRequests();
   resetEvidence();
   readerRequestVersion++;
@@ -276,6 +329,7 @@ function updateReaderLayout() {
 }
 
 function openPlainCardEditor() {
+  mountReaderForCurrentContext();
   invalidateContextualRequests();
   resetEvidence();
   readerRequestVersion++;
@@ -310,6 +364,8 @@ function openPlainCardEditor() {
 
 // Open an existing card: left = the saved copy (refetched only if none was saved), right = its memo.
 async function openReaderForCard(id) {
+  saveEmbeddedReaderPosition();
+  mountReaderForCurrentContext();
   invalidateContextualRequests();
   resetEvidence();
   searchReaderIndex = -1;
@@ -344,6 +400,7 @@ async function openReaderForCard(id) {
     renderReaderArticle();
     updateQuoteTransferAvailability();
     openModal('modal-reader');
+    restoreEmbeddedReaderPosition(id);
     persistLastReaderSession();
     offerReaderDraft();
     if (data.isReaderFormat && !readerArticle?.paragraphs.length && data.url) await loadReaderArticle();
@@ -553,7 +610,13 @@ function renderReaderArticle() {
 function updateResearchCitationTransferAvailability() {
   const button = document.getElementById('reader-research-citation-add');
   if (!button) return;
-  button.hidden = !(typeof hasResearchSearchHandoff === 'function' && hasResearchSearchHandoff());
+  const available = typeof canAddSelectedQuoteToResearchDocument === 'function'
+    ? canAddSelectedQuoteToResearchDocument()
+    : (typeof hasResearchSearchHandoff === 'function' && hasResearchSearchHandoff());
+  button.hidden = !available;
+  button.textContent = document.getElementById('modal-reader')?.dataset.readerEmbedded === 'true'
+    ? '引用を原稿へ挿入'
+    : '引用を原稿へ追加して戻る';
 }
 
 function initializeReaderToolValues(article) {
@@ -1341,11 +1404,9 @@ async function saveReaderCardOnce() {
         toast('メモを作成しました');
       }
       clearReaderDraft();
-      const savedId = readerCardId;
       closeModal('modal-reader');
       if (typeof loadCards === 'function') await loadCards();
       if (typeof loadTags === 'function') await loadTags();
-      if (savedId && currentCardId === savedId && typeof selectCard === 'function') await selectCard(savedId);
     } catch (error) {
       showApiError(error, readerCardId ? '更新に失敗しました' : '作成に失敗しました');
     }
@@ -1378,7 +1439,6 @@ async function saveReaderCardOnce() {
       toast('カードを更新しました');
       closeModal('modal-reader');
       if (typeof loadCards === 'function') await loadCards();
-      if (typeof selectCard === 'function') selectCard(readerCardId);
     } catch (error) {
       showApiError(error, '更新に失敗しました');
     }

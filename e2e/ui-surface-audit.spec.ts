@@ -10,6 +10,13 @@ async function openLibraryView(page: import('@playwright/test').Page, label: str
   await menu.getByRole('button', { name: label, exact: true }).click();
 }
 
+async function openGlobalCardViews(page: import('@playwright/test').Page) {
+  const details = page.locator('#sidebar .global-card-views');
+  if (!(await details.evaluate(element => (element as HTMLDetailsElement).open))) {
+    await details.locator('summary').click();
+  }
+}
+
 test('primary views and shared operational modals are reachable and consistent', async ({ page }) => {
   await mkdir(screenshotDir, { recursive: true });
   await page.goto('/');
@@ -27,7 +34,7 @@ test('primary views and shared operational modals are reachable and consistent',
       await openLibraryView(page, '収集した記事を確認');
     } else if (surface.label === '全カードのグルーピング' || surface.label === '全カードの関係図') {
       await openLibraryView(page, '保存済み');
-      await page.locator('#sidebar .global-card-views > summary').click();
+      await openGlobalCardViews(page);
       await page.locator('#sidebar').getByRole('button', { name: surface.label, exact: true }).click();
     } else if (surface.label === '探す') {
       await page.getByRole('button', { name: '探す', exact: true }).click();
@@ -65,7 +72,7 @@ test('primary views and shared operational modals are reachable and consistent',
   await page.locator('#mode-manager-modal button[onclick="closeModal(\'mode-manager-modal\')"]').click();
 
   await openLibraryView(page, '保存済み');
-  await page.locator('#sidebar .global-card-views > summary').click();
+  await openGlobalCardViews(page);
   await page.getByRole('button', { name: '全カードのグルーピング', exact: true }).click();
   await page.locator('#kj-board button[onclick="openNewGroupModal()"]').click();
   await expect(page.locator('#modal-group')).toHaveClass(/active/);
@@ -105,8 +112,7 @@ test('primary views and shared operational modals are reachable and consistent',
   await expect(page.locator('#modal-csv')).toHaveClass(/active/);
   await page.locator('#modal-csv').getByRole('button', { name: 'キャンセル', exact: true }).click();
 
-  await page.locator('#topbar .topbar-library > summary').click();
-  await page.locator('#topbar .topbar-library').getByRole('button', { name: '読んでメモ', exact: true }).click();
+  await page.locator('#topbar .main-nav').getByRole('button', { name: '読む・メモ', exact: true }).click();
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
   await page.screenshot({ path: path.join(screenshotDir, 'Reader.png'), fullPage: true });
   await page.locator('#modal-reader').getByRole('button', { name: '閉じる', exact: true }).click();

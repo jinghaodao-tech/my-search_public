@@ -16,13 +16,12 @@
   <h1>my-search</h1>
   <div class="tab-group main-nav">
     <button class="tab" data-view="bm25" onclick="switchView('bm25')" title="登録したサイト・収集した記事・Webから探す">探す</button>
+    <button class="tab" type="button" onclick="openReader()" title="URLから記事を開く。保存済みカードも押せば同じ画面で読めます">読む・メモ</button>
     <details class="topbar-more topbar-library">
       <summary class="tab active" data-nav-group="library">記事・メモ</summary>
       <div class="topbar-more-menu topbar-library-menu">
         <button class="tab active" data-view="cards" onclick="switchView('cards');this.closest('details').open=false">保存済み</button>
         <button class="tab" data-view="candidates" onclick="switchView('candidates');this.closest('details').open=false">収集した記事を確認</button>
-        <div class="topbar-menu-separator" role="separator"></div>
-        <button class="btn btn-primary topbar-library-action" onclick="openReader();this.closest('details').open=false">読んでメモ</button>
       </div>
     </details>
     <button class="tab" data-view="investigations" onclick="switchView('investigations')" title="保存資料を調査単位で集め、分類・比較する">調査</button>
@@ -58,12 +57,13 @@
       </div>
       <p id="investigation-status" class="reader-note" aria-live="polite">調査を作成するか、既存の調査を選んでください。</p>
       <div id="investigation-content" hidden>
-        <nav class="investigation-tabs" aria-label="調査内の作業">
-          <button type="button" class="tab active" data-investigation-panel="materials" onclick="setInvestigationPanel('materials')">資料</button>
-          <button type="button" class="tab" data-investigation-panel="organize" onclick="setInvestigationPanel('organize')">整理</button>
-          <button type="button" class="tab" data-investigation-panel="compare" onclick="setInvestigationPanel('compare')">比較</button>
-          <button type="button" class="tab" data-investigation-panel="documents" onclick="setInvestigationPanel('documents')">原稿</button>
-        </nav>
+        <div class="investigation-context-actions" aria-label="調査対象への操作">
+          <span id="investigation-context-selection" class="reader-note">思考メモを選ぶと編集・出典・関係を確認できます。</span>
+          <button type="button" class="btn btn-secondary btn-sm" data-context-action="compare" onclick="setInvestigationPanel('compare')">資料の根拠を比べる</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-context-action="compare" data-workspace-required="true" onclick="openSelectedThoughtComparison()">選択したメモを比較</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-context-action="documents" onclick="setInvestigationPanel('documents')">原稿を開く</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-context-action="thoughts" onclick="setInvestigationPanel('thoughts')">選択対象へ戻る</button>
+        </div>
         <section class="investigation-section">
           <h3>資料を探す</h3>
           <div class="document-source-search"><input id="investigation-source-query" type="search" placeholder="保存記事・メモを検索"><button class="btn btn-secondary btn-sm" type="button" onclick="searchInvestigationSources()">検索</button></div>
@@ -76,6 +76,93 @@
           <div class="investigation-group-create"><input id="investigation-group-name" maxlength="100" placeholder="新しい分類名"><button class="btn btn-secondary btn-sm" type="button" onclick="createInvestigationGroup()">分類を追加</button></div>
           <div id="investigation-groups" class="document-sources"></div>
           <div id="investigation-graph" class="reader-note" aria-live="polite"></div>
+        </section>
+        <section class="investigation-section" data-thought-section>
+          <p class="reader-note">記事の分類とは別に、考え・疑問・仮説を自分の言葉で残します。保存後も思考メモは複数の調査で共有できます。</p>
+          <div class="document-source-search thought-search-row">
+            <input id="investigation-thought-search" type="search" placeholder="すべての思考メモを検索" aria-label="思考メモを検索">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="searchThoughtNotes()">メモを検索</button>
+          </div>
+          <div class="thought-create-grid">
+            <input id="thought-new-title" maxlength="200" placeholder="タイトル（任意）" aria-label="新しい思考メモのタイトル">
+            <select id="thought-new-kind" aria-label="思考メモの種類（任意）">
+              <option value="free">自由メモ</option><option value="question">疑問</option><option value="hypothesis">仮説</option>
+              <option value="interpretation">解釈</option><option value="evidence">根拠</option><option value="counterargument">反論候補</option><option value="decision">判断</option>
+            </select>
+            <textarea id="thought-new-body" maxlength="20000" rows="3" placeholder="まだ分類できない気付きや、未完成の考えもそのまま書けます" aria-label="新しい思考メモの本文"></textarea>
+            <button class="btn btn-primary btn-sm" type="button" onclick="createThoughtNote()">思考メモを作成</button>
+          </div>
+          <div class="thought-view-switch" role="group" aria-label="思考メモの表示">
+            <button class="btn btn-secondary btn-sm active" type="button" data-thought-view-button="list" onclick="setThoughtView('list')">一覧</button>
+            <button class="btn btn-secondary btn-sm" type="button" data-thought-view-button="map" onclick="setThoughtView('map')">関係マップ</button>
+          </div>
+          <div class="thought-map-actions" data-thought-view-controls="map" hidden>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="beginThoughtLinkCreation()">マップ上で関係線を追加</button>
+            <span class="reader-note">線をダブルクリックすると説明を編集できます。選択してDeleteで関係を削除します。</span>
+          </div>
+          <div class="thought-work-area">
+            <div id="investigation-thought-list" class="thought-note-list" data-thought-view="list" aria-live="polite"></div>
+            <div id="investigation-thought-map" class="investigation-network" data-thought-view="map" hidden aria-label="調査内の思考メモ関係マップ"></div>
+            <section id="investigation-thought-editor" class="thought-editor" hidden aria-label="思考メモ編集">
+              <div class="thought-editor-heading"><strong id="thought-editor-status">未選択</strong><span id="thought-version-label" class="reader-note"></span></div>
+              <label for="thought-edit-title">タイトル</label><input id="thought-edit-title" maxlength="200">
+              <label for="thought-edit-kind">種類（任意）</label><select id="thought-edit-kind">
+                <option value="free">自由メモ</option><option value="question">疑問</option><option value="hypothesis">仮説</option>
+                <option value="interpretation">解釈</option><option value="evidence">根拠</option><option value="counterargument">反論候補</option><option value="decision">判断</option>
+              </select>
+              <label for="thought-edit-body">自分の考え</label><textarea id="thought-edit-body" maxlength="20000" rows="7"></textarea>
+              <div class="thought-editor-actions">
+                <button class="btn btn-primary btn-sm" type="button" onclick="saveThoughtNote()">思考メモを保存</button>
+                <button class="btn btn-secondary btn-sm" type="button" onclick="moveThoughtNote(-1)" data-thought-workspace-only>順序を上へ</button>
+                <button class="btn btn-secondary btn-sm" type="button" onclick="moveThoughtNote(1)" data-thought-workspace-only>順序を下へ</button>
+                <button class="btn btn-secondary btn-sm" type="button" onclick="detachThoughtNote()" data-thought-workspace-only>この調査から外す</button>
+                <button class="btn btn-danger btn-sm" type="button" onclick="deleteThoughtNote()">全体から削除</button>
+              </div>
+              <details class="thought-editor-details" data-thought-workspace-only>
+                <summary>調査内の配置とグループ</summary>
+                <label for="thought-edit-group">この調査での分類</label><select id="thought-edit-group" aria-label="思考メモの調査内分類"></select>
+              </details>
+              <details class="thought-editor-details">
+                <summary>変更履歴</summary><button class="btn btn-secondary btn-sm" type="button" onclick="loadThoughtHistory()">過去の版を表示</button>
+                <div id="thought-history" class="thought-history"></div>
+              </details>
+              <details class="thought-editor-details">
+                <summary>出典の引用と原文照合</summary>
+                <div data-thought-workspace-only>
+                  <select id="thought-reference-source" aria-label="出典資料"></select>
+                  <textarea id="thought-reference-quote" maxlength="3000" rows="3" placeholder="この調査の資料から、そのまま引用してください"></textarea>
+                  <button class="btn btn-secondary btn-sm" type="button" onclick="addThoughtReference()">原文と照合して追加</button>
+                </div>
+                <div id="thought-reference-list" class="thought-reference-list"></div>
+              </details>
+              <section class="thought-links" data-thought-workspace-only>
+                <h4>この考えとの関係</h4>
+                <div class="thought-link-create">
+                  <select id="thought-link-target" aria-label="関連する思考メモ"></select>
+                  <input id="thought-link-description" maxlength="300" placeholder="関係の説明（任意）">
+                  <button class="btn btn-secondary btn-sm" type="button" onclick="createThoughtLink()">関係を追加</button>
+                </div>
+                <div id="thought-link-list" class="thought-link-list"></div>
+              </section>
+              <div class="thought-editor-actions" data-thought-document-only hidden>
+                <button class="btn btn-secondary btn-sm" type="button" onclick="addThoughtNoteToActiveDocument()">この思考メモを原稿で参照</button>
+              </div>
+              <details class="thought-editor-details thought-ai-assist">
+                <summary>AIに検討候補を尋ねる（端末内・明示操作）</summary>
+                <p class="reader-note">モデルが使える場合だけ実行します。提案は未検証で、メモ・関係・原稿を自動変更しません。入力はこのブラウザー内のAIへ渡します。</p>
+                <div id="thought-ai-status" class="reader-note" aria-live="polite">端末内AIの状態を確認しています。</div>
+                <button id="thought-ai-prepare" class="btn btn-secondary btn-sm" type="button" onclick="prepareThoughtAI()" hidden>端末内AIを準備</button>
+                <div class="thought-editor-actions">
+                  <button class="btn btn-secondary btn-sm" type="button" onclick="runThoughtAI('related')">関連メモ・記事候補</button>
+                  <button class="btn btn-secondary btn-sm" type="button" onclick="runThoughtAI('evidence')">根拠・反例を探す</button>
+                  <button class="btn btn-secondary btn-sm" type="button" onclick="runThoughtAI('questions')">考えを深める質問</button>
+                  <button class="btn btn-secondary btn-sm" type="button" onclick="runThoughtAI('relations')">メモの関係候補</button>
+                  <button id="thought-ai-cancel" class="btn btn-secondary btn-sm" type="button" onclick="cancelThoughtAI()" disabled>AI処理を中止</button>
+                </div>
+                <div id="thought-ai-result" class="thought-ai-result" aria-live="polite"></div>
+              </details>
+            </section>
+          </div>
         </section>
         <section class="investigation-section">
           <h3>調査中に検索</h3>
@@ -90,6 +177,16 @@
           <div class="document-source-search"><input id="investigation-compare-purpose" maxlength="300" placeholder="比較したい論点"><button class="btn btn-secondary btn-sm" type="button" onclick="compareInvestigationSources()">保存本文から根拠候補</button></div>
           <p class="reader-note">オフラインの語句一致です。意味上の比較・妥当性は判定しません。引用を採用する前にReaderで原文を確認してください。</p>
           <div id="investigation-evidence" class="document-evidence-results"></div>
+          <div class="thought-comparison">
+            <h3>選んだ思考メモを論点別に比較</h3>
+            <p class="reader-note">一覧のチェック欄で最大4件を選び、比較軸と記述を自分で編集します。表の記述は元の思考メモと別に、調査内の状態として保存されます。</p>
+            <label for="thought-compare-criteria">比較軸（1行に1つ）</label>
+            <textarea id="thought-compare-criteria" rows="4" placeholder="主張&#10;条件&#10;懸念&#10;未確認"></textarea>
+            <div id="investigation-thought-comparison-table" class="thought-comparison-table"></div>
+            <label for="thought-compare-reflection">比較して気付いたこと</label>
+            <textarea id="thought-compare-reflection" rows="4" placeholder="共通点、違い、まだ確かめたいこと"></textarea>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="createThoughtFromComparison()">気付きを思考メモにする</button>
+          </div>
         </section>
         <section class="investigation-section">
           <h3>原稿と保存検索を関連付ける</h3>
@@ -128,6 +225,10 @@
         <button class="btn btn-secondary btn-sm" onclick="discardResearchDraft()">破棄</button>
       </div>
       <div class="document-workbench">
+        <div class="document-mobile-switch" role="group" aria-label="原稿と参照の表示">
+          <button type="button" class="btn btn-secondary btn-sm active" data-document-mobile-view="writing" onclick="setDocumentMobileView('writing')">原稿</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-document-mobile-view="reference" onclick="setDocumentMobileView('reference')">参照</button>
+        </div>
         <section class="document-writing-column">
           <label class="writing-label" for="document-markdown">原稿（Markdown）</label>
           <div class="document-markdown-toolbar">
@@ -142,6 +243,41 @@
           <textarea id="document-markdown" spellcheck="true" placeholder="調査した内容を書きます。引用は資料比較欄からカーソル位置へ挿入できます。"></textarea>
           <details class="document-preview-details"><summary>安全なMarkdownプレビュー</summary><div id="document-preview" class="document-preview" aria-label="Markdownプレビュー"></div></details>
         </section>
+        <aside id="document-reference-column" class="document-reference-column" aria-label="原稿の参照パネル">
+          <header class="document-reference-header">
+            <h3>参照しながら執筆</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleDocumentReferencePanel()" aria-expanded="true">参照を隠す</button>
+          </header>
+          <nav class="document-reference-tabs" role="tablist" aria-label="参照内容">
+            <button type="button" class="btn btn-secondary btn-sm active" role="tab" data-document-reference-tab="source" onclick="setDocumentReferenceTab('source')">資料</button>
+            <button type="button" class="btn btn-secondary btn-sm" role="tab" data-document-reference-tab="thoughts" onclick="setDocumentReferenceTab('thoughts')">思考メモ</button>
+            <button type="button" class="btn btn-secondary btn-sm" role="tab" data-document-reference-tab="citations" onclick="setDocumentReferenceTab('citations')">引用</button>
+            <button type="button" class="btn btn-secondary btn-sm" role="tab" data-document-reference-tab="comparison" onclick="setDocumentReferenceTab('comparison')">比較</button>
+          </nav>
+          <section class="document-reference-view" data-document-reference-view="source">
+            <label class="writing-label" for="document-reference-source">調査の資料</label>
+            <select id="document-reference-source" aria-label="参照する保存資料"><option value="">資料を選択</option></select>
+            <p id="document-reference-status" class="reader-note" role="status" aria-live="polite">資料を選ぶと、原稿を開いたまま本文を確認できます。</p>
+            <div id="document-reader-host" aria-label="埋め込みReader"></div>
+          </section>
+          <section class="document-reference-view" data-document-reference-view="thoughts" hidden>
+            <p class="reader-note">思考メモは原文の引用とは別の、自分の考えとして扱います。</p>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="attachSelectedThoughtToResearchDocument()">選択中の思考メモを参照に追加</button>
+            <div id="document-reference-thought-preview" class="document-reference-thought-preview" aria-live="polite"></div>
+            <div id="document-reference-thought-notes"></div>
+          </section>
+          <section class="document-reference-view" data-document-reference-view="citations" hidden><div id="document-reference-citations"></div></section>
+          <section class="document-reference-view" data-document-reference-view="comparison" hidden>
+            <p class="reader-note">比較候補は原文と照合してから利用してください。</p>
+            <div id="document-reference-comparison"></div>
+            <h4>思考メモの比較</h4>
+            <div id="thought-comparison-reference"></div>
+          </section>
+          <details class="document-reference-tools">
+            <summary>資料管理・比較・執筆補助</summary>
+            <div id="document-tools-content"></div>
+          </details>
+        </aside>
         <aside class="document-sources-column">
           <h3>資料と根拠</h3>
           <label class="writing-label" for="document-source-search">保存資料を追加</label>
@@ -149,6 +285,8 @@
           <div id="document-source-results" class="document-source-results"></div>
           <h4>この原稿の資料</h4>
           <div id="document-sources" class="document-sources"></div>
+          <h4>参照した思考メモ</h4>
+          <div id="document-thought-notes" class="document-sources" aria-live="polite"></div>
           <div id="document-browser-clip" class="document-browser-clip" hidden>
             <h4>内蔵ブラウザーから受け取った引用候補</h4>
             <p id="document-browser-clip-status" class="reader-note">未検証クリップです。原文と出典を目視確認してください。</p>
@@ -475,7 +613,6 @@
     <div id="detail-header">
       <h3 id="detail-title">カード詳細</h3>
       <button class="btn-icon" onclick="exportMarkdown(currentCardId)" title="Markdown出力" aria-label="Markdown出力">MD</button>
-      <button class="btn-icon" id="reader-edit-btn" onclick="openEditModal(currentCardId)" title="タイトル・本文・メモ・出典を編集">編集</button>
       <button class="btn-icon" onclick="closeDetail()" title="閉じる">×</button>
     </div>
     <div id="detail-body"></div>
@@ -484,6 +621,7 @@
 </div>
 
 <!-- モーダル: 新規カード -->
+<span id="reader-modal-home" hidden></span>
 <div class="modal-overlay" id="modal-reader">
   <div class="modal reader-modal">
     <div class="reader-bar">

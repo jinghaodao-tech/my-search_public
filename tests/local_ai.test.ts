@@ -101,6 +101,48 @@ describe('local AI (browser script): prompts and parsing', () => {
     await expect(fake.compareVerifiedSources('目的', [{ title: '資料', citations: [] }])).rejects.toThrow('2件以上');
   });
 
+  it('keeps thought assistance explicit, bounded, local, and separates lexical sources from verified quotes', async () => {
+    let prompt = '';
+    const session = { clone: async () => ({ prompt: async (text: string) => { prompt = text; return '候補 1: 条件が近い。'; }, destroy() {} }) };
+    const fake = loadLocalAi({ LanguageModel: { availability: async () => 'available', create: async () => session } });
+    const result = await fake.assistThought('related', { id: 'current', title: '仮説', body: '未知語を再発見できない。' },
+      Array.from({ length: 10 }, (_, index) => ({ id: `note-${index}`, title: `候補${index}`, body: '本文' })),
+      [{ sourceTitle: '確認済み', quote: '原文と一致する引用', verification: 'verified' }, { sourceTitle: '変更あり', quote: '送らない引用', verification: 'source_changed' }],
+      { sources: [{ id: 'card-1', sourceCardId: 'card-1', title: '語句検索の候補', excerpt: 'Reader本文の検索抜粋' }] });
+    expect(result).toMatchObject({ text: '候補 1: 条件が近い。', includedNotes: 8, includedSources: 1, includedReferences: 1, truncated: false });
+    expect(prompt).toContain('利用者のメモ');
+    expect(prompt).toContain('原文と一致する引用');
+    expect(prompt).toContain('語句検索で得た候補で意味上の関連性は未確認');
+    expect(prompt).toContain('Reader本文の検索抜粋');
+    expect(prompt).not.toContain('送らない引用');
+    expect(prompt).toContain('リンク作成はしません');
+    expect(prompt).toContain('利用者の思考を代行せず');
+    await expect(fake.assistThought('unknown', {}, [], [], {})).rejects.toThrow('unknown thought assistance kind');
+  });
+
+  it('retrieves related thought notes by token overlap and labels the result as lexical, not semantic', async () => {
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const relevant = await request(app).post('/api/thought-notes').send({ title: `未知語の検索 ${suffix}`, body: '保存本文の見落としを調べる。', kind: 'free' }).expect(201);
+    await request(app).post('/api/thought-notes').send({ title: `料理メモ ${suffix}`, body: 'カレーの香り。', kind: 'free' }).expect(201);
+    const response = await request(app).get(`/api/thought-notes?q=${encodeURIComponent(`未知語 見落とし ${suffix}`)}&mode=related`).expect(200);
+    expect(response.body.scope).toMatchObject({ method: 'sqlite-substring-token-overlap', semanticMatch: false });
+    expect(response.body.thoughts[0].id).toBe(relevant.body.thought.id);
+    expect(response.body.thoughts[0].lexicalMatchCount).toBeGreaterThan(0);
+  });
+
+  it('hard-limits thought-deepening questions to three suggestions', async () => {
+    const prompts: Array<[string, unknown]> = [];
+    const session = { clone: async () => ({ prompt: async (text: string, options: unknown) => {
+      prompts.push([text, options]);
+      return JSON.stringify(['条件は何か？', '別の説明はあるか？', '反例はあるか？', '比較対象は適切か？']);
+    }, destroy() {} }) };
+    const fake = loadLocalAi({ LanguageModel: { availability: async () => 'available', create: async () => session } });
+    const result = await fake.assistThought('questions', { title: '仮説', body: '検索の見落としがある。' }, [], [], {});
+    expect(result.text.split('\n')).toHaveLength(3);
+    expect(result.text).not.toContain('比較対象は適切か');
+    expect((prompts[0][1] as { responseConstraint: { maxItems: number } }).responseConstraint.maxItems).toBe(3);
+  });
+
   it('translates paragraph by paragraph, aligned, skipping markers, images and Japanese', async () => {
     const fake = loadLocalAi({ Translator: { availability: async () => 'available', create: async () => ({ translate: async (text: string) => `訳:${text}` }) } });
     const progress: number[] = [];
