@@ -16,11 +16,11 @@
   <h1>my-search</h1>
   <div class="tab-group main-nav">
     <button class="tab" data-view="bm25" onclick="switchView('bm25')" title="登録したサイト・収集した記事・Webから探す">探す</button>
-    <button class="tab" type="button" onclick="openReader()" title="URLから記事を開く。保存済みカードも押せば同じ画面で読めます">読む・メモ</button>
+    <button class="tab" id="nav-reader-memo" type="button" onclick="openReader()" title="記事やPDFを読み、原文を見ながらメモする">読む・メモ</button>
     <details class="topbar-more topbar-library">
-      <summary class="tab active" data-nav-group="library">記事・メモ</summary>
+      <summary class="tab active" data-nav-group="library">保存済み</summary>
       <div class="topbar-more-menu topbar-library-menu">
-        <button class="tab active" data-view="cards" onclick="switchView('cards');this.closest('details').open=false">保存済み</button>
+        <button class="tab active" data-view="cards" onclick="switchView('cards');this.closest('details').open=false">記事・メモを管理</button>
         <button class="tab" data-view="candidates" onclick="switchView('candidates');this.closest('details').open=false">収集した記事を確認</button>
       </div>
     </details>
@@ -257,13 +257,17 @@
           <section class="document-reference-view" data-document-reference-view="source">
             <label class="writing-label" for="document-reference-source">調査の資料</label>
             <select id="document-reference-source" aria-label="参照する保存資料"><option value="">資料を選択</option></select>
+            <div id="document-reference-source-tools" class="document-reference-source-tools"></div>
             <p id="document-reference-status" class="reader-note" role="status" aria-live="polite">資料を選ぶと、原稿を開いたまま本文を確認できます。</p>
             <div id="document-reader-host" aria-label="埋め込みReader"></div>
           </section>
           <section class="document-reference-view" data-document-reference-view="thoughts" hidden>
             <p class="reader-note">思考メモは原文の引用とは別の、自分の考えとして扱います。</p>
             <button type="button" class="btn btn-secondary btn-sm" onclick="attachSelectedThoughtToResearchDocument()">選択中の思考メモを参照に追加</button>
+            <label class="writing-label" for="document-reference-thought-select">この調査の思考メモを編集</label>
+            <select id="document-reference-thought-select" aria-label="編集する思考メモ"><option value="">思考メモを選択</option></select>
             <div id="document-reference-thought-preview" class="document-reference-thought-preview" aria-live="polite"></div>
+            <div id="document-reference-thought-editor"></div>
             <div id="document-reference-thought-notes"></div>
           </section>
           <section class="document-reference-view" data-document-reference-view="citations" hidden><div id="document-reference-citations"></div></section>
@@ -582,7 +586,7 @@
             <div id="bm25-result-header">
               <div id="bm25-stats" aria-live="polite"></div>
               <button class="btn btn-secondary btn-sm" onclick="openExternalSearch()">同じ検索語でWeb検索</button>
-              <button class="btn btn-secondary btn-sm" onclick="openReader()">URLを取り込む</button>
+              <button class="btn btn-secondary btn-sm" onclick="openReader()" title="URLを入力するか、手元のPDFを開いて原文を見ながらメモする">読む・メモ</button>
               <button class="btn btn-secondary btn-sm" onclick="openSourceModal()">情報源を管理</button>
               <div class="spacer"></div>
               <div id="bm25-result-actions" style="display:none;gap:6px">

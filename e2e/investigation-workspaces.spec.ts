@@ -309,11 +309,10 @@ test('writes beside one reusable Reader, inserts a verified citation, and resume
   await expect(page.locator('#modal-reader[data-reader-embedded="true"]')).toBeVisible();
   await expect(page.locator('#reader-article [data-index="0"]')).toHaveClass(/document-citation-focus/);
   await page.reload();
-  const restoredReader = page.locator('#modal-reader.active');
-  if (await restoredReader.count()) {
-    await expect(restoredReader).toBeVisible();
-    await page.locator('#reader-close-btn').click();
-  }
+  const restoredReader = page.locator('#modal-reader');
+  await expect(restoredReader).toHaveClass(/active/);
+  await page.locator('#reader-close-btn').click();
+  await expect(restoredReader).not.toHaveClass(/active/);
   await page.locator('button[data-view="investigations"]').click();
   await page.getByRole('button', { name: workspace.name, exact: true }).click();
   await page.locator('[data-context-action="documents"]').click();
@@ -401,7 +400,7 @@ test('creates, relates, cites, compares, and resumes human-authored thought note
   await page.locator('[data-context-action="thoughts"]').click();
   await page.locator('#thought-edit-body').fill('未保存を残してタブを切り替える。');
   await page.locator('[data-context-action="compare"][data-workspace-required="true"]').click();
-  await expect(page.locator('#thought-version-label')).toContainText('保存済み');
+  await expect(page.locator('#thought-version-label')).toContainText('未保存の変更');
   await page.reload();
   await page.locator('button[data-view="investigations"]').click();
   await page.getByRole('button', { name: workspace.name, exact: true }).click();
@@ -412,6 +411,78 @@ test('creates, relates, cites, compares, and resumes human-authored thought note
   await page.locator('[data-context-action="documents"]').click();
   await page.screenshot({ path: path.join(process.cwd(), 'artifacts', 'ui-investigation-integration', 'mobile-manuscript-focus.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('keeps the three main destinations while reading, editing thoughts, and writing in one investigation', async ({ page, request }) => {
+  const suffix = stamp();
+  const sourceA = await saveSource(request, `同時参照A ${suffix}`, `原文Aの内容 ${suffix}。`);
+  const sourceB = await saveSource(request, `同時参照B ${suffix}`, `原文Bの内容 ${suffix}。`);
+  const workspaceResponse = await request.post('/api/workspaces', { data: { name: `閲覧と思考 ${suffix}`, purpose: '資料を見ながら思考メモを編集する' } });
+  expect(workspaceResponse.ok()).toBeTruthy();
+  const workspace = (await workspaceResponse.json()).workspace;
+  for (const source of [sourceA, sourceB]) expect((await request.post(`/api/workspaces/${workspace.id}/sources`, { data: { cardId: source.id } })).ok()).toBeTruthy();
+  const thoughtResponse = await request.post('/api/thought-notes', { data: { title: `独立した思考 ${suffix}`, body: '考えの初期版', kind: 'interpretation' } });
+  expect(thoughtResponse.ok()).toBeTruthy();
+  const thought = (await thoughtResponse.json()).thought;
+  expect((await request.post(`/api/workspaces/${workspace.id}/thought-notes`, { data: { thoughtNoteId: thought.id } })).ok()).toBeTruthy();
+  const documentResponse = await request.post('/api/documents', { data: { title: `同時執筆 ${suffix}`, markdown: '原稿の初期版' } });
+  expect(documentResponse.ok()).toBeTruthy();
+  const manuscript = (await documentResponse.json()).document;
+  expect((await request.post(`/api/workspaces/${workspace.id}/documents`, { data: { id: manuscript.id } })).ok()).toBeTruthy();
+  expect((await request.post(`/api/documents/${manuscript.id}/thought-notes`, { data: { thoughtNoteId: thought.id } })).ok()).toBeTruthy();
+
+  await page.setViewportSize({ width: 1365, height: 900 });
+  await page.goto('/');
+  await expect(page.locator('#topbar .main-nav > button[data-view]')).toHaveText(['探す', '調査']);
+  await expect(page.locator('#nav-reader-memo')).toHaveText('読む・メモ');
+  await expect(page.locator('#topbar .topbar-library > summary')).toHaveText('保存済み');
+  await expect(page.locator('#nav-reader-memo')).toBeVisible();
+  await page.locator('button[data-view="bm25"]').click();
+  await page.getByRole('button', { name: '読む・メモ', exact: true }).first().click();
+  await expect(page.locator('#modal-reader')).toHaveClass(/active/);
+  await page.locator('#reader-close-btn').click();
+
+  await page.locator('button[data-view="investigations"]').click();
+  await page.getByRole('button', { name: workspace.name, exact: true }).click();
+  await page.locator('[data-context-action="thoughts"]').click();
+  const workbenchColumns = await page.locator('.investigation-workbench').evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length);
+  expect(workbenchColumns).toBe(2);
+  const thoughtRow = page.locator('#investigation-thought-list .thought-note-item', { hasText: thought.title });
+  await thoughtRow.getByRole('button', { name: `思考メモを開く: ${thought.title}` }).click();
+  await expect(page.locator('#thought-edit-body')).toBeVisible();
+  await page.locator('#investigation-sources .investigation-source-row', { hasText: sourceA.title }).getByRole('button', { name: 'Readerで開く' }).click();
+  await expect(page.locator('#modal-reader[data-reader-embedded="true"]')).toBeVisible();
+  await expect(page.locator('#investigation-reference-reader-host #reader-article')).toContainText(`原文Aの内容 ${suffix}`);
+  await expect(page.locator('#thought-edit-body')).toBeVisible();
+  await page.locator('#investigation-reference-source').selectOption(sourceB.id);
+  await expect(page.locator('#investigation-reference-reader-host #reader-article')).toContainText(`原文Bの内容 ${suffix}`);
+  await page.locator('#thought-edit-body').fill('資料Bも確認した未保存の考え');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('[data-investigation-mobile-view="reference"]')).toBeVisible();
+  await page.locator('[data-investigation-mobile-view="reference"]').click();
+  await expect(page.locator('#investigation-reference-work')).toBeVisible();
+  await page.locator('[data-investigation-mobile-view="work"]').click();
+  await expect(page.locator('#thought-edit-body')).toHaveValue('資料Bも確認した未保存の考え');
+  await page.setViewportSize({ width: 1365, height: 900 });
+  await page.getByRole('button', { name: '思考メモを保存', exact: true }).click();
+  expect((await (await request.get(`/api/thought-notes/${thought.id}`)).json()).thought.body).toBe('資料Bも確認した未保存の考え');
+
+  await page.locator('[data-context-action="documents"]').click();
+  await page.locator('.investigation-document-associations > summary').click();
+  await page.locator('#investigation-documents .document-source-row', { hasText: manuscript.title }).getByRole('button', { name: '編集', exact: true }).click();
+  await page.locator('[data-document-reference-tab="thoughts"]').click();
+  await page.locator('#document-reference-thought-select').selectOption(thought.id);
+  await expect(page.locator('#document-markdown')).toBeVisible();
+  await expect(page.locator('#document-reference-thought-editor #thought-edit-body')).toBeVisible();
+  await page.locator('#document-markdown').fill('資料を根拠にした原稿の続き');
+  await page.locator('#document-reference-thought-editor #thought-edit-body').fill('原稿と別に保存する思考の続き');
+  await page.locator('[data-document-reference-tab="source"]').click();
+  await page.locator('[data-document-reference-tab="thoughts"]').click();
+  await expect(page.locator('#document-reference-thought-editor #thought-edit-body')).toHaveValue('原稿と別に保存する思考の続き');
+  await page.locator('#document-reference-thought-editor').getByRole('button', { name: '思考メモを保存', exact: true }).click();
+  await page.locator('.writing-editor-toolbar').getByRole('button', { name: '保存', exact: true }).click();
+  expect((await (await request.get(`/api/documents/${manuscript.id}`)).json()).document.markdown).toBe('資料を根拠にした原稿の続き');
+  expect((await (await request.get(`/api/thought-notes/${thought.id}`)).json()).thought.body).toBe('原稿と別に保存する思考の続き');
 });
 
 test('thought note ordering controls work by touch in a mobile viewport', async ({ browser, request }) => {

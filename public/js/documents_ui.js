@@ -18,7 +18,17 @@ function initializeDocumentReferencePanel() {
   const tools = document.getElementById('document-tools-content');
   const legacy = document.querySelector('.document-sources-column');
   if (tools && legacy && !tools.dataset.initialized) {
-    while (legacy.firstChild) tools.append(legacy.firstChild);
+    const sourceHost = document.getElementById('document-reference-source-tools');
+    const sourceLabel = legacy.querySelector('label[for="document-source-search"]');
+    const sourceSearch = document.getElementById('document-source-search')?.closest('.document-source-search');
+    const sourceResults = document.getElementById('document-source-results');
+    const sourceListHeading = [...legacy.querySelectorAll('h4')].find(node => node.textContent?.includes('この原稿の資料'));
+    const sourceList = document.getElementById('document-sources');
+    if (sourceHost && sourceLabel && sourceSearch && sourceResults && sourceListHeading && sourceList) {
+      const visibleSourceNodes = new Set([sourceLabel, sourceSearch, sourceResults, sourceListHeading, sourceList]);
+      sourceHost.append(sourceLabel, sourceSearch, sourceResults, sourceListHeading, sourceList);
+      for (const child of [...legacy.children]) if (!visibleSourceNodes.has(child)) tools.append(child);
+    } else while (legacy.firstChild) tools.append(legacy.firstChild);
     legacy.remove();
     tools.dataset.initialized = 'true';
   }
@@ -27,6 +37,14 @@ function initializeDocumentReferencePanel() {
     ['document-citations', 'document-reference-citations'],
     ['document-evidence-results', 'document-reference-comparison'],
   ];
+  const comparisonHost = document.getElementById('document-reference-comparison');
+  const comparisonPurposeLabel = document.querySelector('label[for="document-compare-purpose"]');
+  const comparisonPurpose = document.getElementById('document-compare-purpose');
+  const comparisonAction = tools?.querySelector('button[onclick="compareResearchSources()"]');
+  const comparisonHelp = [...(tools?.querySelectorAll('p.reader-note') ?? [])].find(node => node.textContent?.includes('オフラインのルール抽出'));
+  if (comparisonHost && comparisonPurposeLabel && comparisonPurpose && comparisonAction && comparisonHelp) {
+    comparisonHost.prepend(comparisonPurposeLabel, comparisonPurpose, comparisonAction, comparisonHelp);
+  }
   for (const [sourceId, targetId] of moves) {
     const source = document.getElementById(sourceId);
     const target = document.getElementById(targetId);
@@ -46,6 +64,8 @@ function setDocumentReferenceTab(tab) {
     button.setAttribute('aria-selected', String(selected));
   });
   document.querySelectorAll('[data-document-reference-view]').forEach(view => { view.hidden = view.dataset.documentReferenceView !== tab; });
+  if (typeof renderDocumentThoughtOptions === 'function') renderDocumentThoughtOptions();
+  if (typeof mountThoughtEditorForCurrentContext === 'function') mountThoughtEditorForCurrentContext();
 }
 
 function setDocumentMobileView(view) {
@@ -340,7 +360,7 @@ async function loadResearchDocuments() {
 function setResearchDocument(documentValue) {
   const previousDocumentId = activeResearchDocument?.id ?? null;
   if (previousDocumentId && previousDocumentId !== (documentValue?.id ?? null)
-      && document.getElementById('modal-reader')?.dataset.readerEmbedded === 'true') closeModal('modal-reader');
+      && document.getElementById('modal-reader')?.parentElement === document.getElementById('document-reader-host')) closeModal('modal-reader');
   activeResearchDocument = documentValue;
   try {
     if (documentValue?.id) localStorage.setItem(activeResearchDocumentStorageKey, documentValue.id);
@@ -358,6 +378,7 @@ function setResearchDocument(documentValue) {
     renderDocumentSources(documentValue.sources ?? []);
     renderDocumentCitations(documentValue.citations ?? [], documentValue.clips ?? []);
     renderDocumentThoughtNotes(documentValue.thoughtNotes ?? []);
+    if (typeof renderDocumentThoughtOptions === 'function') renderDocumentThoughtOptions();
     try {
       const rememberedTab = localStorage.getItem(`my-search:document-reference-tab:${documentValue.id}`);
       if (['source', 'thoughts', 'citations', 'comparison'].includes(rememberedTab)) documentReferenceTab = rememberedTab;
@@ -396,6 +417,8 @@ function renderDocumentThoughtNotes(thoughtNotes = []) {
       if (preview) { preview.replaceChildren(); const heading = document.createElement('strong'); heading.textContent = note.title || '思考メモ'; const body = document.createElement('p'); body.textContent = note.body; preview.append(heading, body); }
       setDocumentReferenceTab('thoughts');
     };
+    const editThought = document.createElement('button'); editThought.type = 'button'; editThought.className = 'btn btn-secondary btn-sm'; editThought.textContent = '思考メモを編集';
+    editThought.onclick = () => { void openThoughtNoteInDocumentReference(note.id); };
     const transfer = document.createElement('button'); transfer.type = 'button'; transfer.className = 'btn btn-secondary btn-sm'; transfer.textContent = '本文へ転記';
     transfer.title = '思考メモの文章を原稿本文へコピーします。引用として検証・登録はしません。';
     transfer.onclick = () => {
@@ -418,7 +441,7 @@ function renderDocumentThoughtNotes(thoughtNotes = []) {
         setDocumentMessage('原稿から思考メモの参照を外しました。思考メモ自体は残っています。');
       } catch (error) { setDocumentMessage(error.message || '思考メモ参照を外せませんでした。', true); }
     };
-    row.append(label, open, transfer, unlink); host.append(row);
+    row.append(label, open, editThought, transfer, unlink); host.append(row);
   }
 }
 
@@ -1050,6 +1073,10 @@ document.addEventListener('DOMContentLoaded', () => {
   editor?.addEventListener('input', () => { captureResearchDocumentCaret(); renderDocumentPreview(); persistResearchDraft(); setDocumentMessage('未保存の変更があります。下書きはこのブラウザー内に保存しています。', true); });
   for (const eventName of ['click', 'keyup', 'select', 'blur']) editor?.addEventListener(eventName, captureResearchDocumentCaret);
   document.getElementById('document-reference-source')?.addEventListener('change', event => { void openDocumentReferenceSource(event.currentTarget.value); });
+  document.getElementById('document-reference-thought-select')?.addEventListener('change', event => {
+    const id = event.currentTarget.value;
+    if (id && typeof openThoughtNote === 'function') void openThoughtNote(id, { keepContext: true });
+  });
   document.getElementById('document-title')?.addEventListener('input', () => { persistResearchDraft(); setDocumentMessage('未保存の変更があります。下書きはこのブラウザー内に保存しています。', true); });
   document.getElementById('document-source-search')?.addEventListener('keydown', event => { if (event.key === 'Enter') searchResearchSources(); });
   window.mySearchDesktop?.onBrowserClip(clip => {

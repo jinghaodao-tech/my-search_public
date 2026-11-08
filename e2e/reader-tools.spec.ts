@@ -464,7 +464,8 @@ test('article fetch failure falls back to manual reading and normal card saving'
     status: 502, contentType: 'application/json', body: JSON.stringify({ error: '試験用の取得失敗', code: 'reader_fetch_failed' }),
   }));
   await page.goto('/');
-  await page.locator('#topbar .main-nav').getByRole('button', { name: '読む・メモ', exact: true }).click();
+  await page.locator('button[data-view="bm25"]').click();
+  await page.getByRole('button', { name: '読む・メモ', exact: true }).first().click();
   await expect(page.locator('#modal-reader .reader-modal')).not.toHaveClass(/reader-has-source/);
   await page.locator('#reader-url').fill('https://example.test/offline-article');
   await page.locator('#modal-reader .reader-bar button').first().click();
@@ -586,8 +587,9 @@ test('narrow viewport keeps primary navigation and Reader controls within the sc
   await expect(page.locator('#search-terms')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.locator('#topbar .topbar-library > summary').click();
-  await page.locator('#topbar .topbar-library').getByRole('button', { name: '保存済み', exact: true }).click();
-  await page.locator('#topbar .main-nav').getByRole('button', { name: '読む・メモ', exact: true }).click();
+  await page.locator('#topbar .topbar-library').getByRole('button', { name: '記事・メモを管理', exact: true }).click();
+  await page.locator('button[data-view="bm25"]').click();
+  await page.getByRole('button', { name: '読む・メモ', exact: true }).first().click();
   await expect(page.locator('#modal-reader')).toHaveClass(/active/);
   await expect(page.locator('#fab')).not.toBeVisible();
   const readerOverflow = await page.locator('#modal-reader .reader-modal').evaluate(element => ({

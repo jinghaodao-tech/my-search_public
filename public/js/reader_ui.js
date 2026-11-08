@@ -11,16 +11,24 @@ function restoreReaderModalHome() {
   const home = document.getElementById('reader-modal-home');
   if (!modal || !home?.parentNode) return;
   modal.dataset.readerEmbedded = 'false';
+  modal.removeAttribute('data-reader-context');
   home.parentNode.insertBefore(modal, home.nextSibling);
+  const thoughtEmpty = document.getElementById('investigation-reference-empty'); if (thoughtEmpty) thoughtEmpty.hidden = false;
 }
 
 function mountReaderForCurrentContext() {
   const modal = document.getElementById('modal-reader');
-  const host = document.getElementById('document-reader-host');
-  const inline = typeof isResearchDocumentWorkspaceActive === 'function' && isResearchDocumentWorkspaceActive() && host;
+  const documentHost = document.getElementById('document-reader-host');
+  const thoughtHost = document.getElementById('investigation-reference-reader-host');
+  const inDocument = typeof isResearchDocumentWorkspaceActive === 'function' && isResearchDocumentWorkspaceActive() && documentHost;
+  const inThoughts = typeof isInvestigationThoughtWorkspaceActive === 'function' && isInvestigationThoughtWorkspaceActive() && thoughtHost;
+  const host = inDocument ? documentHost : inThoughts ? thoughtHost : null;
+  const inline = Boolean(host);
   if (inline) {
     host.append(modal);
     modal.dataset.readerEmbedded = 'true';
+    modal.dataset.readerContext = inDocument ? 'document' : 'thoughts';
+    const thoughtEmpty = document.getElementById('investigation-reference-empty'); if (thoughtEmpty) thoughtEmpty.hidden = true;
   } else restoreReaderModalHome();
 }
 
@@ -376,6 +384,7 @@ async function openReaderForCard(id) {
     if (requestVersion !== readerRequestVersion) return false;
     readerCandidateId = null;
     readerCardId = id;
+    if (typeof syncInvestigationReferenceSource === 'function') syncInvestigationReferenceSource(id);
     setReaderEditorMode(!data.isReaderFormat);
     if (typeof resetReaderTranslation === 'function') resetReaderTranslation(data.translation);
     setReaderSaveLabel();

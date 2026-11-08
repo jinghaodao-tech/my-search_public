@@ -41,6 +41,7 @@ test('one workspace can compare three saved sources, insert a verified citation,
     await expect(page.locator('#document-title')).toHaveValue(title);
   }
   await expect(page.locator('#document-sources .document-source-row')).toHaveCount(3);
+  await page.locator('[data-document-reference-tab="comparison"]').click();
   await page.locator('#document-compare-purpose').fill('有効性 条件 対象範囲 留保');
   await page.getByRole('button', { name: '3件以上の資料から根拠候補を抽出' }).click();
   const evidence = page.locator('#document-evidence-results .document-evidence-row').first();
@@ -93,8 +94,9 @@ test('one workspace can compare three saved sources, insert a verified citation,
   await documentItem.click();
   await expect(editor).toHaveValue(/\[\[citation:/);
   await expect(page.locator('#document-citations')).toContainText('verified');
+  await page.locator('[data-document-reference-tab="source"]').click();
   const citedSourceRow = page.locator('#document-sources .document-source-row', { hasText: sources[0]!.title });
-  await page.locator('.document-sources-column').evaluate((element: HTMLElement) => { element.scrollTop = element.scrollHeight; });
+  await page.locator('#document-sources').evaluate((element: HTMLElement) => { element.scrollTop = element.scrollHeight; });
   await citedSourceRow.getByRole('button', { name: '使用原稿' }).click();
   const citationUse = page.locator('#document-sources .document-source-row .document-backlinks button', { hasText: title }).first();
   await expect(citationUse).toBeVisible();
@@ -119,6 +121,8 @@ test('one workspace can compare three saved sources, insert a verified citation,
   expect((await (await request.get(`/api/reader/cards/${sources[0]!.id}/documents`)).json()).documents.map((row: { id: string }) => row.id)).toContain(id);
 
   await page.evaluate(() => { (window as any).localAi.availability = async () => 'unavailable'; });
+  const referenceTools = page.locator('.document-reference-tools');
+  if (!(await referenceTools.evaluate(element => (element as HTMLDetailsElement).open))) await referenceTools.locator('summary').click();
   await page.getByRole('button', { name: '構成案', exact: true }).click();
   await expect(page.locator('#document-ai-outline')).toContainText('このブラウザーでは端末内AIを利用できません');
 
@@ -158,7 +162,8 @@ test('writing toolbar formats selected text and lines, updates preview, and rest
 
 test('a user-selected local PDF can switch between extracted text and the original page', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#topbar .main-nav').getByRole('button', { name: '読む・メモ', exact: true }).click();
+  await page.locator('button[data-view="bm25"]').click();
+  await page.getByRole('button', { name: '読む・メモ', exact: true }).first().click();
   const readerModal = page.locator('#modal-reader .reader-modal');
   await expect(readerModal).not.toHaveClass(/reader-has-source/);
   await expect(page.locator('.reader-right')).toBeHidden();
