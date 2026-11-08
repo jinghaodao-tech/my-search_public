@@ -334,7 +334,7 @@ export function createReaderRouter(ctx: RouteContext) {
     if (!sourceParagraphs.length) { sendError(req, res, 409, '引用元の保存本文がありません', undefined, 'reader_text_missing'); return; }
     const anchor = locateUniqueReaderQuote(body.quote, sourceParagraphs, body.paragraphIndex);
     if (anchor.status !== 'matched' || anchor.paragraphIndex === null) {
-      sendError(req, res, 409, anchor.status === 'ambiguous' ? '引用文が本文内で重複しているため、位置を特定できません' : '引用文と保存本文が一致しません', undefined, 'reader_quote_conflict');
+      sendError(req, res, 409, anchor.status === 'ambiguous' ? '引用文が本文内で重複しているため、位置を特定できません' : anchor.status === 'moved' ? '引用元の段落位置が変わりました。Readerで原文を確認してください' : '引用文と保存本文が一致しません', undefined, 'reader_quote_conflict');
       return;
     }
     const sourceHash = readerToolsSourceHash(sourceParagraphs);

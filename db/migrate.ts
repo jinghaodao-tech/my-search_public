@@ -428,6 +428,19 @@ const migrations: Migration[] = [
     );
     CREATE INDEX IF NOT EXISTS idx_document_thought_notes_note ON document_thought_notes(thought_note_id,document_id);
   ` },
+  { id: '033_add_citation_integrity_metadata', sql: '' },
+  { id: '034_create_reader_text_revisions', sql: `
+    CREATE TABLE IF NOT EXISTS reader_text_revisions (
+      card_id TEXT NOT NULL,
+      revision INTEGER NOT NULL,
+      paragraphs_json TEXT NOT NULL,
+      body_hash TEXT NOT NULL,
+      hash_version INTEGER NOT NULL,
+      fetched_at TEXT NOT NULL,
+      PRIMARY KEY(card_id,revision)
+    );
+    CREATE INDEX IF NOT EXISTS idx_reader_text_revisions_card ON reader_text_revisions(card_id,revision DESC);
+  ` },
 ];
 
 function columns(db: Database.Database, table: string): Set<string> {
@@ -435,6 +448,18 @@ function columns(db: Database.Database, table: string): Set<string> {
 }
 
 function applyMigration(db: Database.Database, migration: Migration): void {
+  if (migration.id === '033_add_citation_integrity_metadata') {
+    const add = (table: string, name: string, definition: string) => {
+      if (!columns(db, table).has(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`);
+    };
+    for (const table of ['document_citations', 'thought_note_references']) {
+      add(table, 'paragraph_hash', 'TEXT');
+      add(table, 'hash_version', 'INTEGER NOT NULL DEFAULT 1');
+    }
+    add('document_citations', 'source_revision', 'INTEGER');
+    add('document_citations', 'supersedes_id', 'TEXT REFERENCES document_citations(id)');
+    return;
+  }
   if (migration.id === '022_site_article_integration') { migrateSiteIntegration(db); return; }
   if (migration.id === "021_collection_reader_integrity") {
     if (columns(db, 'articles').size === 0) return;

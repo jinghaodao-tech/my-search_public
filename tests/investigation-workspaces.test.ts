@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import Database from 'better-sqlite3';
 import { app, database } from './helpers.js';
+import { saveReaderText } from '../repositories/reader_texts_repository.js';
 import { runMigrations } from '../db/migrate.js';
 
 const savedSearch = {
@@ -108,6 +109,9 @@ describe('investigation workspaces', () => {
     const ambiguous = await request(app).post(`/api/thought-notes/${thoughtId}/references`).send({ sourceCardId: cardId, quote: '同じ引用候補です。' }).expect(409);
     expect(ambiguous.body.error).toMatch(/複数箇所/);
     await request(app).post(`/api/thought-notes/${thoughtId}/references`).send({ sourceCardId: cardId, quote: '本文にない引用です。' }).expect(422);
+    saveReaderText(cardId, ['前に追加された段落です。', '最初の引用可能な段落です。', '同じ引用候補です。', '同じ引用候補です.']);
+    const movedReferences = await request(app).get(`/api/thought-notes/${thoughtId}`).expect(200);
+    expect(movedReferences.body.thought.references[0]).toMatchObject({ verification: 'quote_moved', paragraphIndex: 0, currentParagraphIndex: 1 });
 
     const secondThought = await request(app).post('/api/thought-notes').send({ title: '検証方法', body: '異なる検索方式を同一コーパスで比べる。', kind: 'free' }).expect(201);
     const secondThoughtId = secondThought.body.thought.id as string;
@@ -123,7 +127,7 @@ describe('investigation workspaces', () => {
     const loadedFirst = await request(app).get(`/api/workspaces/${firstId}`).expect(200);
     expect(loadedFirst.body.workspace.thoughts.find((row: { id: string }) => row.id === thoughtId)).toMatchObject({ groupId: null, position: 3, x: 180, y: 90 });
     expect(loadedFirst.body.workspace.thoughtLinks[0].description).toBe('仮説を確かめる手段');
-    expect(loadedFirst.body.workspace.thoughts[0].references[0].verification).toBe('verified');
+    expect(loadedFirst.body.workspace.thoughts[0].references[0].verification).toBe('quote_moved');
 
     await request(app).delete(`/api/workspaces/${firstId}/thought-notes/${thoughtId}`).expect(200);
     expect((await request(app).get(`/api/workspaces/${secondId}`)).body.workspace.thoughts.map((row: { id: string }) => row.id)).toContain(thoughtId);
@@ -131,7 +135,7 @@ describe('investigation workspaces', () => {
     expect((await request(app).get(`/api/thought-notes/${thoughtId}`)).body.thought).toMatchObject({
       id: thoughtId, title: '検索の疑問を更新', version: 2,
     });
-    expect((await request(app).get(`/api/thought-notes/${thoughtId}`)).body.thought.references[0].verification).toBe('verified');
+    expect((await request(app).get(`/api/thought-notes/${thoughtId}`)).body.thought.references[0].verification).toBe('quote_moved');
     expect((await request(app).get(`/api/cards/${cardId}`)).status).toBe(200);
     await request(app).delete(`/api/documents/${thoughtDocument.body.document.id}`).expect(200);
     expect((await request(app).get(`/api/thought-notes/${thoughtId}`)).status).toBe(200);

@@ -280,9 +280,13 @@ export function parseReaderCardBody(body: string): ParsedReaderCard {
   };
 }
 
-export type ReaderQuoteAnchor = { status: 'matched' | 'missing' | 'ambiguous'; paragraphIndex: number | null };
+export type ReaderQuoteAnchor =
+  | { status: 'matched'; paragraphIndex: number }
+  | { status: 'moved'; paragraphIndex: number; expectedParagraphIndex: number }
+  | { status: 'missing'; paragraphIndex: null }
+  | { status: 'ambiguous'; paragraphIndex: null };
 
-function normalizeReaderQuoteText(value: string): string {
+export function normalizeReaderQuoteText(value: string): string {
   return value.normalize('NFKC').replace(/\s+/g, ' ').trim();
 }
 
@@ -303,6 +307,8 @@ export function locateUniqueReaderQuote(quote: string, paragraphs: string[], exp
     }
   }
   if (matches.length !== 1) return { status: 'missing', paragraphIndex: null };
-  if (Number.isInteger(expectedParagraphIndex) && matches[0] !== expectedParagraphIndex) return { status: 'missing', paragraphIndex: null };
+  if (Number.isInteger(expectedParagraphIndex) && matches[0] !== expectedParagraphIndex) {
+    return { status: 'moved', paragraphIndex: matches[0]!, expectedParagraphIndex: expectedParagraphIndex! };
+  }
   return { status: 'matched', paragraphIndex: matches[0]! };
 }

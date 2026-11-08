@@ -2,9 +2,10 @@ import express from 'express';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '../db/database.js';
-import { getReaderText } from '../repositories/reader_texts_repository.js';
+import { ensureReaderTextRevision, getReaderText, getReaderTextRevision } from '../repositories/reader_texts_repository.js';
 import { locateUniqueReaderQuote, parseReaderCardBody } from '../services/reader_service.js';
-import { readerToolsSourceHash } from '../services/reader_tools_service.js';
+import { readerParagraphHash, readerToolsSourceHash, READER_SOURCE_HASH_VERSION } from '../services/reader_tools_service.js';
+import { verifyCitation } from '../services/citation_verification.js';
 import { parseBody, sendError } from '../services/http_service.js';
 
 const MAX_MARKDOWN = 200_000;
@@ -21,6 +22,11 @@ const addCitationSchema = z.object({
   version: z.number().int().positive(),
   insertAt: z.number().int().min(0).max(MAX_MARKDOWN),
 }).strict();
+const relocateCitationSchema = z.object({
+  paragraphIndex: z.number().int().min(0).max(50_000),
+  markdown: z.string().max(MAX_MARKDOWN),
+  version: z.number().int().positive(),
+}).strict();
 const addClipSchema = z.object({
   clipText: z.string().trim().min(1).max(5000),
   sourceTitle: z.string().trim().min(1).max(200),
@@ -31,7 +37,7 @@ const addClipSchema = z.object({
 }).strict();
 
 type DocumentRow = { id: string; title: string; content_json: string; version: number; created_at: string; updated_at: string };
-type CitationRow = { id: string; source_card_id: string | null; source_title: string; source_url: string | null; quote_text: string; source_hash: string; paragraph_index: number; page_label: string | null; created_at: string };
+type CitationRow = { id: string; source_card_id: string | null; source_title: string; source_url: string | null; quote_text: string; source_hash: string; paragraph_hash: string | null; hash_version: number; source_revision: number | null; paragraph_index: number; page_label: string | null; created_at: string };
 type SourceRow = { id: string; source_card_id: string | null; source_title: string; source_url: string | null; added_at: string };
 
 function parseMarkdown(row: DocumentRow): string {
@@ -53,7 +59,8 @@ function loadDocument(id: string) {
   const row = db.prepare('SELECT id,title,content_json,version,created_at,updated_at FROM documents WHERE id=?').get(id) as DocumentRow | undefined;
   if (!row) return null;
   const markdown = parseMarkdown(row);
-  const citations = db.prepare('SELECT id,source_card_id,source_title,source_url,quote_text,source_hash,paragraph_index,page_label,created_at FROM document_citations WHERE document_id=? ORDER BY created_at,id').all(id) as CitationRow[];
+  const citations = db.prepare(`SELECT c.id,c.source_card_id,c.source_title,c.source_url,c.quote_text,c.source_hash,c.paragraph_hash,c.hash_version,c.source_revision,c.paragraph_index,c.page_label,c.created_at
+    FROM document_citations c WHERE c.document_id=? AND NOT EXISTS (SELECT 1 FROM document_citations newer WHERE newer.supersedes_id=c.id) ORDER BY c.created_at,c.id`).all(id) as CitationRow[];
   const sources = db.prepare('SELECT id,source_card_id,source_title,source_url,added_at FROM document_sources WHERE document_id=? ORDER BY added_at,id').all(id) as SourceRow[];
   const clips = db.prepare('SELECT id,clip_text,source_title,source_url,created_at FROM document_clips WHERE document_id=? ORDER BY created_at,id').all(id) as Array<{ id: string; clip_text: string; source_title: string; source_url: string; created_at: string }>;
   const thoughtNotes = db.prepare(`SELECT n.id,n.title,n.body,n.kind,n.version,link.added_at AS addedAt
@@ -66,15 +73,15 @@ function loadDocument(id: string) {
       const savedParagraphs = citation.source_card_id ? getReaderText(citation.source_card_id) : null;
       const parsed = source ? parseReaderCardBody(source.body ?? '') : null;
       const paragraphs = savedParagraphs ?? parsed?.paragraphs ?? [];
-      const liveHash = paragraphs.length ? readerToolsSourceHash(paragraphs) : null;
-      const anchor = citation.source_card_id && liveHash === citation.source_hash
-        ? locateUniqueReaderQuote(citation.quote_text, paragraphs, citation.paragraph_index)
+      const verification = verifyCitation({
+        citation: { quoteText: citation.quote_text, paragraphHash: citation.paragraph_hash, bodyHash: citation.source_hash, paragraphIndex: citation.paragraph_index, hashVersion: citation.hash_version, sourceCardId: citation.source_card_id },
+        currentParagraphs: paragraphs.length ? paragraphs : null,
+      });
+      const citedParagraph = citation.source_card_id && citation.source_revision !== null
+        ? getReaderTextRevision(citation.source_card_id, citation.source_revision)?.[citation.paragraph_index] ?? null
         : null;
-      const verification = !citation.source_card_id ? 'source_missing'
-        : !paragraphs.length ? 'text_missing'
-          : liveHash !== citation.source_hash ? 'source_changed'
-            : anchor?.status === 'matched' ? 'verified' : anchor?.status ?? 'missing';
-      return { id: citation.id, sourceCardId: citation.source_card_id, sourceTitle: citation.source_title, sourceUrl: citation.source_url, quote: citation.quote_text, sourceHash: citation.source_hash, paragraphIndex: citation.paragraph_index, pageLabel: citation.page_label, createdAt: citation.created_at, verification };
+      const currentParagraph = verification.currentParagraphIndex === null ? null : paragraphs[verification.currentParagraphIndex] ?? null;
+      return { id: citation.id, sourceCardId: citation.source_card_id, sourceTitle: citation.source_title, sourceUrl: citation.source_url, quote: citation.quote_text, sourceHash: citation.source_hash, paragraphHash: citation.paragraph_hash, hashVersion: citation.hash_version, sourceRevision: citation.source_revision, paragraphIndex: citation.paragraph_index, currentParagraphIndex: verification.currentParagraphIndex, citedParagraph, currentParagraph, sourceRevisedElsewhere: verification.sourceRevisedElsewhere, pageLabel: citation.page_label, createdAt: citation.created_at, verification: verification.verification };
     }),
     sources: sources.map(source => ({ id: source.id, sourceCardId: source.source_card_id, title: source.source_title, url: source.source_url, addedAt: source.added_at, missing: !source.source_card_id })),
     clips: clips.map(clip => ({ id: clip.id, text: clip.clip_text, sourceTitle: clip.source_title, sourceUrl: clip.source_url, createdAt: clip.created_at, verification: 'unverified_clip' })),
@@ -130,7 +137,7 @@ export function createDocumentsRouter() {
       if (result.changes !== 1) return { kind: 'conflict' as const };
       const usedIds = new Set(markerIds);
       const existing = db.prepare('SELECT id FROM document_citations WHERE document_id=?').all(req.params.id) as Array<{ id: string }>;
-      const remove = db.prepare('DELETE FROM document_citations WHERE id=? AND document_id=?');
+      const remove = db.prepare('DELETE FROM document_citations WHERE id=? AND document_id=? AND NOT EXISTS (SELECT 1 FROM document_citations successor WHERE successor.supersedes_id=document_citations.id)');
       for (const citation of existing) if (!usedIds.has(citation.id)) remove.run(citation.id, req.params.id);
       const usedClipIds = new Set(clipIds);
       const existingClips = db.prepare('SELECT id FROM document_clips WHERE document_id=?').all(req.params.id) as Array<{ id: string }>;
@@ -213,15 +220,17 @@ export function createDocumentsRouter() {
       const paragraphs = getReaderText(card.id) ?? parsed.paragraphs;
       if (!paragraphs.length) return { kind: 'text_missing' as const };
       const anchor = locateUniqueReaderQuote(body.quote, paragraphs, body.paragraphIndex);
-      if (anchor.status !== 'matched' || anchor.paragraphIndex === null) return { kind: anchor.status as 'missing'|'ambiguous' };
+      if (anchor.status !== 'matched') return { kind: anchor.status as 'missing'|'ambiguous'|'moved' };
       const hash = readerToolsSourceHash(paragraphs);
+      const paragraphHash = readerParagraphHash(paragraphs[anchor.paragraphIndex]);
+      const sourceRevision = ensureReaderTextRevision(card.id, paragraphs);
       const pageLabel = pageLabelAt(paragraphs, anchor.paragraphIndex);
       const id = randomUUID();
       const marker = `[[citation:${id}]]`;
       const nextMarkdown = `${markdown.slice(0, body.insertAt)}${marker}${markdown.slice(body.insertAt)}`;
       const now = new Date().toISOString();
-      db.prepare('INSERT INTO document_citations(id,document_id,source_card_id,source_title,source_url,quote_text,source_hash,paragraph_index,page_label,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
-        .run(id, current.id, card.id, parsed.source.title ?? card.title, parsed.source.url ?? card.url, body.quote, hash, anchor.paragraphIndex, pageLabel, now);
+      db.prepare('INSERT INTO document_citations(id,document_id,source_card_id,source_title,source_url,quote_text,source_hash,paragraph_index,page_label,created_at,paragraph_hash,hash_version,source_revision) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        .run(id, current.id, card.id, parsed.source.title ?? card.title, parsed.source.url ?? card.url, body.quote, hash, anchor.paragraphIndex, pageLabel, now, paragraphHash, READER_SOURCE_HASH_VERSION, sourceRevision);
       db.prepare('INSERT OR IGNORE INTO document_sources(id,document_id,source_card_id,source_title,source_url,added_at) VALUES(?,?,?,?,?,?)')
         .run(randomUUID(), current.id, card.id, parsed.source.title ?? card.title, parsed.source.url ?? card.url, now);
       const saved = db.prepare('UPDATE documents SET title=?,content_json=?,version=version+1,updated_at=? WHERE id=? AND version=?')
@@ -235,7 +244,52 @@ export function createDocumentsRouter() {
     if (outcome.kind === 'source_missing') { sendError(req, res, 404, '引用元の保存資料が見つかりません', undefined, 'card_not_found'); return; }
     if (outcome.kind === 'text_missing') { sendError(req, res, 409, '引用元に保存本文がありません', undefined, 'reader_text_missing'); return; }
     if (outcome.kind === 'position') { sendError(req, res, 400, '原稿のカーソル位置が古くなっています。再読込してください', undefined, 'request_failed'); return; }
-    if (outcome.kind !== 'ok') { sendError(req, res, 409, outcome.kind === 'ambiguous' ? '引用が重複しているため場所を特定できません' : '引用が保存本文に一致しません', undefined, 'reader_quote_conflict'); return; }
+    if (outcome.kind !== 'ok') { sendError(req, res, 409, outcome.kind === 'ambiguous' ? '引用が重複しているため場所を特定できません' : outcome.kind === 'moved' ? '引用元の段落位置が変わりました。原文を確認してから追加し直してください' : '引用が保存本文に一致しません', undefined, 'reader_quote_conflict'); return; }
+    res.status(201).json({ document: loadDocument(req.params.id), citationId: outcome.citationId });
+  });
+
+  router.post('/documents/:id/citations/:citationId/relocate', (req, res) => {
+    const body = parseBody(relocateCitationSchema, req, res);
+    if (!body) return;
+    const outcome = db.transaction(() => {
+      const current = db.prepare('SELECT id,title,content_json,version FROM documents WHERE id=?').get(req.params.id) as DocumentRow | undefined;
+      if (!current) return { kind: 'missing' as const };
+      if (current.version !== body.version) return { kind: 'conflict' as const };
+      const markdown = parseMarkdown(current);
+      const marker = `[[citation:${req.params.citationId}]]`;
+      if (!markdown.includes(marker) || markdown !== body.markdown) return { kind: 'stale' as const };
+      const citation = db.prepare(`SELECT id,source_card_id,source_title,source_url,quote_text FROM document_citations
+        WHERE id=? AND document_id=? AND NOT EXISTS (SELECT 1 FROM document_citations newer WHERE newer.supersedes_id=document_citations.id)`)
+        .get(req.params.citationId, current.id) as { id: string; source_card_id: string | null; source_title: string; source_url: string | null; quote_text: string } | undefined;
+      if (!citation) return { kind: 'citation_missing' as const };
+      if (!citation.source_card_id) return { kind: 'source_missing' as const };
+      const card = db.prepare('SELECT body FROM cards WHERE id=?').get(citation.source_card_id) as { body: string | null } | undefined;
+      if (!card) return { kind: 'source_missing' as const };
+      const paragraphs = getReaderText(citation.source_card_id) ?? parseReaderCardBody(card.body ?? '').paragraphs;
+      if (!paragraphs.length) return { kind: 'text_missing' as const };
+      const anchor = locateUniqueReaderQuote(citation.quote_text, paragraphs, body.paragraphIndex);
+      if (anchor.status !== 'matched') return { kind: anchor.status as 'missing'|'ambiguous'|'moved' };
+      const revision = ensureReaderTextRevision(citation.source_card_id, paragraphs);
+      const id = randomUUID();
+      const now = new Date().toISOString();
+      db.prepare(`INSERT INTO document_citations(id,document_id,source_card_id,source_title,source_url,quote_text,source_hash,paragraph_index,page_label,created_at,paragraph_hash,hash_version,source_revision,supersedes_id)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+        id, current.id, citation.source_card_id, citation.source_title, citation.source_url, citation.quote_text,
+        readerToolsSourceHash(paragraphs), anchor.paragraphIndex, pageLabelAt(paragraphs, anchor.paragraphIndex), now,
+        readerParagraphHash(paragraphs[anchor.paragraphIndex]), READER_SOURCE_HASH_VERSION, revision, citation.id,
+      );
+      const nextMarkdown = markdown.replace(marker, `[[citation:${id}]]`);
+      const saved = db.prepare('UPDATE documents SET content_json=?,version=version+1,updated_at=? WHERE id=? AND version=?')
+        .run(JSON.stringify({ schemaVersion: 1, markdown: nextMarkdown }), now, current.id, current.version);
+      if (saved.changes !== 1) throw new Error('document_conflict');
+      return { kind: 'ok' as const, citationId: id };
+    })();
+    if (outcome.kind === 'missing') { sendError(req, res, 404, '原稿が見つかりません', undefined, 'request_failed'); return; }
+    if (outcome.kind === 'conflict' || outcome.kind === 'stale') { sendError(req, res, 409, '原稿が更新されています。再読込してください', undefined, 'request_failed'); return; }
+    if (outcome.kind === 'citation_missing') { sendError(req, res, 404, '引用が見つかりません', undefined, 'request_failed'); return; }
+    if (outcome.kind === 'source_missing') { sendError(req, res, 404, '引用元の保存資料が見つかりません', undefined, 'card_not_found'); return; }
+    if (outcome.kind === 'text_missing') { sendError(req, res, 409, '引用元に保存本文がありません', undefined, 'reader_text_missing'); return; }
+    if (outcome.kind !== 'ok') { sendError(req, res, 409, outcome.kind === 'ambiguous' ? '引用文が本文内で重複しているため、位置を特定できません' : '選択した段落に引用文が見つかりません', undefined, 'reader_quote_conflict'); return; }
     res.status(201).json({ document: loadDocument(req.params.id), citationId: outcome.citationId });
   });
 

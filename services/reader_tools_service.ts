@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { normalizeReaderQuoteText } from './reader_service.js';
 
 export type ReaderToolVariable = {
   key: string;
@@ -215,8 +216,23 @@ function parseComparison(paragraphs: string[], start: number): ReaderComparisonT
   return { id: `compare-${stableId(`${title}\n${JSON.stringify(criteria)}\n${JSON.stringify(options)}`)}`, kind: 'comparison', title, criteria, options, sourceIndices: [...new Set(sourceIndices)] };
 }
 
-export function readerToolsSourceHash(paragraphs: string[]): string {
+/**
+ * Version 2 hashes normalized paragraph text. Increment only when the
+ * normalization, hashed scope, or hash algorithm changes.
+ */
+export const READER_SOURCE_HASH_VERSION = 2;
+
+/** Exact legacy v1 hash, retained to verify citations created before v2. */
+export function legacyReaderToolsSourceHash(paragraphs: string[]): string {
   return createHash('sha256').update(JSON.stringify(paragraphs)).digest('hex');
+}
+
+export function readerParagraphHash(paragraph: string): string {
+  return createHash('sha256').update(normalizeReaderQuoteText(paragraph)).digest('hex');
+}
+
+export function readerToolsSourceHash(paragraphs: string[]): string {
+  return createHash('sha256').update(JSON.stringify(paragraphs.map(normalizeReaderQuoteText))).digest('hex');
 }
 
 export function prepareReaderTools(paragraphs: string[]): ReaderTool[] {
