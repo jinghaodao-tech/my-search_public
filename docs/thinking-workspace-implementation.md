@@ -98,3 +98,23 @@
 | 画面証拠 | `artifacts/ui-investigation-integration/desktop-workspace-workbench.png`、`desktop-manuscript-focus.png`、`mobile-workspace-workbench.png`、`mobile-manuscript-focus.png`。Playwrightの合成データで撮影 |
 | 実AIモデル | 今回未実行。モデル可用性と出力品質は未確認。非対応ブラウザーではAI生成が行われないことをコードでガード |
 | 既存DBとの今回の変更 | マイグレーション追加・保存カード／原稿の変換なし。E2Eは新規の専用テストDBでのみ実行 |
+
+## ナビゲーション・機能階層・調査レイアウトの統合（2026-11-08）
+
+この節は上記の過去の画面説明を更新する。旧来の「資料／思考／選択対象作業」中心の画面説明は履歴として残すが、現在の導線と作業領域は以下のとおり。
+
+- 主要ナビゲーションは「探す」「読む・メモ」「保存済み（プルダウン）」「調査」。読む・メモと保存済み記事のカードクリックは、同じReader・メモ編集UIと保存処理を使う。保存済みプルダウンから記事・メモ管理と候補レビューへ入る。別の通常編集画面は設けない。探す画面にも同じReaderを開く「読む・メモ」操作を置く。
+- 調査内の思考メモ作業は、同じ調査資料を選べるReader参照パネルとメモ編集領域を並べる。参照幅変更・折りたたみ・モバイル時の作業／参照切替を追加し、Readerの表示・状態管理は既存Readerを再配置して使う。
+- 原稿作業は既存Markdownエディタと参照パネルを使う。参照パネルの「資料」「思考メモ」「引用」「比較」を切り替え、原稿を閉じずに参照する。保存資料の追加と比較用のルール抽出は各参照タブへ配置し、執筆AIなど頻度の低い補助は詳細領域に残す。
+- 調査に属さない原稿も「すべての原稿」から同一エディタで開く。原稿ID・版番号・引用関係・思考メモ関係のデータモデルは変更していない。新規マイグレーションはなく、保存カード、Reader本文、SQLite実DBには触れていない。
+- 思考メモの編集をタブ間で移る際、未保存内容は保存済みと偽らずローカル下書きとして保ち、再表示・再読込後に復旧する。明示的な保存操作と既存の版競合検出を維持する。
+- タグ検索欄・タグクラウド・タグ整理操作は通常画面の主要導線に置かず、タグ保存/API/索引は変更しない。既存タグは保持される。
+
+| 検証 | 結果 |
+|---|---|
+| E2E回帰 | `e2e/integrated-workspace.spec.ts`, `e2e/investigation-workspaces.spec.ts`, `e2e/reader-tools.spec.ts`, `e2e/tag-ui-organization.spec.ts`, `e2e/ui-surface-audit.spec.ts` を隔離SQLiteで実行。31件中29 passed、2 skipped（既存の条件付きケース）。ナビゲーション、記事/PDF Reader、メモ編集、原稿編集・引用・再読込、モバイル切替、タグUIを確認 |
+| 静的チェック | `npm run typecheck`, `npm run build:frontend`, `npm run check:frontend`, `npm run check:ui-guidelines` 成功 |
+| 画面証拠 | `artifacts/ui-investigation-integration/desktop-workspace-workbench.png`, `desktop-manuscript-focus.png`, `desktop-writing-with-reference.png`, `mobile-workspace-workbench.png`, `mobile-writing-reference.png`。Playwrightの合成データによる画面で、第三者・本人の操作性評価ではない |
+| 未評価 | 利用者が迷わず使えるか、作業負担や調査品質が改善したかは未評価。実AIモデルも今回実行していない。手動の実データ試用と第三者試用は未実施 |
+
+現行作業ツリーのE2E結果は合成・隔離データに対する機械検証であり、実データの品質や利用者利益を示さない。

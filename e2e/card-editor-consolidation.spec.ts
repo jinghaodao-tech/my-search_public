@@ -53,6 +53,11 @@ test('a saved card opens the shared Reader directly while detail remains an opti
   const saved = await response.json() as { id: string };
   await page.setViewportSize({ width: 390, height: 844 });
   await openApp(page);
+  await page.locator('#nav-reader-memo').click();
+  await expect(page.locator('#modal-reader')).toHaveClass(/active/);
+  await expect(page.locator('#modal-reader .reader-modal')).toHaveClass(/reader-reading-mode/);
+  await page.locator('#reader-close-btn').click();
+  await expect(page.locator('#modal-reader')).not.toHaveClass(/active/);
   const card = page.locator(`#card-${saved.id}`);
   await card.getByRole('button', { name: `${title} の詳細` }).click();
   await expect(page.locator('#detail-panel')).toBeVisible();

@@ -15,6 +15,7 @@ let thoughtCompareTimer = null;
 let thoughtAIController = null;
 let thoughtAIRequestId = 0;
 let thoughtComparisonHome = null;
+let investigationMobileView = 'work';
 
 function mountThoughtComparisonForWritingPanel(embedded) {
   const tableHost = document.getElementById('investigation-thought-comparison-table');
@@ -36,25 +37,42 @@ function initializeInvestigationPanels() {
   const sections = [...content.querySelectorAll(':scope > .investigation-section')].filter(section => section !== thoughtSection);
   if (sections.length < 5) return;
   const workbench = document.createElement('div'); workbench.className = 'investigation-workbench';
-  const sourceRail = document.createElement('aside'); sourceRail.id = 'investigation-source-rail'; sourceRail.className = 'investigation-workbench-sources'; sourceRail.setAttribute('aria-label', 'この調査の情報源');
-  const thoughtCanvas = document.createElement('main'); thoughtCanvas.id = 'investigation-thought-canvas'; thoughtCanvas.className = 'investigation-workbench-thoughts'; thoughtCanvas.setAttribute('aria-label', '思考メモ');
-  const contextPanel = document.createElement('aside'); contextPanel.id = 'investigation-context-panel'; contextPanel.className = 'investigation-workbench-context'; contextPanel.setAttribute('aria-label', '選択対象の作業');
-  const contextThought = document.createElement('section'); contextThought.id = 'investigation-context-thoughts'; contextThought.dataset.investigationContext = 'thoughts';
-  const contextCompare = document.createElement('section'); contextCompare.id = 'investigation-context-compare'; contextCompare.dataset.investigationContext = 'compare';
-  const contextDocuments = document.createElement('section'); contextDocuments.id = 'investigation-context-documents'; contextDocuments.dataset.investigationContext = 'documents';
-  contextPanel.append(contextThought, contextCompare, contextDocuments);
-  const thoughtEmpty = document.createElement('p'); thoughtEmpty.id = 'thought-editor-empty'; thoughtEmpty.className = 'thought-editor-empty';
-  thoughtEmpty.textContent = '中央の思考メモを選ぶと、ここで編集し、出典・関係・変更履歴を確認できます。';
-  contextThought.append(thoughtEmpty);
-  workbench.append(sourceRail, thoughtCanvas, contextPanel);
+  const sourceDetails = document.createElement('details'); sourceDetails.id = 'investigation-source-details'; sourceDetails.className = 'investigation-source-drawer'; sourceDetails.open = true;
+  const sourceSummary = document.createElement('summary'); sourceSummary.textContent = '資料・検索・調査の設定'; sourceDetails.append(sourceSummary);
+  const sourceRail = document.createElement('div'); sourceRail.id = 'investigation-source-rail'; sourceRail.className = 'investigation-workbench-sources'; sourceRail.setAttribute('aria-label', 'この調査の情報源'); sourceDetails.append(sourceRail);
+  const toolbar = document.createElement('div'); toolbar.className = 'investigation-workbench-toolbar';
+  const referenceToggle = investigationButton('参照を隠す', () => toggleInvestigationReferencePanel(), 'btn btn-secondary btn-sm');
+  referenceToggle.id = 'investigation-reference-toggle'; referenceToggle.setAttribute('aria-expanded', 'true'); toolbar.append(referenceToggle);
+  const widthLabel = document.createElement('label'); widthLabel.htmlFor = 'investigation-reference-width'; widthLabel.textContent = '参照幅';
+  const width = document.createElement('input'); width.type = 'range'; width.id = 'investigation-reference-width'; width.min = '30'; width.max = '55'; width.value = '40'; width.setAttribute('aria-label', '参照パネルの幅');
+  width.addEventListener('input', () => setInvestigationReferenceWidth(Number(width.value)));
+  toolbar.append(widthLabel, width);
+  const mobileSwitch = document.createElement('div'); mobileSwitch.className = 'investigation-mobile-switch'; mobileSwitch.setAttribute('role', 'group'); mobileSwitch.setAttribute('aria-label', '調査の表示');
+  for (const [view, label] of [['work', '作業'], ['reference', '参照']]) {
+    const button = investigationButton(label, () => setInvestigationMobileView(view));
+    button.dataset.investigationMobileView = view; mobileSwitch.append(button);
+  }
+  const primary = document.createElement('main'); primary.id = 'investigation-primary-work'; primary.className = 'investigation-primary-work'; primary.setAttribute('aria-label', '調査の主作業');
+  const thoughtCanvas = document.createElement('section'); thoughtCanvas.id = 'investigation-thought-canvas'; thoughtCanvas.className = 'investigation-workbench-thoughts'; thoughtCanvas.setAttribute('aria-label', '思考メモ');
+  const contextCompare = document.createElement('section'); contextCompare.id = 'investigation-context-compare'; contextCompare.className = 'investigation-context-compare'; contextCompare.dataset.investigationContext = 'compare';
+  const reference = document.createElement('aside'); reference.id = 'investigation-reference-work'; reference.className = 'investigation-reference-work'; reference.setAttribute('aria-label', '資料の参照');
+  const referenceHeader = document.createElement('header'); referenceHeader.className = 'investigation-reference-header';
+  const referenceTitle = document.createElement('h3'); referenceTitle.textContent = '資料を参照';
+  const referenceSelect = document.createElement('select'); referenceSelect.id = 'investigation-reference-source'; referenceSelect.setAttribute('aria-label', '参照する調査資料');
+  referenceSelect.add(new Option('資料を選択', ''));
+  referenceSelect.addEventListener('change', () => { if (referenceSelect.value) void openReaderForCard(referenceSelect.value); });
+  referenceHeader.append(referenceTitle, referenceSelect);
+  const readerHost = document.createElement('div'); readerHost.id = 'investigation-reference-reader-host'; readerHost.className = 'investigation-reference-reader-host';
+  const readerEmpty = document.createElement('p'); readerEmpty.id = 'investigation-reference-empty'; readerEmpty.className = 'reader-note'; readerEmpty.textContent = '資料を選ぶと、思考メモを編集しながら原文やPDFを確認できます。';
+  readerHost.append(readerEmpty);
+  reference.append(referenceHeader, readerHost);
+  workbench.append(sourceDetails, toolbar, mobileSwitch, primary, reference);
   content.append(workbench);
   const [sourceSearch, sourceList, savedSearch, compare, documents] = sections;
   sourceRail.append(sourceSearch, sourceList, savedSearch);
   if (thoughtSection) thoughtCanvas.append(thoughtSection);
-  const thoughtEditor = document.getElementById('investigation-thought-editor');
-  if (thoughtEditor) contextThought.append(thoughtEditor);
+  primary.append(thoughtCanvas);
   contextCompare.append(compare);
-  contextDocuments.append(documents);
   documents.dataset.workspaceRequired = 'true';
   const associations = document.createElement('details'); associations.className = 'investigation-document-associations';
   const associationSummary = document.createElement('summary'); associationSummary.textContent = 'この調査の原稿・保存検索'; associations.append(associationSummary);
@@ -75,9 +93,16 @@ function initializeInvestigationPanels() {
     const node = document.getElementById(id); if (node) { node.dataset.organizeView = view; organizeSection.append(node); }
   }
   sourceList.append(organizeSection);
+  primary.append(contextCompare);
 
   const editor = document.getElementById('research-writing-view');
-  if (editor) { editor.classList.add('embedded'); editor.setAttribute('aria-label', '調査内の原稿エディタ'); contextDocuments.append(editor); }
+  if (editor) { editor.classList.add('embedded'); editor.setAttribute('aria-label', '調査内の原稿エディタ'); primary.append(editor); }
+  const thoughtEditor = document.getElementById('investigation-thought-editor');
+  if (thoughtEditor) {
+    const thoughtEmpty = document.createElement('p'); thoughtEmpty.id = 'thought-editor-empty'; thoughtEmpty.className = 'thought-editor-empty';
+    thoughtEmpty.textContent = '一覧または関係マップから思考メモを選ぶと、ここで編集できます。';
+    thoughtEditor.parentElement?.insertBefore(thoughtEmpty, thoughtEditor);
+  }
   nav?.remove();
   content.dataset.integrated = 'true';
   setInvestigationPanel(activeInvestigationPanel, { persist: false });
@@ -89,7 +114,7 @@ function setInvestigationPanel(panel, options = {}) {
   if (!activeInvestigationWorkspace && panel !== 'documents') return;
   const editor = document.getElementById('research-writing-view');
   if (activeInvestigationPanel === 'documents' && panel !== 'documents' && typeof persistResearchDraft === 'function') persistResearchDraft();
-  if (activeInvestigationPanel === 'thoughts' && panel !== 'thoughts' && thoughtEditorDirty) void saveThoughtNote();
+  if (activeInvestigationPanel === 'thoughts' && panel !== 'thoughts' && thoughtEditorDirty) persistThoughtDraft();
   const requestedPanel = panel;
   if (panel === 'organize') { setThoughtView('map'); panel = 'thoughts'; }
   const context = panel === 'compare' ? 'compare' : panel === 'documents' ? 'documents' : 'thoughts';
@@ -97,20 +122,106 @@ function setInvestigationPanel(panel, options = {}) {
   mountThoughtComparisonForWritingPanel(context === 'documents');
   const content = document.getElementById('investigation-content');
   if (content) content.hidden = !activeInvestigationWorkspace && context !== 'documents';
-  document.querySelectorAll('[data-investigation-context]').forEach(section => { section.hidden = section.dataset.investigationContext !== context; });
-  const focusedContext = context === 'documents' || context === 'compare';
-  document.getElementById('investigation-source-rail')?.toggleAttribute('hidden', !activeInvestigationWorkspace || focusedContext);
-  document.getElementById('investigation-thought-canvas')?.toggleAttribute('hidden', !activeInvestigationWorkspace || focusedContext);
+  const thinking = context === 'thoughts';
+  const comparing = context === 'compare';
+  const writing = context === 'documents';
+  document.getElementById('investigation-source-details')?.toggleAttribute('hidden', !activeInvestigationWorkspace || writing);
+  document.getElementById('investigation-thought-canvas')?.toggleAttribute('hidden', !activeInvestigationWorkspace || comparing || writing);
+  document.getElementById('investigation-context-compare')?.toggleAttribute('hidden', !comparing);
+  document.getElementById('investigation-reference-work')?.toggleAttribute('hidden', !thinking);
   const workbench = document.querySelector('.investigation-workbench');
-  workbench?.classList.toggle('documents-only', context === 'documents');
-  workbench?.classList.toggle('comparison-focus', context === 'compare');
-  document.querySelectorAll('[data-context-action]').forEach(button => button.classList.toggle('active', button.dataset.contextAction === context));
+  workbench?.classList.toggle('documents-only', writing);
+  workbench?.classList.toggle('comparison-focus', comparing);
+  workbench?.classList.toggle('thinking-mode', thinking);
+  document.querySelectorAll('[data-context-action]').forEach(button => button.classList.toggle('active', button.dataset.contextAction === context || (context === 'thoughts' && button.dataset.contextAction === 'thoughts')));
   editor?.classList.toggle('active', context === 'documents');
+  if (typeof mountThoughtEditorForCurrentContext === 'function') mountThoughtEditorForCurrentContext();
+  if (typeof renderInvestigationReferenceSources === 'function') renderInvestigationReferenceSources();
   if (context === 'documents' && typeof loadResearchDocuments === 'function') void loadResearchDocuments();
   if (context === 'thoughts') { void searchThoughtNotes(); renderThoughtEditorSections(); renderThoughtComparison(); }
   if (context === 'compare') renderThoughtComparison();
+  if (thinking) restoreInvestigationLayoutState();
   if (requestedPanel === 'materials') document.getElementById('investigation-source-query')?.focus({ preventScroll: true });
   if (options.persist !== false && activeInvestigationWorkspace) void saveInvestigationState({ activePanel: panel });
+}
+
+function investigationLayoutKey(name) { return `my-search:investigation:${activeInvestigationWorkspace?.id ?? 'none'}:${name}`; }
+
+function setInvestigationReferenceWidth(referencePercent) {
+  const width = Math.max(30, Math.min(55, Math.round(referencePercent)));
+  const workbench = document.querySelector('.investigation-workbench');
+  if (!workbench) return;
+  workbench.style.setProperty('--investigation-reference-percent', `${width}%`);
+  const input = document.getElementById('investigation-reference-width'); if (input) input.value = String(width);
+  if (activeInvestigationWorkspace) { try { localStorage.setItem(investigationLayoutKey('reference-width'), String(width)); } catch { /* browser storage may be disabled */ } }
+}
+
+function toggleInvestigationReferencePanel(force = undefined) {
+  const workbench = document.querySelector('.investigation-workbench'); if (!workbench) return;
+  const collapsed = force ?? !workbench.classList.contains('reference-collapsed');
+  workbench.classList.toggle('reference-collapsed', collapsed);
+  const button = document.getElementById('investigation-reference-toggle');
+  if (button) { button.textContent = collapsed ? '参照を表示' : '参照を隠す'; button.setAttribute('aria-expanded', String(!collapsed)); }
+  if (activeInvestigationWorkspace) { try { localStorage.setItem(investigationLayoutKey('reference-collapsed'), String(collapsed)); } catch { /* browser storage may be disabled */ } }
+}
+
+function setInvestigationMobileView(view, persist = true) {
+  if (!['work', 'reference'].includes(view)) return;
+  investigationMobileView = view;
+  const workbench = document.querySelector('.investigation-workbench'); if (workbench) workbench.dataset.mobileView = view;
+  document.querySelectorAll('[data-investigation-mobile-view]').forEach(button => button.classList.toggle('active', button.dataset.investigationMobileView === view));
+  if (persist && activeInvestigationWorkspace) { try { localStorage.setItem(investigationLayoutKey('mobile-view'), view); } catch { /* browser storage may be disabled */ } }
+}
+
+function restoreInvestigationLayoutState() {
+  if (!activeInvestigationWorkspace) return;
+  try {
+    const width = Number(localStorage.getItem(investigationLayoutKey('reference-width')));
+    setInvestigationReferenceWidth(Number.isFinite(width) && width > 0 ? width : 40);
+    toggleInvestigationReferencePanel(localStorage.getItem(investigationLayoutKey('reference-collapsed')) === 'true');
+    const mobileView = localStorage.getItem(investigationLayoutKey('mobile-view'));
+    setInvestigationMobileView(mobileView === 'reference' ? 'reference' : 'work', false);
+  } catch { setInvestigationReferenceWidth(40); toggleInvestigationReferencePanel(false); setInvestigationMobileView('work', false); }
+}
+
+function renderInvestigationReferenceSources() {
+  const select = document.getElementById('investigation-reference-source'); if (!select) return;
+  const selected = (typeof readerCardId === 'string' && readerCardId) || select.value;
+  select.replaceChildren(new Option('資料を選択', ''));
+  for (const source of activeInvestigationWorkspace?.sources ?? []) select.add(new Option(source.card.title, source.card.id));
+  select.value = [...select.options].some(option => option.value === selected) ? selected : '';
+  const empty = document.getElementById('investigation-reference-empty');
+  if (empty) empty.hidden = Boolean(document.getElementById('modal-reader')?.dataset.readerEmbedded === 'true');
+}
+
+function syncInvestigationReferenceSource(cardId) {
+  const select = document.getElementById('investigation-reference-source'); if (select) select.value = cardId;
+  const empty = document.getElementById('investigation-reference-empty'); if (empty) empty.hidden = true;
+}
+
+function isInvestigationThoughtWorkspaceActive() {
+  return Boolean(typeof currentView !== 'undefined' && currentView === 'investigations'
+    && activeInvestigationWorkspace && activeInvestigationPanel === 'thoughts'
+    && document.getElementById('investigation-reference-reader-host'));
+}
+
+function mountThoughtEditorForCurrentContext() {
+  const editor = document.getElementById('investigation-thought-editor'); if (!editor) return;
+  const inDocumentThoughts = typeof isResearchDocumentWorkspaceActive === 'function'
+    && isResearchDocumentWorkspaceActive() && typeof documentReferenceTab !== 'undefined'
+    && documentReferenceTab === 'thoughts';
+  const target = inDocumentThoughts
+    ? document.getElementById('document-reference-thought-editor')
+    : document.querySelector('#investigation-thought-canvas .thought-work-area');
+  if (target && editor.parentElement !== target) target.append(editor);
+}
+
+async function openThoughtNoteInDocumentReference(id) {
+  if (!id) return;
+  if (typeof setDocumentReferenceTab === 'function') setDocumentReferenceTab('thoughts');
+  const select = document.getElementById('document-reference-thought-select'); if (select) select.value = id;
+  await openThoughtNote(id, { keepContext: true });
+  mountThoughtEditorForCurrentContext();
 }
 
 function setInvestigationOrganizeView(view, persist = true) {
@@ -169,6 +280,7 @@ function renderInvestigationWorkspaceList() {
 function setInvestigationWorkspace(workspace) {
   const previousWorkspaceId = activeInvestigationWorkspace?.id ?? null;
   const workspaceChanged = previousWorkspaceId !== (workspace?.id ?? null);
+  if (workspaceChanged && thoughtEditorDirty) persistThoughtDraft();
   activeInvestigationWorkspace = workspace;
   if (workspaceChanged) { selectedThoughtNote = null; thoughtEditorDirty = false; }
   const enabled = Boolean(workspace);
@@ -199,6 +311,8 @@ function setInvestigationWorkspace(workspace) {
   renderInvestigationSavedSearches();
   renderThoughtNoteList();
   renderThoughtEditorSections();
+  renderDocumentThoughtOptions();
+  renderInvestigationReferenceSources();
   renderThoughtComparison();
   void loadInvestigationGraph();
   const rememberedThoughtId = workspace?.state?.thoughtNoteId;
@@ -224,7 +338,7 @@ async function loadInvestigationWorkspaces(preferredId = null) {
 }
 
 async function openInvestigationWorkspace(id) {
-  if (thoughtEditorDirty && !(await saveThoughtNote())) return;
+  if (thoughtEditorDirty) persistThoughtDraft();
   try {
     const result = await api.get(`/api/workspaces/${encodeURIComponent(id)}`);
     try { localStorage.setItem('my-search:active-investigation-workspace', id); } catch { /* local storage may be disabled */ }
@@ -756,7 +870,7 @@ async function attachThoughtNote(id) {
 
 async function openThoughtNote(id, options = {}) {
   if (!options.keepContext && activeInvestigationWorkspace && activeInvestigationPanel !== 'thoughts') setInvestigationPanel('thoughts');
-  if (thoughtEditorDirty && !(await saveThoughtNote())) return;
+  if (thoughtEditorDirty) persistThoughtDraft();
   try {
     const result = await api.get(`/api/thought-notes/${encodeURIComponent(id)}`);
     selectedThoughtNote = result.thought; thoughtEditorDirty = false;
@@ -781,10 +895,12 @@ async function openThoughtNote(id, options = {}) {
         const differs = draft.title !== selectedThoughtNote.title || draft.body !== selectedThoughtNote.body || draft.kind !== selectedThoughtNote.kind;
         thoughtEditorDirty = differs;
         if (differs) document.getElementById('thought-version-label').textContent = '未保存の変更を復元';
+      } else if (draft) {
+        document.getElementById('thought-version-label').textContent = `保存済み版 ${selectedThoughtNote.version} と未保存下書きが競合しています。下書きはブラウザー内に保持しました。`;
       }
     } catch { /* retain server copy if a local draft is unreadable */ }
     document.getElementById('thought-history').replaceChildren();
-    renderThoughtNoteList(); renderThoughtEditorSections();
+    renderThoughtNoteList(); renderThoughtEditorSections(); renderDocumentThoughtOptions(); mountThoughtEditorForCurrentContext();
   } catch (error) { investigationStatus(error.message || '思考メモを開けませんでした。', true); }
 }
 
@@ -813,6 +929,7 @@ function renderThoughtEditorSections() {
   const editor = document.getElementById('investigation-thought-editor'); if (!editor) return;
   const note = selectedThoughtNote;
   editor.hidden = !note;
+  const emptyState = document.getElementById('thought-editor-empty'); if (emptyState) emptyState.hidden = Boolean(note);
   const workspace = activeInvestigationWorkspace;
   document.querySelectorAll('[data-thought-document-only]').forEach(node => { node.hidden = !(typeof activeResearchDocument !== 'undefined' && activeResearchDocument); });
   const group = document.getElementById('thought-edit-group');
@@ -829,6 +946,17 @@ function renderThoughtEditorSections() {
     if ([...source.options].some(option => option.value === previous)) source.value = previous;
   }
   renderThoughtReferences(); renderThoughtLinks(); void refreshThoughtAIStatus();
+  mountThoughtEditorForCurrentContext();
+}
+
+function renderDocumentThoughtOptions() {
+  const select = document.getElementById('document-reference-thought-select'); if (!select) return;
+  const selectedId = selectedThoughtNote?.id ?? select.value;
+  select.replaceChildren(new Option('思考メモを選択', ''));
+  for (const note of activeInvestigationWorkspace?.thoughts ?? []) {
+    select.add(new Option(note.title || note.body.slice(0, 60) || '無題の思考メモ', note.id));
+  }
+  select.value = [...select.options].some(option => option.value === selectedId) ? selectedId : '';
 }
 
 async function refreshThoughtAIStatus() {

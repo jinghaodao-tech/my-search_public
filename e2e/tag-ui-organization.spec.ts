@@ -23,21 +23,21 @@ test('tag search and editing are optional advanced actions and preserve existing
   await expect(page.locator('#topbar h1')).toHaveText('my-search');
   await expect(page).toHaveTitle('my-search');
   await expect(page.locator('#topbar > .tab-group > button')).toHaveText(['探す', '読む・メモ', '調査']);
-  await expect(page.locator('#topbar > .tab-group > details > summary')).toHaveText('記事・メモ');
-  for (const selector of ['#topbar .main-nav > button[data-view="bm25"]', '#topbar .main-nav > button[onclick="openReader()"]', '#topbar .topbar-library > summary', '#topbar .main-nav > button[data-view="investigations"]']) {
+  await expect(page.locator('#topbar > .tab-group > details > summary')).toHaveText('保存済み');
+  for (const selector of ['#topbar .main-nav > button[data-view="bm25"]', '#topbar .topbar-library > summary', '#topbar .main-nav > button[data-view="investigations"]']) {
     const box = await page.locator(selector).boundingBox();
     expect(box?.width).toBeGreaterThanOrEqual(64);
   }
   await expect(page.locator('#topbar .topbar-admin > summary')).toHaveText('ツール・設定');
   await expect(page.locator('#topbar [data-view="writing"]')).toHaveCount(0);
-  await expect(page.locator('#topbar .topbar-library')).toContainText('保存済み');
+  await expect(page.locator('#topbar .topbar-library')).toContainText('記事・メモを管理');
   await expect(page.locator('#topbar .topbar-library')).toContainText('収集した記事を確認');
-  await expect(page.locator('#topbar .main-nav')).toContainText('読む・メモ');
+  await expect(page.locator('#nav-reader-memo')).toBeVisible();
   await expect(page.locator('#bm25-config-header').getByRole('button', { name: '候補レビュー' })).toHaveCount(0);
   await openLibraryView(page, '収集した記事を確認');
   await expect(page.locator('#candidate-view')).toHaveClass(/active/);
   await expect(page.locator('#topbar [data-nav-group="library"]')).toHaveClass(/active/);
-  await openLibraryView(page, '保存済み');
+  await openLibraryView(page, '記事・メモを管理');
   await expect(page.locator('#sidebar .global-card-views')).toContainText('全カードのグルーピング');
   await expect(page.locator('#sidebar .global-card-views')).toContainText('全カードの関係図');
   await expect(page.locator('#tag-search')).toBeHidden();
