@@ -82,7 +82,16 @@ test('a collected search result becomes a verified citation in an exported manus
     selection.removeAllRanges();
     selection.addRange(range);
   });
+  const citationResponsePromise = page.waitForResponse(response =>
+    /\/api\/documents\/[^/]+\/citations$/.test(new URL(response.url()).pathname)
+    && response.request().method() === 'POST',
+  { timeout: 3500 }).catch(() => null);
   await page.getByRole('button', { name: '引用を原稿へ追加して戻る' }).click();
+  const citationResponse = await citationResponsePromise;
+  if (!citationResponse) {
+    throw new Error('Citation request was not sent. Reader notice: ' + await page.locator('#toast').textContent());
+  }
+  expect(citationResponse.ok(), await citationResponse.text()).toBeTruthy();
   await expect(editor).toHaveValue(/\[\[citation:/);
   await expect(page.locator('#document-citations')).toContainText('verified');
   await page.getByRole('button', { name: '保存', exact: true }).click();
