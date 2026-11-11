@@ -74,14 +74,11 @@ test('a collected search result becomes a verified citation in an exported manus
   await expect(savedResult).toBeVisible();
   await savedResult.getByRole('button', { name: 'メモを読む' }).click();
   await expect(page.locator('#reader-article [data-index="0"]')).toContainText(quote);
-  await page.locator('#reader-article [data-index="0"]').evaluate((element: Element) => {
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    const selection = window.getSelection();
-    if (!selection) throw new Error('Selection API unavailable');
-    selection.removeAllRanges();
-    selection.addRange(range);
-  });
+  // Select via the user's mouse interaction: synthetic Range changes can be
+  // collapsed when focus moves from the source paragraph to the citation button.
+  const sourceParagraph = page.locator('#reader-article [data-index="0"]');
+  await sourceParagraph.click({ clickCount: 3 });
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString() ?? '')).toContain(quote);
   const citationResponsePromise = page.waitForResponse(response =>
     /\/api\/documents\/[^/]+\/citations$/.test(new URL(response.url()).pathname)
     && response.request().method() === 'POST',
